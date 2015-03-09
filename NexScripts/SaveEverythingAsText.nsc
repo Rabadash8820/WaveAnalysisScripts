@@ -1,0 +1,54 @@
+% SaveEverythingAsText.nsc
+% Ceated by Dan Vicarel around 06/05/2014
+
+% Let user choose data folder by selecting one of its files in a File Open dialog
+rootPath = SelectFile()
+
+% If a file path was chosen (user didn't just click Cancel)...
+if rootPath	<> ""
+	
+	% Set path to the data folder
+	tempPath = rootPath
+	while Find(tempPath, "\") <> 0
+		slashPos = Find(tempPath, "\")
+		tempPath = Mid(tempPath, slashPos + 1, StrLength(tempPath) - slashPos)
+	end
+	rootPath = Left(rootPath, Find(rootPath, tempPath) - 2)
+	MsgBox("Folder: " + rootPath)
+	
+	% If there is at least one .PLX file in the folder
+	if GetFileCount(rootPath + "\*.plx") > 0
+		% Process all .PLX files in the folder
+		for trial = 1 to GetFileCount(rootPath + "\*.plx")
+			% Shorten the fileName to just the name (not complete path)
+			fileName = GetFileName(trial)
+			tempPath = fileName
+			while Find(tempPath, "\") <> 0
+				slashPos = Find(tempPath, "\")
+				tempPath = Mid(tempPath, slashPos + 1, StrLength(tempPath) - slashPos)
+			end
+			fileName = tempPath
+			
+			% Open the PLX file
+			plxDoc = OpenDocument(fileName)
+			
+			% Save the timestamps of the PLX files into TXT files
+			fileName= Left(fileName, Find(fileName, ".") - 1)
+			MsgBox("Saving file: '" + fileName + ".plx' as '" + fileName + ".txt'" )
+			SaveAsTextFile(plxDoc, fileName + ".txt")			
+			
+			% Close the PLX file
+			CloseDocument(plxDoc)
+		end
+
+		% Display success
+		MsgBox("")
+		MsgBox("All " + NumToStr(GetFileCount(rootPath + "\*.plx")) + " .PLX files in this folder were succesfully saved as text files.")
+		MsgBox("I hope you remembered to export only the data that you need (intervals, spikes, etc.)!")
+	else
+		MsgBox("No .PLX files in folder " + rootPath)
+	end	% .PLX files in folder
+	
+else
+	MsgBox("No folder selected.")
+end	% Root path selected

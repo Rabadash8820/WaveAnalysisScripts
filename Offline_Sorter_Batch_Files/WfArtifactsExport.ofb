@@ -1,0 +1,22 @@
+// Work with all .MCD files in the Data directory
+
+// Queue all .MCD files in the Data directory
+Dir C:\Users\will\Desktop\Plexon problem files\MCD\llll\*.mcd
+
+// Detect waveforms on all channels whose peaks heights are >5.00 sigmas from mean
+Set DetectSigmas 5
+Set DetectNPW 126
+Set DetectNPre 25
+Set DetectDead 50
+ForEachChannel Detect
+
+// Remove artifacts
+Set ArtifactWidth 100
+Set ArtifactPercentage 40
+ForEachFile InvalidateArtifactsAfter
+
+// Export timestamp data (only) to .PLX files
+Set SaveCont 0
+ForEachFile ExportToPlx
+
+Process
