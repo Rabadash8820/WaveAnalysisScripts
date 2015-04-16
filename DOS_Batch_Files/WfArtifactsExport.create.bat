@@ -12,8 +12,8 @@ REM If that path exists, continue
 IF NOT EXIST "!rootPath!" (
 	ECHO Directory not found
 ) ELSE (
-	REM Move to the provided path
-	CHDIR "!rootPath!"
+	REM Move to the provided path (may be on a different drive)
+	CHDIR /D "!rootPath!"
 	
 	REM Get the rootPath from the user
 	ECHO.
@@ -44,36 +44,38 @@ IF NOT EXIST "!rootPath!" (
 			IF EXIST "%%~fD\*.mcd" (						
 				REM Create the .ofb file named like "count_subdirectoryName.ofb"
 				REM Spaces before >> operators are only necessary sometimes for whatever reason
-				ECHO // Work with all .MCD files in the Data directory>> !count!_%%~nD.ofb
-				ECHO.>> !count!_%%~nD.ofb
-				ECHO // Queue all .MCD files in the Data directory>> !count!_%%~nD.ofb
-				ECHO Dir %%~fD\*.mcd>> !count!_%%~nD.ofb
-				ECHO Set DetectSigmas 5 >> !count!_%%~nD.ofb
-				ECHO Set DetectNPW 50>> !count!_%%~nD.ofb
-				ECHO Set DetectNPre 10>> !count!_%%~nD.ofb
-				ECHO Set DetectDead 0 >> !count!_%%~nD.ofb
-				ECHO ForEachChannel Detect>> !count!_%%~nD.ofb
-				ECHO.>> !count!_%%~nD.ofb
-				ECHO // Remove artifacts>> !count!_%%~nD.ofb
-				ECHO Set ArtifactWidth 10>> !count!_%%~nD.ofb
-				ECHO Set ArtifactPercentage 70>> !count!_%%~nD.ofb
-				ECHO ForEachFile InvalidateArtifactsAfter>> !count!_%%~nD.ofb
-				ECHO.>> !count!_%%~nD.ofb
-				ECHO // Export unsorted timestamps to .PLX files>> !count!_%%~nD.ofb
-				ECHO Set SaveCont 0 >> !count!_%%~nD.ofb
-				ECHO ForEachFile ExportToPlx>> !count!_%%~nD.ofb
-				ECHO.>> !count!_%%~nD.ofb
-				ECHO // Run T-Distribution E-M sorting on all channels, using principle components 1-3 as features>> !count!_%%~nD.ofb
-				ECHO Set FeatureX 0 >> !count!_%%~nD.ofb
-				ECHO Set FeatureY 1 >> !count!_%%~nD.ofb
-				ECHO Set FeatureZ 2 >> !count!_%%~nD.ofb
-				ECHO ForEachChannel TDist3d>> !count!_%%~nD.ofb
-				ECHO.>> !count!_%%~nD.ofb
-				ECHO // Export sorted timestamps to new .PLX files>> !count!_%%~nD.ofb
-				ECHO Set SaveCont 0 >> !count!_%%~nD.ofb
-				ECHO ForEachFile ExportToPlx>> !count!_%%~nD.ofb
-				ECHO.>> !count!_%%~nD.ofb
-				ECHO Process>> !count!_%%~nD.ofb
+				>> !count!_%%~nD.ofb (
+					ECHO // Work with all .MCD files in the Data directory
+					ECHO(
+					ECHO // Queue all .MCD files in the Data directory
+					ECHO Dir %%~fD\*.mcd
+					ECHO Set DetectSigmas 5
+					ECHO Set DetectNPW 50
+					ECHO Set DetectNPre 10
+					ECHO Set DetectDead 0
+					ECHO ForEachChannel Detect
+					ECHO(
+					ECHO // Remove artifacts
+					ECHO Set ArtifactWidth 10
+					ECHO Set ArtifactPercentage 70
+					ECHO ForEachFile InvalidateArtifactsAfter
+					ECHO(
+					ECHO // Export unsorted timestamps to .PLX files
+					ECHO Set SaveCont 0
+					ECHO ForEachFile ExportToPlx
+					ECHO(					
+					ECHO // Run T-Distribution E-M sorting on all channels, using principle components 1-3 as features
+					ECHO Set FeatureX 0
+					ECHO Set FeatureY 1
+					ECHO Set FeatureZ 2
+					ECHO ForEachChannel TDist3d
+					ECHO(					
+					ECHO // Export sorted timestamps to new .PLX files
+					ECHO Set SaveCont 0
+					ECHO ForEachFile ExportToPlx
+					ECHO(					
+					ECHO Process
+				)
 				
 				REM Increase the file count and show the fileName just processed on the console
 				ECHO Created !count!_%%~nD.ofb
