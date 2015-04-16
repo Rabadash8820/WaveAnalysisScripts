@@ -4,7 +4,11 @@
 % void SurpriseBurstsExport()
 % Scans through every PLX file in a folder selected by the user
 % Each file is burst analyzed with the Surprise Algorithm, and a the resulting burst timestamps are exported to text files
-% Make sure that NeuroExplorer is set to export Neuron (spike) and Interval data only for this to work optimally!
+
+% Make sure that:
+% 	NeuroExplorer is set to export Neuron (spike) and Interval data only for this to work optimally!
+% 	The BurstAnalyzeFile script called in the loop must be placed in "ProgramData\Nex Technologies\NeuroExplorer\Scripts\Made_By_Dan_Vicarel"
+%	The RennaBurstAnalysis template file is in "ProgramData\Nex Technologies\NeuroExplorer\Templates"
 
 Global filePath
 Global algorithm
