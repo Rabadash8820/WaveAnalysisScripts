@@ -18,7 +18,7 @@ NexOnTop()
 rootPath = SelectFile()
 
 % If a file path was chosen (user didn't just click Cancel)...
-if rootPath	<> ""	
+if rootPath	<> ""
 	% Set path to the data folder
 	tempPath = rootPath
 	while Find(tempPath, "\") <> 0
@@ -42,7 +42,7 @@ if rootPath	<> ""
 				MsgBox("")	
 				for recording = 1 to GetFileCount(rootPath + "\*.plx")
 					filePath = GetFileName(recording)
-					RunScript("Made_By_Dan_Vicarel\BurstAnalyzeFile")
+					RunScript("Renna Lab\BurstAnalyzeFile")
 				end
 
 				% Display success

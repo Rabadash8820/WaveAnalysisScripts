@@ -1,0 +1,5 @@
+// Export PLX files without continuous data
+Set SaveCont 0
+ForEachFile ExportToPlx
+
+Process

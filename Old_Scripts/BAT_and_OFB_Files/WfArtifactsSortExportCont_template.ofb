@@ -13,14 +13,13 @@ Set FeatureX 0	// PC1
 Set FeatureY 1	// PC2
 Set FeatureZ 2	// PC3
 
-
 // Run the spike detection, artifact removal, and spike sorting
 // Export all data to new .PLX files
 ForEachChannel Detect
 ForEachFile InvalidateArtifactsAfter
 ForEachChannel TDist3d
 
-// Export one PLX file with continuous data, and one without
+// Export PLX files with continuous data
 Set SaveCont 1
 ForEachFile ExportToPlx
 
