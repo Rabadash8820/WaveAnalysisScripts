@@ -1,0 +1,46 @@
+% SurpriseBurstAnalysis.nsc
+% Created by Daniel Vicarel on 9/2/14, 8:14 pm
+
+% void SurpriseBurstAnalysis(string filePath, string algorithm)
+% Opens the PLX file represented by filePath (path + name + extension), runs a bust analysis on it using the given algorithm,
+% then saves the resulting burst timestamps to a new text file
+% Make sure that NeuroExplorer is set to export Interval data only for this to work optimally!
+
+% Named constants
+TEMPLATE_NAME = "RennaBurstAnalysis"
+MIN_SURPRISE = 0.0001
+MAX_ISI_TO_START = 0.5
+MIN_ISI_TO_END = 0.5
+MIN_IBI = 1
+MIN_BURST_DURATION = 0.1
+MIN_SPIKES_IN_BURST = 4
+			
+% Extract the file name from the filePath
+fileName = filePath
+while Find(fileName, "\") <> 0
+	slashPos = Find(fileName, "\")
+	fileName = Mid(fileName, slashPos + 1, StrLength(fileName) - slashPos)
+end
+fileName= Left(fileName, Find(fileName, ".") - 1)
+
+MsgBox("Analyzing file: " + fileName + ".plx")
+
+% Open the PLX file
+plxDoc = OpenDocument(filePath)
+
+% Initialize the Burst Analysis template's parameters
+ModifyTemplate(plxDoc, TEMPLATE_NAME, "Select Data", "All")
+ModifyTemplate(plxDoc, TEMPLATE_NAME, "Algorithm", algorithm)
+ModifyTemplate(plxDoc, TEMPLATE_NAME, "Min Surprise", NumToStr(MIN_SURPRISE))
+ModifyTemplate(plxDoc, TEMPLATE_NAME, "Max Int. (sec)", NumToStr(MAX_ISI_TO_START))
+ModifyTemplate(plxDoc, TEMPLATE_NAME, "Max End Int.", NumToStr(MIN_ISI_TO_END))
+ModifyTemplate(plxDoc, TEMPLATE_NAME, "Min Interburst Int.", NumToStr(MIN_IBI))
+ModifyTemplate(plxDoc, TEMPLATE_NAME, "Min Burst Duration", NumToStr(MIN_BURST_DURATION))
+ModifyTemplate(plxDoc, TEMPLATE_NAME, "Min Num. Spikes", NumToStr(MIN_SPIKES_IN_BURST))
+
+% Apply the Burst Analysis and save the results to a text file
+ApplyTemplate(plxDoc, TEMPLATE_NAME)
+SaveAsTextFile(plxDoc, fileName + ".txt")
+
+% Close the PLX file
+CloseDocument(plxDoc)

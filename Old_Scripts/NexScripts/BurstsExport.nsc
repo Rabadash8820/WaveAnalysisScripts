@@ -1,0 +1,65 @@
+% SurpriseBurstsExport.nsc
+% Created by Daniel Vicarel on 9/4/14, 8:20 pm
+
+% void SurpriseBurstsExport()
+% Scans through every PLX file in a folder selected by the user
+% Each file is burst analyzed with the Surprise Algorithm, and a the resulting burst timestamps are exported to text files
+
+% Make sure that:
+% 	NeuroExplorer is set to export Neuron (spike) and Interval data only for this to work optimally!
+% 	The BurstAnalyzeFile script called in the loop must be placed in "ProgramData\Nex Technologies\NeuroExplorer\Scripts\Made_By_Dan_Vicarel"
+%	The RennaBurstAnalysis template file is in "ProgramData\Nex Technologies\NeuroExplorer\Templates"
+
+Global filePath
+Global algorithm
+
+% Let user choose data folder by selecting one of its files in a File Open dialog
+NexOnTop()
+rootPath = SelectFile()
+
+% If a file path was chosen (user didn't just click Cancel)...
+if rootPath	<> ""	
+	% Set path to the data folder
+	tempPath = rootPath
+	while Find(tempPath, "\") <> 0
+		slashPos = Find(tempPath, "\")
+		tempPath = Mid(tempPath, slashPos + 1, StrLength(tempPath) - slashPos)
+	end
+	rootPath = Left(rootPath, Find(rootPath, tempPath) - 2)
+	MsgBox("Folder: " + rootPath)
+	
+	% If there is at least one .PLX file in the folder
+	if GetFileCount(rootPath + "\*.plx") > 0
+		% Ask the user which burst analysis algorithm they wish to use
+		algorithm = "Max Interval"
+		result = Dialog(GetActiveDocument(), algorithm, "Algorithm to use (Max Interval or Surprise):", "string")
+		
+		% If a valid algorithm was provided
+		if (result == 1)
+			if (algorithm == "Max Interval") | (algorithm == "Surprise")				
+				% Process all .PLX files in the folder
+				MsgBox("Algorithm: " + algorithm)
+				MsgBox("")	
+				for recording = 1 to GetFileCount(rootPath + "\*.plx")
+					filePath = GetFileName(recording)
+					RunScript("Made_By_Dan_Vicarel\BurstAnalyzeFile")
+				end
+
+				% Display success
+				MsgBox("")
+				MsgBox("All " + NumToStr(GetFileCount(rootPath + "\*.plx")) + " PLX files in this folder were succesfully burst-analyzed and exported.")
+				MsgBox("I hope you remembered to export only Neuron (spike) and Interval data!")
+			else
+				MsgBox("Algorithm must be 'Max Interval' or 'Surprise' (case sensitive).")
+			end
+		else
+			MsgBox("No Burst Analysis algorithm provided")
+		end
+		
+	else
+		MsgBox("No .PLX files in Folder")
+	end	% .PLX files in folder
+	
+else
+	MsgBox("No folder selected.")
+end	% Root path selected
