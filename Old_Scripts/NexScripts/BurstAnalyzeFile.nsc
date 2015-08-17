@@ -7,7 +7,7 @@
 % Make sure that NeuroExplorer is set to export Interval data only for this to work optimally!
 
 % Named constants
-TEMPLATE_NAME = "RennaBurstAnalysis"
+TEMPLATE_NAME = "Renna Lab\RennaBurstAnalysis"
 MIN_SURPRISE = 0.0001
 MAX_ISI_TO_START = 0.5
 MIN_ISI_TO_END = 0.5
