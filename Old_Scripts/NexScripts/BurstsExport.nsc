@@ -42,7 +42,7 @@ if rootPath	<> ""
 				MsgBox("")	
 				for recording = 1 to GetFileCount(rootPath + "\*.plx")
 					filePath = GetFileName(recording)
-					RunScript("Renna Lab\BurstAnalyzeFile")
+					RunScript("BurstAnalyzeFile")
 				end
 
 				% Display success

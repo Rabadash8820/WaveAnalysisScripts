@@ -187,3 +187,8 @@ FakesAssemblies/
 GeneratedArtifacts/
 _Pvt_Extensions/
 ModelManifest.xml
+
+# Default templates and scripts added by NeuroExplorer
+Old_Scripts/Nex_Analysis_Templates/3D Templates/
+Old_Scripts/Nex_Analysis_Templates/Default/
+/MEACruncher/packages
