@@ -1,5 +1,7 @@
 // Continuous data filtering
 Set FilterFreq 100	// Hz
+Set FilterType Butterworth
+Set FilterPoles 2	// idk
 
 // Waveform detection
 Set DetectSigmas -5
@@ -15,15 +17,21 @@ Set ArtifactPercentage 70
 Set FeatureX 0	// PC1
 Set FeatureY 1	// PC2
 Set FeatureZ 2	// PC3
+Set SortType TDist
+Set SortDim 3
 
-// Run the spike detection, artifact removal, and spike sorting
-// Export all data to new .PLX files
-ForEachChannel Detect
-ForEachFile InvalidateArtifactsAfter
-ForEachChannel TDist3d
-
-// Export PLX files with continuous data
+// PLX exporting
+Set UseRangeStart -1	// Cancels sort range and uses entire file
 Set SaveCont 1
+Set SaveProcessedCont 1		// Filtered/upsampled continuous data, not raw
+Set SaveInvalidated 0
+Set SaveUnsorted 0
+
+// Run the spike detection, artifact removal, spike sorting, and exporting
+ForEachChannel Filter
+ForEachChannel Detect
+ForEachChannel Sort
+ForEachFile InvalidateArtifactsAfter
 ForEachFile ExportToPlx
 
 Process
