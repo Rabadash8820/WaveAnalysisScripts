@@ -8,12 +8,6 @@
 
 % Named constants
 TEMPLATE_NAME = "RennaBurstAnalysis"
-MIN_SURPRISE = 0.0001
-MAX_ISI_TO_START = 0.5
-MIN_ISI_TO_END = 0.5
-MIN_IBI = 1
-MIN_BURST_DURATION = 0.1
-MIN_SPIKES_IN_BURST = 4
 			
 % Extract the file name from the filePath
 fileName = filePath
@@ -31,12 +25,12 @@ plxDoc = OpenDocument(filePath)
 % Initialize the Burst Analysis template's parameters
 ModifyTemplate(plxDoc, TEMPLATE_NAME, "Select Data", "All")
 ModifyTemplate(plxDoc, TEMPLATE_NAME, "Algorithm", algorithm)
-ModifyTemplate(plxDoc, TEMPLATE_NAME, "Min Surprise", NumToStr(MIN_SURPRISE))
-ModifyTemplate(plxDoc, TEMPLATE_NAME, "Max Int. (sec)", NumToStr(MAX_ISI_TO_START))
-ModifyTemplate(plxDoc, TEMPLATE_NAME, "Max End Int.", NumToStr(MIN_ISI_TO_END))
-ModifyTemplate(plxDoc, TEMPLATE_NAME, "Min Interburst Int.", NumToStr(MIN_IBI))
-ModifyTemplate(plxDoc, TEMPLATE_NAME, "Min Burst Duration", NumToStr(MIN_BURST_DURATION))
-ModifyTemplate(plxDoc, TEMPLATE_NAME, "Min Num. Spikes", NumToStr(MIN_SPIKES_IN_BURST))
+ModifyTemplate(plxDoc, TEMPLATE_NAME, "Min Surprise", NumToStr(minSurprise))
+ModifyTemplate(plxDoc, TEMPLATE_NAME, "Max Int. (sec)", NumToStr(maxISIToStart))
+ModifyTemplate(plxDoc, TEMPLATE_NAME, "Max End Int.", NumToStr(minISIToEnd))
+ModifyTemplate(plxDoc, TEMPLATE_NAME, "Min Interburst Int.", NumToStr(minIBI))
+ModifyTemplate(plxDoc, TEMPLATE_NAME, "Min Burst Duration", NumToStr(minBurstDur))
+ModifyTemplate(plxDoc, TEMPLATE_NAME, "Min Num. Spikes", NumToStr(minSpikesInBurst))
 
 % Apply the Burst Analysis and save the results to a text file
 ApplyTemplate(plxDoc, TEMPLATE_NAME)
