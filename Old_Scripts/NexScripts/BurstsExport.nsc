@@ -64,15 +64,15 @@ end
 
 % Allow the user to set parameters based on the selected analysis algorithm
 MsgBox("Algorithm: " + algorithm)
+minSurprise = 0.0001
+maxISIToStart = 0.5
+minISIToEnd = 0.5
+minIBI = 1
+minBurstDur = 0.1
+minSpikesInBurst = 4
 if (algorithm == "Surprise")
-	minSurprise = 0.0001
 	result = Dialog(GetActiveDocument(), minSurprise, "Min Surprise:", "number")
 else
-	maxISIToStart = 0.5
-	minISIToEnd = 0.5
-	minIBI = 1
-	minBurstDur = 0.1
-	minSpikesInBurst = 4
 	result = Dialog(GetActiveDocument(), maxISIToStart,    "Max ISI To Start Burst",  "number", \
 									     minISIToEnd,      "Min ISI To End Burst",    "number", \
 									     minIBI, 		   "Min Interburst Interval", "number", \
