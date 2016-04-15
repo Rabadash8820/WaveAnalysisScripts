@@ -43,6 +43,8 @@ Public Sub CombineData()
         pop.ID = lsRow.Range(1, popsTbl.ListColumns("Population ID").Index).value
         pop.name = lsRow.Range(1, popsTbl.ListColumns("Population Name").Index).value
         pop.IsControl = (lsRow.Range(1, popsTbl.ListColumns("Control?").Index).value <> "")
+        pop.ForeColor = lsRow.Range(1, popsTbl.ListColumns("Population ID").Index).Font.Color
+        pop.BackColor = lsRow.Range(1, popsTbl.ListColumns("Population ID").Index).Interior.Color
         pops.Add pop.ID, pop
     Next lsRow
     
@@ -94,6 +96,10 @@ Public Sub CombineData()
         pops(popID).Tissues.Add tiss
     Next lsRow
     
+    'Get some user options from the Form Controls within the workbook
+    keepOpen = (combineSht.Shapes("KeepOpenChk").OLEFormat.Object.value = 1)
+    dataPaired = (popsSht.Shapes("DataPairedChk").OLEFormat.Object.value = 1)
+    
     'Let the user pick the workbooks in which to combine data
     Dim propWbName As String, sttcWbName As String
     If combineProps Then _
@@ -110,9 +116,6 @@ Public Sub CombineData()
         result = MsgBox("Property and STTC data must be combined into distinct workbooks.", vbOKOnly)
         GoTo ExitSub
     End If
-    
-    'Determine if the user wants to keep workbooks open after combining
-    keepOpen = (combineSht.Shapes("KeepOpenChk").OLEFormat.Object.value = 1)
     
     'Open these workbooks and combine data into them (they will be left open)
     Dim wb As Workbook, numGoodTissues As Integer
@@ -457,7 +460,15 @@ Private Sub buildFiguresSheet()
         rOffset = NUM_BKGRD_PROPERTIES + t * NUM_BURST_PROPERTIES
         cornerCell.offset(rOffset, 0).Resize(1, numCols).Borders(xlEdgeBottom).Weight = xlThin
     Next t
+    cornerCell.offset(0, 1).Resize(1, 4).Interior.Color = pops.items()(0).BackColor
+    cornerCell.offset(0, 1).Resize(1, 4).Font.Color = pops.items()(0).ForeColor
+    cornerCell.offset(0, 4 * pops.Count + 1).Resize(1, 3).Interior.Color = pops.items()(0).BackColor
+    cornerCell.offset(0, 4 * pops.Count + 1).Resize(1, 3).Font.Color = pops.items()(0).ForeColor
     For p = 1 To pops.Count - 1
+        cornerCell.offset(0, 4 * p + 1).Resize(1, 4).Interior.Color = pops.items()(p).BackColor
+        cornerCell.offset(0, 4 * p + 1).Resize(1, 4).Font.Color = pops.items()(p).ForeColor
+        cornerCell.offset(0, 4 * pops.Count + 3 * p + 1).Resize(1, 3).Interior.Color = pops.items()(p).BackColor
+        cornerCell.offset(0, 4 * pops.Count + 3 * p + 1).Resize(1, 3).Font.Color = pops.items()(p).ForeColor
         cornerCell.offset(0, 4 * p).Resize(numRows, 1).Borders(xlEdgeRight).Weight = xlThin
         cornerCell.offset(0, 4 * pops.Count + 3 * p).Resize(numRows, 1).Borders(xlEdgeRight).Weight = xlThin
     Next p
@@ -474,9 +485,6 @@ Private Sub buildFiguresSheet()
         maxTissues = WorksheetFunction.Max(maxTissues, pop.Tissues.Count)
     Next popV
     
-    'Build the main percent-change chart
-    
-    
     'Set up row areas (i.e., for All Bursts bursts from all other workbook types)
     Dim numChartRows As Integer, titleOffset As Integer, propColSpace As Integer
     Dim numPropRows As Integer, numPropCols As Integer
@@ -484,7 +492,7 @@ Private Sub buildFiguresSheet()
     titleOffset = 2
     propColSpace = 2
     numPropRows = 2 + numChartRows + 2 + 2 + maxTissues + 1 + 1     'Space + chart + space + headers + tissues + space + line
-    numPropCols = 1 + 2 * numWbTypes + propColSpace   'rowHeader + wbTypes + space
+    numPropCols = 1 + 2 * pops.Count + propColSpace   'rowHeader + wbTypes + space
     With cornerCell.offset(numPropRows - 1).EntireRow.Interior
         .Pattern = xlSolid
         .TintAndShade = -0.349986266670736
@@ -513,17 +521,118 @@ Private Sub buildFiguresSheet()
             .Resize(numPropRows - 2 * titleOffset - 1, 1).Merge
         End With
     Next t
+        
+    'Add the new column chart object for percent changes
+    Dim chartShp As Shape, chartRng As Range
+    Set chartRng = cornerCell.offset(0, numCols + 2).Resize(numPropRows - 2, 7)
+    Set chartShp = ActiveSheet.Shapes.AddChart(xlBarClustered, chartRng.Left, chartRng.Top, chartRng.Width, chartRng.Height)
+    With chartShp
+        .name = "Percent_Change_Chart"
+        .Line.Visible = msoFalse
+    End With
+    
+    With chartShp.Chart
+
+        'Remove default Series
+        Dim s As Integer
+        For s = 1 To .SeriesCollection.Count
+            .SeriesCollection(1).Delete
+        Next s
+        
+        'Set the new population Series (showing future hidden cells too)
+        .PlotVisibleOnly = False
+        Dim errorRng As Range, numSeries As Integer
+        numSeries = 0
+        For p = 0 To pops.Count - 1
+            Set pop = pops.items()(p)
+            If pop.ID <> ctrlPop.ID Then
+                numSeries = numSeries + 1
+                .SeriesCollection.Add Source:=cornerCell.offset(0, 4 * p + 3).Resize(numRows, 1)
+                .SeriesCollection(numSeries).name = pop.name
+                .SeriesCollection(numSeries).XValues = cornerCell.offset(1, 0).Resize(numRows - 1, 1)
+                .ApplyDataLabels Type:=xlDataLabelsShowValue
+                Set errorRng = cornerCell.offset(1, 4 * p + 4).Resize(numRows - 1, 1)
+                .SeriesCollection(numSeries).ErrorBar Direction:=xlX, include:=xlErrorBarIncludeBoth, Type:=xlErrorBarTypeCustom, _
+                    Amount:="='" & cornerCell.Worksheet.name & "'!" & errorRng.Address, _
+                    minusvalues:="='" & cornerCell.Worksheet.name & "'!" & errorRng.Address
+            End If
+        Next p
+
+        'Format the Chart
+        .HasAxis(xlCategory) = True
+        With .Axes(xlCategory)
+            .TickLabelPosition = xlTickLabelPositionLow
+            .TickLabels.offset = 500
+            .ReversePlotOrder = True
+            .MajorTickMark = xlTickMarkNone
+            .TickLabels.Font.Color = vbBlack
+            .TickLabels.Font.Bold = True
+            .TickLabels.Font.Size = 10
+            .Format.Line.ForeColor.RGB = vbBlack
+            .Format.Line.Weight = 3
+            .HasTitle = False
+        End With
+        .HasAxis(xlValue) = True
+        With .Axes(xlValue)
+            .HasMajorGridlines = False
+            .TickLabelPosition = xlTickMarkNone
+            .Format.Line.Visible = False
+        End With
+        .HasTitle = True
+        .HasTitle = False   'I have ABSOLUTELY no idea why this f*cking toggle is necessary, but a runtime error occurs without it
+        .HasTitle = True
+        With .ChartTitle
+            .Text = "Percent Change in RGC Firing Properties"
+            .Font.Color = vbBlack
+            .Font.Bold = True
+            .Font.Size = 18
+        End With
+        If numSeries > 1 Then
+            .HasLegend = True
+            With .Legend
+                .Font.Color = vbBlack
+                .Font.Bold = True
+                .Font.Size = 10
+                .Position = xlRight
+            End With
+        Else
+            .HasLegend = False
+        End If
+
+        'Formats the Chart's Series
+        numSeries = 0
+        For p = 0 To pops.Count - 1
+            Set pop = pops.items()(p)
+            If pop.ID <> ctrlPop.ID Then
+                numSeries = numSeries + 1
+                With .FullSeriesCollection(numSeries)
+                    .Format.Fill.ForeColor.RGB = pop.BackColor
+                    .Format.Line.ForeColor.RGB = vbBlack
+                    .Format.Line.Weight = 2
+                    .ErrorBars.Format.Line.ForeColor.RGB = vbBlack
+                    .ErrorBars.Format.Line.Weight = 2
+                    .HasLeaderLines = False
+                    .DataLabels.NumberFormat = "0.0%"
+                    .DataLabels.Position = xlLabelPositionOutsideEnd
+                    .DataLabels.Font.Size = 10
+                    .DataLabels.Font.Bold = True
+                    .DataLabels.Font.Color = vbBlack
+                End With
+            End If
+        Next p
+
+    End With
     
     'Build property areas
     Dim prop As Integer
-    Dim propCornerCell As Range, tblRowRng As Range, chartCell As Range
+    Dim propCornerCell As Range, tblRowRng As Range
     rOffset = numPropRows + 2 + numChartRows + 1
     For prop = 1 To NUM_BKGRD_PROPERTIES
         Set tblRowRng = cornerCell.offset(prop, 0)
         cOffset = numCols + (prop - 1) * numPropCols
         Set propCornerCell = cornerCell.offset(rOffset, cOffset)
-        Set chartCell = propCornerCell.offset(-(numChartRows + 1), 0)
-        Call buildPropArea(propCornerCell, tblRowRng, chartCell, PROP_UNITS(prop), "Burst", maxTissues)
+        Set chartRng = propCornerCell.offset(-(numChartRows + 1), 0).Resize(numChartRows, 1 + 2 * pops.Count)
+        Call buildPropArea(propCornerCell, tblRowRng, chartRng, PROP_UNITS(prop), "Burst", maxTissues)
     Next prop
     For t = 1 To numWbTypes
         rOffset = (t + 1) * numPropRows + 2 + numChartRows + 1
@@ -531,8 +640,8 @@ Private Sub buildFiguresSheet()
             Set tblRowRng = cornerCell.offset(NUM_BKGRD_PROPERTIES + (t - 1) * NUM_BURST_PROPERTIES + prop, 0)
             cOffset = numCols + (prop - 1) * numPropCols
             Set propCornerCell = cornerCell.offset(rOffset, cOffset)
-            Set chartCell = propCornerCell.offset(-(numChartRows + 1), 0)
-            Call buildPropArea(propCornerCell, tblRowRng, chartCell, PROP_UNITS(NUM_BKGRD_PROPERTIES + prop), wbTypes(1, t), maxTissues)
+            Set chartRng = propCornerCell.offset(-(numChartRows + 1), 0).Resize(numChartRows, 1 + 2 * pops.Count)
+            Call buildPropArea(propCornerCell, tblRowRng, chartRng, PROP_UNITS(NUM_BKGRD_PROPERTIES + prop), wbTypes(1, t), maxTissues)
         Next prop
     Next t
     
@@ -545,7 +654,7 @@ Private Sub buildFiguresSheet()
 
 End Sub
 
-Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, ByRef chartCell As Range, ByVal unitsStr As String, ByVal wbType As String, ByVal maxTissues As Integer)
+Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, ByRef chartRng As Range, ByVal unitsStr As String, ByVal wbType As String, ByVal maxTissues As Integer)
 
     Dim numWbTypes As Integer, numHeaders As Integer
     Dim t As Integer, pop As Population, p As Integer
@@ -572,6 +681,8 @@ Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, 
         cOffset = 1 + p * numPopCols
         headers(1, cOffset + 1) = pop.name
         headers(1, cOffset + 2) = pop.name & "_%Change"
+        cornerCell.offset(2, 2 * p + 1).Resize(1, 2).Interior.Color = pop.BackColor
+        cornerCell.offset(2, 2 * p + 1).Resize(1, 2).Font.Color = pop.ForeColor
     Next p
     cornerCell.offset(2, 0).Resize(1, numHeaders).value = headers
     cornerCell.offset(2, 0).Resize(1, numHeaders).Font.Bold = True
@@ -587,17 +698,16 @@ Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, 
         End If
     Next p
     
-    'Write tissue data
-    Dim tissueRng As Range
+    'Write tissue data (formula for percent change depends on whether data is paired)
+    Dim tissueCell As Range, ctrlValueStr As String
     For t = 1 To maxTissues
-        rOffset = 2 + t
-        cornerCell.offset(rOffset, 0).value = t
+        cornerCell.offset(2 + t, 0).value = t
         For p = 0 To pops.Count - 1
             Set pop = pops.items()(p)
-            cOffset = numPopCols * p
-            Set tissueRng = cornerCell.offset(rOffset, cOffset + 1)
-            tissueRng.offset(0, 0).Formula = "=IFERROR(AVERAGEIF(" & pop.name & "_" & wbType & "s[Tissue]," & t & "," & pop.name & "_" & wbType & "s[" & tblRowCell.value & "]), """")"
-            tissueRng.offset(0, 1).Formula = "=IFERROR(100*(" & tissueRng.Address & "-AVERAGE(" & ctrlRng.Address & "))/AVERAGE(" & ctrlRng.Address & "), """")"
+            Set tissueCell = cornerCell.offset(2 + t, p * numPopCols + 1)
+            ctrlValueStr = IIf(dataPaired, ctrlRng.Cells(t, 1).Address, "AVERAGE(" & ctrlRng.Address & ")")
+            tissueCell.Formula = "=IFERROR(AVERAGEIF(" & pop.name & "_" & wbType & "s[Tissue]," & cornerCell.offset(2 + t, 0).Address & "," & pop.name & "_" & wbType & "s[" & tblRowCell.value & "]), """")"
+            tissueCell.offset(0, 1).Formula = "=IFERROR((" & tissueCell.Address & "-" & ctrlValueStr & ")/" & ctrlValueStr & ", """")"
         Next p
     Next t
     cornerCell.offset(3, 0).Resize(maxTissues, 1).Font.Bold = True
@@ -617,21 +727,9 @@ Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, 
         summaryRng.offset(0, 3).Formula = "=IFERROR(TEXT(T.TEST(" & cornerCell.offset(3, 2 * p + 1).Resize(maxTissues, 1).Address & "," & ctrlRng.Address & ",TTTails,TTType), ""0.000""), """")"
     Next p
     
-    'Add bar chart
+    'Add the new bar chart object
     Dim chartShp As Shape
-    Set chartShp = buildPropChart(tblRowCell, unitsStr)
-    chartShp.Left = chartCell.Left
-    chartShp.Top = chartCell.Top
-    chartShp.Width = cornerCell.Resize(1, numHeaders).Width
-    chartShp.Height = cornerCell.offset(-2, 0).Top - chartCell.Top
-
-End Sub
-
-Private Function buildPropChart(ByRef tblRowCell As Range, ByVal unitsStr As String) As Shape
-
-    'Add the new chart object
-    Dim chartShp As Shape
-    Set chartShp = ActiveSheet.Shapes.AddChart(xlColumnClustered)
+    Set chartShp = ActiveSheet.Shapes.AddChart(xlColumnClustered, chartRng.Left, chartRng.Top, chartRng.Width, chartRng.Height)
     With chartShp
         .name = Replace(tblRowCell.value, " ", "_") & "_Chart"
         .Line.Visible = False
@@ -639,20 +737,20 @@ Private Function buildPropChart(ByRef tblRowCell As Range, ByVal unitsStr As Str
     
     With chartShp.Chart
     
-        'Select its data
-        Dim errorRng As Range
-        Set errorRng = tblRowCell.offset(0, 0 + 2)
+        'Clear its default Series
         Dim s As Integer
         For s = 1 To .SeriesCollection.Count
             .SeriesCollection(1).Delete
         Next s
+        
+        'Set the new population Series (showing future hidden cells too)
         .PlotVisibleOnly = False
-        Dim p As Integer, pop As Population
+        Dim errorRng As Range
         For p = 0 To pops.Count - 1
             Set pop = pops.items()(p)
-            Set errorRng = tblRowCell.offset(0, 4 * p + 2)
             .SeriesCollection.Add Source:=tblRowCell.offset(0, 4 * p + 1)
             .SeriesCollection(p + 1).name = pop.name
+            Set errorRng = tblRowCell.offset(0, 4 * p + 2)
             .SeriesCollection(p + 1).ErrorBar Direction:=xlY, include:=xlErrorBarIncludeBoth, Type:=xlErrorBarTypeCustom, _
                 Amount:="='" & tblRowCell.Worksheet.name & "'!" & errorRng.Address, _
                 minusvalues:="='" & tblRowCell.Worksheet.name & "'!" & errorRng.Address
@@ -663,7 +761,7 @@ Private Function buildPropChart(ByRef tblRowCell As Range, ByVal unitsStr As Str
         With .Axes(xlCategory)
             .TickLabelPosition = xlTickLabelPositionNone
             .MajorTickMark = xlTickMarkNone
-            .Format.Line.foreColor.RGB = vbBlack
+            .Format.Line.ForeColor.RGB = vbBlack
             .Format.Line.Weight = 3
             .HasTitle = False
         End With
@@ -673,7 +771,7 @@ Private Function buildPropChart(ByRef tblRowCell As Range, ByVal unitsStr As Str
             .TickLabels.Font.Color = vbBlack
             .TickLabels.Font.Bold = True
             .TickLabels.Font.Size = 10
-            .Format.Line.foreColor.RGB = vbBlack
+            .Format.Line.ForeColor.RGB = vbBlack
             .Format.Line.Weight = 3
             .HasTitle = True
             .AxisTitle.Caption = unitsStr
@@ -684,7 +782,7 @@ Private Function buildPropChart(ByRef tblRowCell As Range, ByVal unitsStr As Str
         .HasTitle = True
         .HasTitle = False   'I have ABSOLUTELY no idea why this f*cking toggle is necessary, but a runtime error occurs without it
         .HasTitle = True
-        With .chartTitle
+        With .ChartTitle
             .Text = "='" & tblRowCell.Worksheet.name & "'!" & Cells(1, tblRowCell.row - 2).Address
             .Font.Color = vbBlack
             .Font.Bold = True
@@ -699,27 +797,20 @@ Private Function buildPropChart(ByRef tblRowCell As Range, ByVal unitsStr As Str
         End With
         
         'Formats the Chart's Series
-        Dim foreColors() As Long, numColors As Integer, c As Integer
-        numColors = 2
-        ReDim foreColors(0 To numColors - 1)
-        foreColors(0) = vbBlack
-        foreColors(1) = vbRed
-        c = -1
-        For p = 1 To pops.Count
-            c = c + 1
-            With .FullSeriesCollection(p)
-                .Format.Fill.foreColor.RGB = foreColors(c Mod numColors)
-                .Format.Line.foreColor.RGB = vbBlack
+        For p = 0 To pops.Count - 1
+            Set pop = pops.items()(p)
+            With .FullSeriesCollection(p + 1)
+                .Format.Fill.ForeColor.RGB = pop.BackColor
+                .Format.Line.ForeColor.RGB = vbBlack
                 .Format.Line.Weight = 2
-                .ErrorBars.Format.Line.foreColor.RGB = vbBlack
+                .ErrorBars.Format.Line.ForeColor.RGB = vbBlack
                 .ErrorBars.Format.Line.Weight = 2
             End With
         Next p
         
     End With
-    
-    Set buildPropChart = chartShp
-End Function
+
+End Sub
 
 Private Function uniqueItems(ByRef items As Variant) As Variant
 

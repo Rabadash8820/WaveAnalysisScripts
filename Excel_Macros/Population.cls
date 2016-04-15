@@ -12,4 +12,6 @@ Option Explicit
 Public ID As Integer
 Public name As String
 Public IsControl As Boolean
+Public ForeColor As Long
+Public BackColor As Long
 Public Tissues As New Collection
