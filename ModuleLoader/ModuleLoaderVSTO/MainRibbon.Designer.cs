@@ -38,27 +38,29 @@
             this.ExportModulesDrop = this.Factory.CreateRibbonDropDown();
             this.ExportClassesDrop = this.Factory.CreateRibbonDropDown();
             this.ExportFormsDrop = this.Factory.CreateRibbonDropDown();
+            this.RefreshGrp = this.Factory.CreateRibbonGroup();
+            this.OverwriteGrp = this.Factory.CreateRibbonGroup();
+            this.RefreshBtn = this.Factory.CreateRibbonButton();
             this.ImportAllBtn = this.Factory.CreateRibbonButton();
             this.BrowseBtn = this.Factory.CreateRibbonButton();
             this.ExportAllBtn = this.Factory.CreateRibbonButton();
-            this.RefreshGrp = this.Factory.CreateRibbonGroup();
-            this.RefreshBtn = this.Factory.CreateRibbonButton();
             this.AlwaysReplaceRadio = this.Factory.CreateRibbonToggleButton();
             this.NeverReplaceRadio = this.Factory.CreateRibbonToggleButton();
             this.ModLoaderTab.SuspendLayout();
             this.ImportGrp.SuspendLayout();
             this.ExportGrp.SuspendLayout();
             this.RefreshGrp.SuspendLayout();
+            this.OverwriteGrp.SuspendLayout();
             this.SuspendLayout();
             // 
             // ModLoaderTab
             // 
+            this.ModLoaderTab.Groups.Add(this.RefreshGrp);
             this.ModLoaderTab.Groups.Add(this.ImportGrp);
             this.ModLoaderTab.Groups.Add(this.ExportGrp);
-            this.ModLoaderTab.Groups.Add(this.RefreshGrp);
+            this.ModLoaderTab.Groups.Add(this.OverwriteGrp);
             this.ModLoaderTab.Label = "Module Loader";
             this.ModLoaderTab.Name = "ModLoaderTab";
-            this.ModLoaderTab.Visible = false;
             // 
             // ImportGrp
             // 
@@ -162,6 +164,30 @@
     ".";
             this.ExportFormsDrop.SelectionChanged += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.ExportFormsDrop_SelectionChanged);
             // 
+            // RefreshGrp
+            // 
+            this.RefreshGrp.Items.Add(this.RefreshBtn);
+            this.RefreshGrp.Name = "RefreshGrp";
+            // 
+            // OverwriteGrp
+            // 
+            this.OverwriteGrp.Items.Add(this.AlwaysReplaceRadio);
+            this.OverwriteGrp.Items.Add(this.NeverReplaceRadio);
+            this.OverwriteGrp.Label = "Overwrite";
+            this.OverwriteGrp.Name = "OverwriteGrp";
+            // 
+            // RefreshBtn
+            // 
+            this.RefreshBtn.ControlSize = Microsoft.Office.Core.RibbonControlSize.RibbonControlSizeLarge;
+            this.RefreshBtn.Label = "Refresh All";
+            this.RefreshBtn.Name = "RefreshBtn";
+            this.RefreshBtn.OfficeImageId = "RefreshAll";
+            this.RefreshBtn.ScreenTip = "Refresh All Drop Downs";
+            this.RefreshBtn.ShowImage = true;
+            this.RefreshBtn.SuperTip = "Refresh the import drop downs with VB files in this workbook\'s directory.  Refres" +
+    "h the export drop downs with this workbook\'s VB modules.";
+            this.RefreshBtn.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.RefreshBtn_Click);
+            // 
             // ImportAllBtn
             // 
             this.ImportAllBtn.ControlSize = Microsoft.Office.Core.RibbonControlSize.RibbonControlSizeLarge;
@@ -195,39 +221,24 @@
             this.ExportAllBtn.SuperTip = "Export all VB files in this workbook to its containing directory";
             this.ExportAllBtn.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.ExportAllBtn_Click);
             // 
-            // RefreshGrp
-            // 
-            this.RefreshGrp.Items.Add(this.RefreshBtn);
-            this.RefreshGrp.Items.Add(this.AlwaysReplaceRadio);
-            this.RefreshGrp.Items.Add(this.NeverReplaceRadio);
-            this.RefreshGrp.Name = "RefreshGrp";
-            // 
-            // RefreshBtn
-            // 
-            this.RefreshBtn.ControlSize = Microsoft.Office.Core.RibbonControlSize.RibbonControlSizeLarge;
-            this.RefreshBtn.Label = "Refresh All";
-            this.RefreshBtn.Name = "RefreshBtn";
-            this.RefreshBtn.OfficeImageId = "RefreshAll";
-            this.RefreshBtn.ScreenTip = "Refresh All Drop Downs";
-            this.RefreshBtn.ShowImage = true;
-            this.RefreshBtn.SuperTip = "Refresh the import drop downs with VB files in this workbook\'s directory.  Refres" +
-    "h the export drop downs with this workbook\'s VB modules.";
-            this.RefreshBtn.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.RefreshBtn_Click);
-            // 
             // AlwaysReplaceRadio
             // 
             this.AlwaysReplaceRadio.Checked = true;
-            this.AlwaysReplaceRadio.Label = "Always Overwrite";
+            this.AlwaysReplaceRadio.Label = "Always";
             this.AlwaysReplaceRadio.Name = "AlwaysReplaceRadio";
+            this.AlwaysReplaceRadio.OfficeImageId = "ChangeToAcceptInvitation";
+            this.AlwaysReplaceRadio.ShowImage = true;
             this.AlwaysReplaceRadio.SuperTip = "Importing modules will always overwrite modules with the same name.  Exporting mo" +
     "dules will always overwrite VB files with the same name.";
             this.AlwaysReplaceRadio.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.AlwaysReplaceRadio_Click);
             // 
             // NeverReplaceRadio
             // 
-            this.NeverReplaceRadio.Label = "Never Overwrite";
+            this.NeverReplaceRadio.Label = "Never";
             this.NeverReplaceRadio.Name = "NeverReplaceRadio";
+            this.NeverReplaceRadio.OfficeImageId = "ChangeToDeclineInvitation";
             this.NeverReplaceRadio.ScreenTip = "Never Overwrite Files";
+            this.NeverReplaceRadio.ShowImage = true;
             this.NeverReplaceRadio.SuperTip = "Importing modules will never overwrite existing modules with the same name.  Expo" +
     "rting modules will never overwrite VB files with the same name.";
             this.NeverReplaceRadio.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.NeverReplaceRadio_Click);
@@ -246,6 +257,8 @@
             this.ExportGrp.PerformLayout();
             this.RefreshGrp.ResumeLayout(false);
             this.RefreshGrp.PerformLayout();
+            this.OverwriteGrp.ResumeLayout(false);
+            this.OverwriteGrp.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -269,6 +282,7 @@
         internal Microsoft.Office.Tools.Ribbon.RibbonButton RefreshBtn;
         internal Microsoft.Office.Tools.Ribbon.RibbonToggleButton AlwaysReplaceRadio;
         internal Microsoft.Office.Tools.Ribbon.RibbonToggleButton NeverReplaceRadio;
+        internal Microsoft.Office.Tools.Ribbon.RibbonGroup OverwriteGrp;
     }
 
     partial class ThisRibbonCollection {
