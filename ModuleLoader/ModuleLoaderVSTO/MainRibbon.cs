@@ -21,46 +21,34 @@ namespace ModuleLoader {
             _app.WorkbookBeforeClose += Application_WorkbookBeforeClose;
         }
 
-        private void Application_WorkbookBeforeClose(Workbook Wb, ref bool Cancel) {
-            if (_app.Workbooks.Count == 1)
-                refreshImportItems();
-        }
-
         private void Application_WorkbookActivate(Workbook Wb) {
             refreshImportItems(Wb.Path);
+            setVisible(true);
         }
-        private void ImportAllBtn_Click(object sender, RibbonControlEventArgs e) {
+        private void Application_WorkbookBeforeClose(Workbook Wb, ref bool Cancel) {
+            if (_app.Workbooks.Count == 1)
+                setVisible(false);
+        }
 
+        private void ImportAllBtn_Click(object sender, RibbonControlEventArgs e) {
+            // Refresh the drop down lists of importable VB files
+            refreshImportItems(_app.ActiveWorkbook.Path);
+
+            // Try to import all of those files
+            IEnumerable<RibbonDropDownItem> allItems = ImportModulesDrop.Items.Union(
+                                                       ImportClassesDrop.Items).Union(
+                                                       ImportFormsDrop.Items);
+            foreach (RibbonDropDownItem item in allItems)
+                importItem(item);
         }
         private void ImportModulesDrop_SelectionChanged(object sender, RibbonControlEventArgs e) {
-            RibbonDropDownItem item = ImportModulesDrop.SelectedItem;
-            FileInfo moduleFile = item.Tag as FileInfo;
-            if (moduleFile != null) {
-                bool success = doImport(moduleFile);
-                if (!success)
-                    ImportModulesDrop.Items.Remove(item);
-            }
-            ImportModulesDrop.SelectedItemIndex = 0;
+            importItem(ImportModulesDrop.SelectedItem);
         }
         private void ImportClassesDrop_SelectionChanged(object sender, RibbonControlEventArgs e) {
-            RibbonDropDownItem item = ImportClassesDrop.SelectedItem;
-            FileInfo classFile = item.Tag as FileInfo;
-            if (classFile != null) {
-                bool success = doImport(classFile);
-                if (!success)
-                    ImportClassesDrop.Items.Remove(item);
-            }
-            ImportClassesDrop.SelectedItemIndex = 0;
+            importItem(ImportClassesDrop.SelectedItem);
         }
         private void ImportFormsDrop_SelectionChanged(object sender, RibbonControlEventArgs e) {
-            RibbonDropDownItem item = ImportFormsDrop.SelectedItem;
-            FileInfo formFile = item.Tag as FileInfo;
-            if (formFile != null) {
-                bool success = doImport(formFile);
-                if (!success)
-                    ImportFormsDrop.Items.Remove(item);
-            }
-            ImportFormsDrop.SelectedItemIndex = 0;
+            importItem(ImportFormsDrop.SelectedItem);
         }
         private void BrowseBtn_Click(object sender, RibbonControlEventArgs e) {
             // Show an Open File dialog
@@ -76,11 +64,10 @@ namespace ModuleLoader {
             DialogResult result = dialog.ShowDialog();
 
             // If the user actually selected a file, then import it
-            if (result != DialogResult.Cancel) {
-                FileInfo f = new FileInfo(dialog.FileName);
-                doImport(f);
-            }
+            if (result != DialogResult.Cancel)
+                importModule(dialog.FileName);
         }
+
         private void ExportAllBtn_Click(object sender, RibbonControlEventArgs e) {
 
         }
@@ -93,13 +80,21 @@ namespace ModuleLoader {
         private void ExportFormsDrop_SelectionChanged(object sender, RibbonControlEventArgs e) {
 
         }
+
         private void RefreshBtn_Click(object sender, RibbonControlEventArgs e) {
-            string path = Globals.ModuleLoader.Application.ActiveWorkbook.Path;
-            if (path != "")
-                refreshImportItems(path);
+            refreshImportItems(_app.ActiveWorkbook.Path);
+        }
+        private void AlwaysReplaceRadio_Click(object sender, RibbonControlEventArgs e) {
+            toggleReplaceBtns(AlwaysReplaceRadio, NeverReplaceRadio);
+        }
+        private void NeverReplaceRadio_Click(object sender, RibbonControlEventArgs e) {
+            toggleReplaceBtns(NeverReplaceRadio, AlwaysReplaceRadio);
         }
 
         // HELPER FUNCTIONS
+        private void setVisible(bool visibility) {
+            ModLoaderTab.Visible = visibility;
+        }
         private void refreshImportItems(string path = "") {
             // Enumerate all the VB files in the same directory as this workbook and add them to the import drop downs
             DirectoryInfo folder = (path == "" ? null : new DirectoryInfo(path));
@@ -131,22 +126,32 @@ namespace ModuleLoader {
                 items.Add(item);
             }
         }
-        private bool doImport(FileInfo module) {
+        private void importItem(RibbonDropDownItem item) {
+            RibbonDropDown dropDown = item.Parent as RibbonDropDown;
+            FileInfo moduleFile = item.Tag as FileInfo;
+            if (moduleFile != null) {
+                bool success = importModule(moduleFile.FullName);
+                if (!success)
+                    dropDown.Items.Remove(item);
+            }
+            dropDown.SelectedItemIndex = 0;
+        }
+        private bool importModule(string path) {
             // Try to get the VB name of this module
             // Inform the user if the file could not be found or could not be loaded
             string name = "";
             try {
-                name = getModuleName(module.FullName);
+                name = getModuleName(path);
             }
             catch (FileNotFoundException) {
                 MessageBox.Show(
-                    $"{module.FullName} could not be found.  Is it possible that the file was moved or renamed?\n\nYou can click '{RefreshBtn.Label}' to refresh the list of available VB files.",
+                    $"{path} could not be found.  Is it possible that the file was moved or renamed?\n\nYou can click '{RefreshBtn.Label}' to refresh the list of available VB files.",
                     "ModuleLoader", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
                 return false;
             }
             catch (FileLoadException) {
                 MessageBox.Show(
-                    $"{module.FullName} could not be loaded.  If you edited this file, make sure that there is a line similar to 'Attribute VB_Name \"SomeName\"' above the actual code.",
+                    $"{path} could not be loaded.  If you edited this file, make sure that there is a line similar to 'Attribute VB_Name = \"SomeName\"' above the actual code.",
                     "ModuleLoader", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
                 return true;
             }
@@ -159,27 +164,35 @@ namespace ModuleLoader {
             }
             catch (IndexOutOfRangeException) { }
 
-            // If so, ask the user if they want to replace it
+            // If so, ask the user if they want to replace it, unless they have set one of the always/never overwrite options
             bool import = false;
             if (vbc == null)
                 import = true;
             else {
-                DialogResult result = MessageBox.Show(
-                    $"A module with the name {name} already exists in this workbook.\nDo you want to replace it?",
-                    "Module Loader", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
-                if (result == DialogResult.Yes) {
+                if (AlwaysReplaceRadio.Checked) {
                     currModules.Remove(vbc);
                     import = true;
                 }
-                else if (result== DialogResult.No)
+                else if (NeverReplaceRadio.Checked)
                     return true;
+                else {
+                    DialogResult result = MessageBox.Show(
+                        $"A module with the name {name} already exists in this workbook.\nDo you want to replace it?",
+                        "Module Loader", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
+                    if (result == DialogResult.Yes) {
+                        currModules.Remove(vbc);
+                        import = true;
+                    }
+                    else
+                        return true;
+                }
             }
 
             // If the import is set to continue, then do it!
             // Report any errors to the user
             bool success = false;
             if (import) {
-                currModules.Import(module.FullName);
+                currModules.Import(path);
                 success = true;
             }
             return success;
@@ -192,7 +205,7 @@ namespace ModuleLoader {
             bool nameLineFound = false;
             using (StreamReader file = new StreamReader(path)) {
                 while ((line = file.ReadLine()) != null) {
-                    nameLineFound = (line.Contains("Attribute VB_Name"));
+                    nameLineFound = (line.Contains("Attribute VB_Name = "));
                     if (!nameLineFound)
                         continue;
 
@@ -202,7 +215,7 @@ namespace ModuleLoader {
                         break;
                     }
                     else
-                        throw new FileLoadException($"{path} had a line with 'Attribute VB_Name' but no name.  What gives?", path);
+                        throw new FileLoadException($"{path} had a line with 'Attribute VB_Name  = ' but no name.  What gives?", path);
                 }
             }
 
@@ -211,9 +224,12 @@ namespace ModuleLoader {
             if (nameLineFound)
                 return name;
             else
-                throw new FileLoadException($"{path} did not have a line with 'Attribute VB_Name'.?", path);
+                throw new FileLoadException($"{path} did not have a line with 'Attribute VB_Name = '.?", path);
         }
-
+        private void toggleReplaceBtns(RibbonToggleButton trigger, RibbonToggleButton listener) {
+            if (trigger.Checked && listener.Checked)
+                listener.Checked = false;
+        }
     }
 
 }
