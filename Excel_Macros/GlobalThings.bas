@@ -59,7 +59,7 @@ Public Function pickWorkbook(ByVal pickMsg As String) As String
     'Create the file-selection dialog box
     Dim dialog As FileDialog
     Set dialog = Application.FileDialog(msoFileDialogFilePicker)
-    dialog.title = pickMsg
+    dialog.Title = pickMsg
     dialog.AllowMultiSelect = False
     
     'If the user didn't select anything, then return an empty string

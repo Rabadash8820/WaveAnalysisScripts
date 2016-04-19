@@ -43,7 +43,7 @@ Public Sub ProcessExistingWorkbookFolder()
         
     'Create the folder-selection dialog box
     Set dialog = Application.FileDialog(msoFileDialogFolderPicker)
-    dialog.title = "Select directory with summary workbooks (all subdirectories will also be processed)"
+    dialog.Title = "Select directory with summary workbooks (all subdirectories will also be processed)"
     dialog.AllowMultiSelect = False
     
     'If the user didn't select anything, display a message and return

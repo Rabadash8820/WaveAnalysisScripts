@@ -2,6 +2,7 @@ Attribute VB_Name = "CombineData"
 Option Explicit
 
 Private Const NUM_CONTENTS_COLS = 4
+Dim derp
 
 Dim keepOpen As Boolean, dataPaired As Boolean
 Dim numAllTissues As Integer
@@ -23,12 +24,6 @@ Public Sub CombineData()
     Set combineSht = thisWb.Worksheets(COMBINE_SHEET_NAME)
     Set popsSht = thisWb.Worksheets(POPULATIONS_SHEET_NAME)
     Dim combineProps As Boolean, combineSttc As Boolean
-    combineProps = (combineSht.Shapes("CombinePropsChk").OLEFormat.Object.value = 1)
-    combineSttc = (combineSht.Shapes("CombineSttcChk").OLEFormat.Object.value = 1)
-    If Not combineProps And Not combineSttc Then
-        result = MsgBox("No combination operations selected.", vbOKOnly)
-        GoTo ExitSub
-    End If
     
     'Store the population info (or just return if none was provided)
     Dim popsTbl As ListObject, lsRow As ListRow
@@ -41,7 +36,8 @@ Public Sub CombineData()
     For Each lsRow In popsTbl.ListRows
         Set pop = New Population
         pop.ID = lsRow.Range(1, popsTbl.ListColumns("Population ID").Index).value
-        pop.name = lsRow.Range(1, popsTbl.ListColumns("Population Name").Index).value
+        pop.name = lsRow.Range(1, popsTbl.ListColumns("Name").Index).value
+        pop.Abbreviation = lsRow.Range(1, popsTbl.ListColumns("Abbreviation").Index).value
         pop.IsControl = (lsRow.Range(1, popsTbl.ListColumns("Control?").Index).value <> "")
         pop.ForeColor = lsRow.Range(1, popsTbl.ListColumns("Population ID").Index).Font.Color
         pop.BackColor = lsRow.Range(1, popsTbl.ListColumns("Population ID").Index).Interior.Color
@@ -102,51 +98,26 @@ Public Sub CombineData()
     
     'Let the user pick the workbooks in which to combine data
     Dim propWbName As String, sttcWbName As String
-    If combineProps Then _
-        propWbName = buildPropsWorkbook.name
-    If combineSttc Then
-        sttcWbName = pickWorkbook("Select the workbook in which to combine STTC data")
-        If sttcWbName = "" Then combineSttc = False
-    End If
-    If Not combineProps And Not combineSttc Then
-        result = MsgBox("No combination operations could be completed.", vbOKOnly)
-        GoTo ExitSub
-    End If
-    If combineProps And combineSttc And propWbName = sttcWbName Then
-        result = MsgBox("Property and STTC data must be combined into distinct workbooks.", vbOKOnly)
-        GoTo ExitSub
-    End If
+    propWbName = buildComboWorkbook().name
     
     'Open these workbooks and combine data into them (they will be left open)
     Dim wb As Workbook, numGoodTissues As Integer
     numGoodTissues = 0
-    If combineProps Then
-        Dim propKeywords(4) As String
-        propKeywords(2) = "_Bursts"
-        propKeywords(3) = "_WABs"
-        propKeywords(4) = "_NonWABs"
-        Set wb = Workbooks.Open(propWbName)
-        Call combineIntoWb(wb, wbComboType.PropertyWkbk, propKeywords, numGoodTissues)
-    End If
-    If combineSttc Then
-        Dim sttcKeywords(2) As String
-        sttcKeywords(2) = "_STTC"
-        Set wb = Workbooks.Open(sttcWbName)
-        Call combineIntoWb(wb, wbComboType.SttcWkbk, sttcKeywords, numGoodTissues)
-    End If
+    Dim propKeywords(4) As String
+    propKeywords(2) = "_Bursts"
+    propKeywords(3) = "_WABs"
+    propKeywords(4) = "_NonWABs"
+    Set wb = Workbooks.Open(propWbName)
+    Call combineIntoWb(wb, wbComboType.PropertyWkbk, propKeywords, numGoodTissues)
+    
+    Dim sttcKeywords(2) As String
+    sttcKeywords(2) = "_STTC"
+    Set wb = Workbooks.Open(sttcWbName)
+    Call combineIntoWb(wb, wbComboType.SttcWkbk, sttcKeywords, numGoodTissues)
     
     'Display a succeessful completion dialog
     Dim combineMsg As String
-    combineMsg = ""
-    If numGoodTissues = 0 Then
-        combineMsg = "Data could not be combined into the selected workbooks."
-    ElseIf combineProps And combineSttc Then
-        combineMsg = "Data was combined into Property and STTC workbooks."
-    ElseIf combineProps Then
-        combineMsg = "Data was only combined into a Property workbook."
-    ElseIf combineSttc Then
-        combineMsg = "Data was only combined into an STTC workbook."
-    End If
+    combineMsg = "Property and STTC data was combined into the provided workbook"
     result = MsgBox(numGoodTissues & " data workbooks for " & numAllTissues & " tissues were successfully opened." & vbCr & _
                     combineMsg & vbCr & _
                     "Time taken: " & Format(ProgramDuration(), "hh:mm:ss"), _
@@ -156,7 +127,7 @@ ExitSub:
     Call tearDownOptimizations
 End Sub
 
-Private Function buildPropsWorkbook() As Workbook
+Private Function buildComboWorkbook() As Workbook
     'Create the new Workbook
     Dim wb As Workbook
     Set wb = Workbooks.Add
@@ -181,11 +152,20 @@ Private Function buildPropsWorkbook() As Workbook
     wbTypePropNames(4, 1) = "Percent "
     wbTypePropNames(4, 2) = " Time >10 Hz"
     wbTypePropNames(5, 1) = "Spikes Per "
+    Dim sttcHeaders() As String
+    ReDim sttcHeaders(1 To 5)
+    sttcHeaders(1) = "Tissue"
+    sttcHeaders(2) = "Cell1"
+    sttcHeaders(3) = "Cell2"
+    sttcHeaders(4) = "Unit Distance"
+    sttcHeaders(5) = "STTC"
     
     'Build data sheets (one per workbook type per experimental population)
     Dim popV As Variant, pop As Population, wbType As Integer
     For Each popV In pops.items
         Set pop = popV
+        Worksheets.Add After:=Worksheets(Worksheets.Count)
+        Call buildSttcDataSheet(pop, sttcHeaders)
         Worksheets.Add After:=Worksheets(Worksheets.Count)
         Call buildDataSheet(pop, "Burst", propNames)
         For wbType = 1 To UBound(wbTypes, 2)
@@ -193,12 +173,15 @@ Private Function buildPropsWorkbook() As Workbook
             Call buildDataSheet(pop, wbTypes(1, wbType), wbTypePropNames)
         Next wbType
     Next popV
-    
-    'Build Figures sheet (must be built last so that table references are valid)
+
+    'Build Figures sheets (must be built last so that table references are valid)
     Worksheets.Add After:=Worksheets("Stats")
-    Call buildFiguresSheet
+    Call buildPropFiguresSheet
+    Worksheets.Add After:=Worksheets("Property Figures")
+    Call buildSttcFiguresSheet
+
     
-    Set buildPropsWorkbook = wb
+    Set buildComboWorkbook = wb
 End Function
 
 Private Sub buildContentsSheet()
@@ -330,17 +313,16 @@ Private Sub buildDataSheet(ByRef pop As Population, ByVal wbTypeName As String, 
     ActiveSheet.name = name
         
     'Create the Data table on the Data sheet
+    Dim numCols As Integer
+    numCols = UBound(headers, 1)
     Dim cornerCell As Range, tbl As ListObject
     Set cornerCell = Cells(1, 1)
-    Set tbl = ActiveSheet.ListObjects.Add(xlSrcRange, cornerCell.offset(1, 0), , xlYes)
+    Set tbl = ActiveSheet.ListObjects.Add(xlSrcRange, cornerCell.offset(1, 0).Resize(1, numCols + 2), , xlYes)
     tbl.name = name
     
     'Add its columns
-    Dim numCols As Integer, col As Integer
+    Dim col As Integer
     numCols = UBound(headers)
-    For col = 1 To numCols + 2 - 1
-        tbl.ListColumns.Add
-    Next col
     tbl.HeaderRowRange.Cells(1, 1).value = "Tissue"
     tbl.HeaderRowRange.Cells(1, 2) = "Cell"
     If numDimensions(headers) = 1 Then
@@ -355,14 +337,18 @@ Private Sub buildDataSheet(ByRef pop As Population, ByVal wbTypeName As String, 
     End If
 
     'Add sheet "headers"
+    Dim popNameCols As Integer
+    popNameCols = 2
     Application.DisplayAlerts = False
-    With Cells(1, 1).Resize(1, 2)
+    With Cells(1, 1).Resize(1, popNameCols)
         .value = pop.name
         .Merge
         .Font.Bold = True
         .Font.Size = 16
+        .Font.Color = pop.ForeColor
+        .Interior.Color = pop.BackColor
     End With
-    With Cells(1, 3).Resize(1, numCols)
+    With Cells(1, popNameCols + 1).Resize(1, numCols)
         .value = wbTypeName & "s"
         .Merge
         .Font.Bold = True
@@ -374,11 +360,60 @@ Private Sub buildDataSheet(ByRef pop As Population, ByVal wbTypeName As String, 
     Cells.HorizontalAlignment = xlCenter
     Cells.VerticalAlignment = xlCenter
     tbl.HeaderRowRange.HorizontalAlignment = xlLeft
+    Columns.AutoFit
+    Rows.AutoFit
     ActiveSheet.Visible = xlSheetHidden
 
 End Sub
 
-Private Sub buildFiguresSheet()
+Private Sub buildSttcDataSheet(ByRef pop As Population, ByRef sttcHeaders() As String)
+    'Build the Data sheet
+    Dim name As String
+    name = pop.name & "_STTC"
+    ActiveSheet.name = name
+        
+    'Create the Data table on the Data sheet
+    Dim cornerCell As Range, tbl As ListObject
+    Set cornerCell = Cells(1, 1)
+    Set tbl = ActiveSheet.ListObjects.Add(xlSrcRange, cornerCell.offset(1, 0).Resize(1, UBound(sttcHeaders, 1)), , xlYes)
+    tbl.name = name
+    
+    'Add its columns
+    Dim numCols As Integer
+    numCols = UBound(sttcHeaders)
+    tbl.HeaderRowRange.value = sttcHeaders
+
+    'Add sheet "headers"
+    Dim popNameCols As Integer
+    popNameCols = 3
+    Application.DisplayAlerts = False
+    With Cells(1, 1).Resize(1, popNameCols)
+        .value = pop.name
+        .Merge
+        .Font.Bold = True
+        .Font.Size = 16
+        .Font.Color = pop.ForeColor
+        .Interior.Color = pop.BackColor
+    End With
+    With Cells(1, popNameCols + 1).Resize(1, numCols - popNameCols)
+        .value = "STTC"
+        .Merge
+        .Font.Bold = True
+        .Font.Size = 16
+    End With
+    Application.DisplayAlerts = True
+    
+    'Format sheet
+    Cells.HorizontalAlignment = xlCenter
+    Cells.VerticalAlignment = xlCenter
+    tbl.HeaderRowRange.HorizontalAlignment = xlLeft
+    Columns.AutoFit
+    Rows.AutoFit
+    ActiveSheet.Visible = xlSheetHidden
+
+End Sub
+
+Private Sub buildPropFiguresSheet()
 
     'Define some boilerplate variables
     Dim numWbTypes As Integer, p As Integer, t As Integer
@@ -391,7 +426,7 @@ Private Sub buildFiguresSheet()
     
     'Build the Figures sheet
     ActiveSheet.name = "Property Figures"
-    
+
     'Store column headers
     Dim rOffset As Integer, cOffset As Integer
     numRows = 1 + NUM_BKGRD_PROPERTIES + numWbTypes * NUM_BURST_PROPERTIES
@@ -402,16 +437,16 @@ Private Sub buildFiguresSheet()
     For p = 0 To pops.Count - 1
         Set pop = pops.items()(p)
         cOffset = 1 + 4 * p + 1
-        data(1, cOffset + 0) = pop.name & "_Avg"
-        data(1, cOffset + 1) = pop.name & "_SEM"
-        data(1, cOffset + 2) = pop.name & "_%Change"
-        data(1, cOffset + 3) = pop.name & "_%Change_SEM"
-        data(1, 1 + 4 * pops.Count + 3 * p + 1) = pop.name & "_Value"
-        data(1, 1 + 4 * pops.Count + 3 * p + 2) = pop.name & "_%Change"
-        data(1, 1 + 4 * pops.Count + 3 * p + 3) = pop.name & "_pValue"
+        data(1, cOffset + 0) = pop.Abbreviation & "_Avg"
+        data(1, cOffset + 1) = pop.Abbreviation & "_SEM"
+        data(1, cOffset + 2) = pop.Abbreviation & "_%Change"
+        data(1, cOffset + 3) = pop.Abbreviation & "_%Change_SEM"
+        data(1, 1 + 4 * pops.Count + 3 * p + 1) = pop.Abbreviation & "_Avg"
+        data(1, 1 + 4 * pops.Count + 3 * p + 2) = pop.Abbreviation & "_%Change"
+        data(1, 1 + 4 * pops.Count + 3 * p + 3) = pop.Abbreviation & "_pValue"
     Next p
     cOffset = 1 + 5 * pops.Count + 1
-    
+
     'Store row headers
     For row = 1 To NUM_BKGRD_PROPERTIES
         data(row + 1, 1) = propNames(row)
@@ -426,7 +461,7 @@ Private Sub buildFiguresSheet()
     Next t
 
     cornerCell.Resize(numRows, numCols).value = data
-        
+
     'Store hidden chart titles
     Dim chartTitles As Variant
     ReDim chartTitles(1 To 1, 1 To numRows - 1)
@@ -440,7 +475,7 @@ Private Sub buildFiguresSheet()
             chartTitles(1, cOffset + col) = "=" & cornerCell.offset(cOffset + col, 0).Address & " & "" vs. Experimental Population"""
         Next col
     Next t
-    
+
     'Add formatting
     Dim wbTypeStyles() As String
     ReDim wbTypeStyles(1 To numWbTypes)
@@ -477,14 +512,14 @@ Private Sub buildFiguresSheet()
     Cells.HorizontalAlignment = xlCenter
     Cells.VerticalAlignment = xlCenter
     cornerCell.offset(1, 0).Resize(numRows, 1).HorizontalAlignment = xlLeft
-    
+
     'Determine the max number of Tissues in any Population
     Dim maxTissues As Integer, popV As Variant
     For Each popV In pops.items
         Set pop = popV
         maxTissues = WorksheetFunction.Max(maxTissues, pop.Tissues.Count)
     Next popV
-    
+
     'Set up row areas (i.e., for All Bursts bursts from all other workbook types)
     Dim numChartRows As Integer, titleOffset As Integer, propColSpace As Integer
     Dim numPropRows As Integer, numPropCols As Integer
@@ -521,16 +556,16 @@ Private Sub buildFiguresSheet()
             .Resize(numPropRows - 2 * titleOffset - 1, 1).Merge
         End With
     Next t
-        
+
     'Add the new column chart object for percent changes
     Dim chartShp As Shape, chartRng As Range
     Set chartRng = cornerCell.offset(0, numCols + 2).Resize(numPropRows - 2, 7)
     Set chartShp = ActiveSheet.Shapes.AddChart(xlBarClustered, chartRng.Left, chartRng.Top, chartRng.Width, chartRng.Height)
     With chartShp
         .name = "Percent_Change_Chart"
-        .Line.Visible = msoFalse
+        .Line.Visible = False
     End With
-    
+
     With chartShp.Chart
 
         'Remove default Series
@@ -538,7 +573,7 @@ Private Sub buildFiguresSheet()
         For s = 1 To .SeriesCollection.Count
             .SeriesCollection(1).Delete
         Next s
-        
+
         'Set the new population Series (showing future hidden cells too)
         .PlotVisibleOnly = False
         Dim errorRng As Range, numSeries As Integer
@@ -622,7 +657,7 @@ Private Sub buildFiguresSheet()
         Next p
 
     End With
-    
+
     'Build property areas
     Dim prop As Integer
     Dim propCornerCell As Range, tblRowRng As Range
@@ -644,13 +679,248 @@ Private Sub buildFiguresSheet()
             Call buildPropArea(propCornerCell, tblRowRng, chartRng, PROP_UNITS(NUM_BKGRD_PROPERTIES + prop), wbTypes(1, t), maxTissues)
         Next prop
     Next t
-    
+
     'Final formatting...
     Columns.AutoFit
     Rows.AutoFit
     cornerCell.offset(-1, 0).Resize(1, numRows - 1).value = chartTitles
     Rows(cornerCell.row - 1).Hidden = True
     Range(Columns(2), Columns(4 * pops.Count + 1)).Hidden = True
+
+End Sub
+
+Private Sub buildSttcFiguresSheet()
+
+    'Define some boilerplate variables
+    Dim numWbTypes As Integer, p As Integer, t As Integer
+    Dim numCols As Integer, numRows As Integer, col As Integer, row As Integer
+    Dim tbl As ListObject
+    numWbTypes = UBound(wbTypes, 2)
+
+    'Build the Figures sheet
+    ActiveSheet.name = "STTC Figures"
+
+    'Store named distances
+    Dim cornerCell As Range
+    Set cornerCell = Cells(1, 1)
+    Dim distVals As Variant
+    ReDim distVals(1 To 4, 1 To 1)
+    distVals(1, 1) = "Inter-Electrode Distance (µm)"
+    distVals(2, 1) = "200"
+    distVals(3, 1) = "Ignore Cutoff Distance (µm)"
+    distVals(4, 1) = "800"
+    cornerCell.Resize(4, 1).value = distVals
+    cornerCell.offset(1, 0).name = "InterElectrodeDist"
+    cornerCell.offset(3, 0).name = "IgnoreDist"
+        
+    'Create the contents table on the Contents sheet
+    Dim numChartRows As Integer, numChartCols As Integer, numSpaceRows As Integer
+    numChartRows = 20
+    numChartCols = 10
+    numSpaceRows = 5
+    Set tbl = ActiveSheet.ListObjects.Add(xlSrcRange, cornerCell.offset(numChartRows + numSpaceRows, 0), , xlYes)
+    tbl.name = "SttcTbl"
+    
+    'Add its columns
+    Dim pop As Population, tiss As Tissue
+    numCols = 2
+    tbl.ListColumns.Add
+    For p = 0 To pops.Count - 1
+        Set pop = pops.items()(p)
+        tbl.ListColumns.Add     'For mean
+        tbl.ListColumns.Add     'For SEM
+        numCols = numCols + 2
+        For t = 0 To pop.Tissues.Count - 1
+            tbl.ListColumns.Add
+            numCols = numCols + 1
+        Next t
+    Next p
+    ReDim headers(1 To 1, 1 To numCols)
+    headers(1, 1) = "Unit Distance"
+    headers(1, 2) = "Real Distance"
+    col = 2
+    For p = 0 To pops.Count - 1
+        Set pop = pops.items()(p)
+        headers(1, col + 1) = pop.Abbreviation & "_Avg"
+        headers(1, col + 2) = pop.Abbreviation & "_SEM"
+        col = col + 2
+        For t = 0 To pop.Tissues.Count - 1
+            Set tiss = pop.Tissues.Item(t + 1)
+            headers(1, col + 1) = pop.Abbreviation & "_" & tiss.ID
+            col = col + 1
+        Next t
+    Next p
+    tbl.HeaderRowRange.value = headers
+    
+    'Add inter-electrode distances
+    numRows = NUM_CHANNELS * (NUM_CHANNELS - 1) / 2
+    row = 0
+    Dim ch1 As Integer, ch2 As Integer
+    For ch1 = 0 To NUM_CHANNELS - 1
+        For ch2 = ch1 + 1 To NUM_CHANNELS - 1
+            tbl.ListRows.Add
+            row = row + 1
+            tbl.ListRows(row).Range(1, 1).value = interElectrodeDistance(ch1, ch2)
+        Next ch2
+    Next ch1
+    
+    'Remove duplicate inter-electrode distances and sort
+    tbl.ListColumns(1).DataBodyRange.RemoveDuplicates Columns:=1, header:=xlYes
+    tbl.Sort.SortFields.Clear
+    tbl.Sort.SortFields.Add Key:=tbl.ListColumns(1).DataBodyRange, SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal
+    With tbl.Sort
+        .header = xlYes
+        .Orientation = xlTopToBottom
+        .Apply
+    End With
+    
+    'Add formulas to the remaining rows/columns
+    Dim firstTiss As Tissue, lastTiss As Tissue, popRngStr As String, popSttcTblStr As String
+    numCols = 2
+    tbl.ListColumns(2).DataBodyRange.Formula = "=IF(InterElectrodeDist*[@Unit Distance]<=IgnoreDist,InterElectrodeDist*[@[Unit Distance]],NA())"
+    For p = 0 To pops.Count - 1
+        Set pop = pops.items()(p)
+        Set firstTiss = pop.Tissues(1)
+        Set lastTiss = pop.Tissues(pop.Tissues.Count)
+        popRngStr = "SttcTbl[@[" & pop.Abbreviation & "_" & firstTiss.ID & "]:[" & pop.Abbreviation & "_" & lastTiss.ID & "]]"
+        tbl.ListColumns(numCols + 1).DataBodyRange.Formula = "=AVERAGE(" & popRngStr & ")"
+        tbl.ListColumns(numCols + 2).DataBodyRange.Formula = "=STDEV.S(" & popRngStr & ")/SQRT(COUNT(" & popRngStr & "))"
+        For t = 1 To pop.Tissues.Count
+            Set tiss = pop.Tissues.Item(t)
+            popSttcTblStr = pop.name & "_STTC"
+            tbl.ListColumns(numCols + 2 + t).DataBodyRange.Formula = "=AVERAGEIFS(" & popSttcTblStr & "[STTC]," & popSttcTblStr & "[Tissue],""" & tiss.ID & """," & popSttcTblStr & "[Unit Distance],[@Unit Distance])"
+        Next t
+        numCols = numCols + 2 + pop.Tissues.Count
+    Next p
+    
+    'Format cells
+    With cornerCell.Resize(4, 1)
+        .Font.Size = 11
+        .Font.Bold = True
+    End With
+    cornerCell.offset(0, 0).HorizontalAlignment = xlLeft
+    cornerCell.offset(1, 0).HorizontalAlignment = xlCenter
+    cornerCell.offset(2, 0).HorizontalAlignment = xlLeft
+    cornerCell.offset(3, 0).HorizontalAlignment = xlCenter
+    tbl.HeaderRowRange.HorizontalAlignment = xlLeft
+    tbl.DataBodyRange.HorizontalAlignment = xlCenter
+    tbl.DataBodyRange.NumberFormat = "0.000"
+    numCols = 3
+    For p = 0 To pops.Count - 1
+        Set pop = pops.items(p)
+        tbl.ListColumns(numCols).Range.Borders(xlEdgeLeft).Weight = xlMedium
+        tbl.ListColumns(numCols + 2).Range.Borders(xlEdgeLeft).Weight = xlThin
+        numCols = numCols + pop.Tissues.Count + 2
+    Next p
+
+    'Add the new column chart object for percent changes
+    Dim numPropRows As Integer, numPropCols
+    numPropRows = 10
+    Dim chartShp As Shape, chartRng As Range
+    Set chartRng = cornerCell.offset(0, 2).Resize(numChartRows, numChartCols)
+    Set chartShp = ActiveSheet.Shapes.AddChart(xlXYScatter, chartRng.Left, chartRng.Top, chartRng.Width, chartRng.Height)
+    With chartShp
+        .name = "STTC_Chart"
+        .Line.Visible = False
+    End With
+
+    With chartShp.Chart
+
+        'Remove default Series
+        Dim s As Integer
+        For s = 1 To .SeriesCollection.Count
+            .SeriesCollection(1).Delete
+        Next s
+
+        'Set the new population Series (showing future hidden cells too)
+        Dim errorRng As Range, numSeries As Integer
+        numSeries = 0
+        numCols = 2
+        For p = 0 To pops.Count - 1
+            Set pop = pops.items()(p)
+            numSeries = numSeries + 1
+            .SeriesCollection.Add Source:=tbl.ListColumns(numCols + 1).DataBodyRange
+            .SeriesCollection(numSeries).name = pop.name
+            .SeriesCollection(numSeries).XValues = tbl.ListColumns(2).DataBodyRange
+            Set errorRng = tbl.ListColumns(numCols + 2).DataBodyRange
+            .SeriesCollection(numSeries).ErrorBar Direction:=xlY, include:=xlErrorBarIncludeBoth, Type:=xlErrorBarTypeCustom, _
+                Amount:="='" & cornerCell.Worksheet.name & "'!" & errorRng.Address, _
+                minusvalues:="='" & cornerCell.Worksheet.name & "'!" & errorRng.Address
+            numCols = numCols + 2 + pop.Tissues.Count
+        Next p
+
+        'Format the Chart
+        .HasAxis(xlCategory) = True
+        With .Axes(xlCategory)
+            .TickLabelPosition = xlTickLabelPositionLow
+            .TickLabels.Font.Color = vbBlack
+            .TickLabels.Font.Bold = True
+            .TickLabels.Font.Size = 10
+            .TickLabels.NumberFormat = "0"
+            .Format.Line.ForeColor.RGB = vbBlack
+            .Format.Line.Weight = 3
+            .HasTitle = True
+            .AxisTitle.Caption = "Distance (µm)"
+            .AxisTitle.Font.Color = vbBlack
+            .AxisTitle.Font.Bold = True
+            .AxisTitle.Font.Size = 12
+        End With
+        .HasAxis(xlValue) = True
+        With .Axes(xlValue)
+            .HasMajorGridlines = False
+            .TickLabelPosition = xlTickLabelPositionLow
+            .TickLabels.Font.Color = vbBlack
+            .TickLabels.Font.Bold = True
+            .TickLabels.Font.Size = 10
+            .TickLabels.NumberFormat = "0.0"
+            .Format.Line.ForeColor.RGB = vbBlack
+            .Format.Line.Weight = 3
+            .HasTitle = True
+            .AxisTitle.Caption = "STTC"
+            .AxisTitle.Font.Color = vbBlack
+            .AxisTitle.Font.Bold = True
+            .AxisTitle.Font.Size = 12
+        End With
+        .HasTitle = True
+        .HasTitle = False   'I have ABSOLUTELY no idea why this f*cking toggle is necessary, but a runtime error occurs without it
+        .HasTitle = True
+        With .ChartTitle
+            .Text = "Spike Time Tiling Coefficients vs. Inter-Electrode Distance"
+            .Font.Color = vbBlack
+            .Font.Bold = True
+            .Font.Size = 18
+        End With
+        .HasLegend = True
+        With .Legend
+            .Font.Color = vbBlack
+            .Font.Bold = True
+            .Font.Size = 12
+            .Position = xlTop
+        End With
+
+        'Formats the Chart's Series
+        For p = 0 To pops.Count - 1
+            Set pop = pops.items()(p)
+            With .FullSeriesCollection(p + 1)
+                .Trendlines.Add Type:=xlPolynomial, Order:=3, name:=""
+                .Trendlines(1).Format.Line.DashStyle = msoLineDash
+                .Trendlines(1).Format.Line.ForeColor.RGB = pop.BackColor
+                .MarkerStyle = xlMarkerStyleCircle
+                .MarkerSize = 7
+                .MarkerBackgroundColor = pop.BackColor
+                .MarkerForegroundColor = vbBlack
+                .Format.Line.Weight = 1.5
+                .ErrorBars.Format.Line.ForeColor.RGB = vbBlack
+                .ErrorBars.Format.Line.Weight = 2
+            End With
+            .Legend.LegendEntries(pops.Count + 1).Delete
+        Next p
+        
+    End With
+
+    'Final formatting...
+    Columns.AutoFit
+    Rows.AutoFit
 
 End Sub
 
@@ -679,8 +949,8 @@ Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, 
     For p = 0 To pops.Count - 1
         Set pop = pops.items()(p)
         cOffset = 1 + p * numPopCols
-        headers(1, cOffset + 1) = pop.name
-        headers(1, cOffset + 2) = pop.name & "_%Change"
+        headers(1, cOffset + 1) = pop.Abbreviation & "_Avg"
+        headers(1, cOffset + 2) = pop.Abbreviation & "_%Change"
         cornerCell.offset(2, 2 * p + 1).Resize(1, 2).Interior.Color = pop.BackColor
         cornerCell.offset(2, 2 * p + 1).Resize(1, 2).Font.Color = pop.ForeColor
     Next p

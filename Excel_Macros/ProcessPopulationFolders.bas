@@ -22,7 +22,7 @@ Public Sub ProcessPopulationFolders()
         
     'Create the folder-selection dialog box
     Set dialog = Application.FileDialog(msoFileDialogFolderPicker)
-    dialog.title = "Select root directory (all subdirectories will also be processed)"
+    dialog.Title = "Select root directory (all subdirectories will also be processed)"
     dialog.AllowMultiSelect = False
     
     'If the user didn't select anything, display a message and return
@@ -139,7 +139,7 @@ Private Sub openFile(recording As File, ByVal fileIndex As Integer)
     Set rng = summaryTbl.ListRows.Add.Range
     rng.Cells(1, 1) = recording.name
     rng.Cells(1, 2) = RECORDING_STR & fileIndex
-    
+
     'Load data into a new sheet of the new workbook and format it
     Worksheets.Add After:=Sheets(Worksheets.Count)
     ActiveSheet.name = RECORDING_STR & fileIndex
