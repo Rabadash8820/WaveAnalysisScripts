@@ -29,27 +29,27 @@
         /// </summary>
         private void InitializeComponent() {
             this.ModLoaderTab = this.Factory.CreateRibbonTab();
+            this.RefreshGrp = this.Factory.CreateRibbonGroup();
+            this.RefreshBtn = this.Factory.CreateRibbonButton();
             this.ImportGrp = this.Factory.CreateRibbonGroup();
+            this.ImportAllBtn = this.Factory.CreateRibbonButton();
             this.ImportModulesDrop = this.Factory.CreateRibbonDropDown();
             this.ImportClassesDrop = this.Factory.CreateRibbonDropDown();
             this.ImportFormsDrop = this.Factory.CreateRibbonDropDown();
             this.separator1 = this.Factory.CreateRibbonSeparator();
+            this.BrowseBtn = this.Factory.CreateRibbonButton();
             this.ExportGrp = this.Factory.CreateRibbonGroup();
+            this.ExportAllBtn = this.Factory.CreateRibbonButton();
             this.ExportModulesDrop = this.Factory.CreateRibbonDropDown();
             this.ExportClassesDrop = this.Factory.CreateRibbonDropDown();
             this.ExportFormsDrop = this.Factory.CreateRibbonDropDown();
-            this.RefreshGrp = this.Factory.CreateRibbonGroup();
             this.OverwriteGrp = this.Factory.CreateRibbonGroup();
-            this.RefreshBtn = this.Factory.CreateRibbonButton();
-            this.ImportAllBtn = this.Factory.CreateRibbonButton();
-            this.BrowseBtn = this.Factory.CreateRibbonButton();
-            this.ExportAllBtn = this.Factory.CreateRibbonButton();
             this.AlwaysReplaceRadio = this.Factory.CreateRibbonToggleButton();
             this.NeverReplaceRadio = this.Factory.CreateRibbonToggleButton();
             this.ModLoaderTab.SuspendLayout();
+            this.RefreshGrp.SuspendLayout();
             this.ImportGrp.SuspendLayout();
             this.ExportGrp.SuspendLayout();
-            this.RefreshGrp.SuspendLayout();
             this.OverwriteGrp.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -59,8 +59,25 @@
             this.ModLoaderTab.Groups.Add(this.ImportGrp);
             this.ModLoaderTab.Groups.Add(this.ExportGrp);
             this.ModLoaderTab.Groups.Add(this.OverwriteGrp);
-            this.ModLoaderTab.Label = "Module Loader";
+            this.ModLoaderTab.Label = "VB LOADER";
             this.ModLoaderTab.Name = "ModLoaderTab";
+            // 
+            // RefreshGrp
+            // 
+            this.RefreshGrp.Items.Add(this.RefreshBtn);
+            this.RefreshGrp.Name = "RefreshGrp";
+            // 
+            // RefreshBtn
+            // 
+            this.RefreshBtn.ControlSize = Microsoft.Office.Core.RibbonControlSize.RibbonControlSizeLarge;
+            this.RefreshBtn.Label = "Refresh All";
+            this.RefreshBtn.Name = "RefreshBtn";
+            this.RefreshBtn.OfficeImageId = "RefreshAll";
+            this.RefreshBtn.ScreenTip = "Refresh All Drop Downs";
+            this.RefreshBtn.ShowImage = true;
+            this.RefreshBtn.SuperTip = "Refresh the import drop downs with VB files in this workbook\'s directory.  Refres" +
+    "h the export drop downs with this workbook\'s VB modules.";
+            this.RefreshBtn.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.RefreshBtn_Click);
             // 
             // ImportGrp
             // 
@@ -72,6 +89,17 @@
             this.ImportGrp.Items.Add(this.BrowseBtn);
             this.ImportGrp.Label = "Import";
             this.ImportGrp.Name = "ImportGrp";
+            // 
+            // ImportAllBtn
+            // 
+            this.ImportAllBtn.ControlSize = Microsoft.Office.Core.RibbonControlSize.RibbonControlSizeLarge;
+            this.ImportAllBtn.Label = "Import All";
+            this.ImportAllBtn.Name = "ImportAllBtn";
+            this.ImportAllBtn.OfficeImageId = "Import";
+            this.ImportAllBtn.ScreenTip = "Import All";
+            this.ImportAllBtn.ShowImage = true;
+            this.ImportAllBtn.SuperTip = "Import all VB files from the same directory as this workbook.";
+            this.ImportAllBtn.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.ImportAllBtn_Click);
             // 
             // ImportModulesDrop
             // 
@@ -116,6 +144,17 @@
             // 
             this.separator1.Name = "separator1";
             // 
+            // BrowseBtn
+            // 
+            this.BrowseBtn.ControlSize = Microsoft.Office.Core.RibbonControlSize.RibbonControlSizeLarge;
+            this.BrowseBtn.Label = "From Other Source";
+            this.BrowseBtn.Name = "BrowseBtn";
+            this.BrowseBtn.OfficeImageId = "BrowseBackgroundImage";
+            this.BrowseBtn.ScreenTip = "Import VB File From Other Source";
+            this.BrowseBtn.ShowImage = true;
+            this.BrowseBtn.SuperTip = "Import modules from your computer or from other computers you\'re connected to.";
+            this.BrowseBtn.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BrowseBtn_Click);
+            // 
             // ExportGrp
             // 
             this.ExportGrp.Items.Add(this.ExportAllBtn);
@@ -124,6 +163,17 @@
             this.ExportGrp.Items.Add(this.ExportFormsDrop);
             this.ExportGrp.Label = "Export";
             this.ExportGrp.Name = "ExportGrp";
+            // 
+            // ExportAllBtn
+            // 
+            this.ExportAllBtn.ControlSize = Microsoft.Office.Core.RibbonControlSize.RibbonControlSizeLarge;
+            this.ExportAllBtn.Label = "Export All";
+            this.ExportAllBtn.Name = "ExportAllBtn";
+            this.ExportAllBtn.OfficeImageId = "Export";
+            this.ExportAllBtn.ScreenTip = "Export All";
+            this.ExportAllBtn.ShowImage = true;
+            this.ExportAllBtn.SuperTip = "Export all VB files in this workbook to its containing directory";
+            this.ExportAllBtn.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.ExportAllBtn_Click);
             // 
             // ExportModulesDrop
             // 
@@ -164,62 +214,12 @@
     ".";
             this.ExportFormsDrop.SelectionChanged += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.ExportFormsDrop_SelectionChanged);
             // 
-            // RefreshGrp
-            // 
-            this.RefreshGrp.Items.Add(this.RefreshBtn);
-            this.RefreshGrp.Name = "RefreshGrp";
-            // 
             // OverwriteGrp
             // 
             this.OverwriteGrp.Items.Add(this.AlwaysReplaceRadio);
             this.OverwriteGrp.Items.Add(this.NeverReplaceRadio);
             this.OverwriteGrp.Label = "Overwrite";
             this.OverwriteGrp.Name = "OverwriteGrp";
-            // 
-            // RefreshBtn
-            // 
-            this.RefreshBtn.ControlSize = Microsoft.Office.Core.RibbonControlSize.RibbonControlSizeLarge;
-            this.RefreshBtn.Label = "Refresh All";
-            this.RefreshBtn.Name = "RefreshBtn";
-            this.RefreshBtn.OfficeImageId = "RefreshAll";
-            this.RefreshBtn.ScreenTip = "Refresh All Drop Downs";
-            this.RefreshBtn.ShowImage = true;
-            this.RefreshBtn.SuperTip = "Refresh the import drop downs with VB files in this workbook\'s directory.  Refres" +
-    "h the export drop downs with this workbook\'s VB modules.";
-            this.RefreshBtn.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.RefreshBtn_Click);
-            // 
-            // ImportAllBtn
-            // 
-            this.ImportAllBtn.ControlSize = Microsoft.Office.Core.RibbonControlSize.RibbonControlSizeLarge;
-            this.ImportAllBtn.Label = "Import All";
-            this.ImportAllBtn.Name = "ImportAllBtn";
-            this.ImportAllBtn.OfficeImageId = "Import";
-            this.ImportAllBtn.ScreenTip = "Import All";
-            this.ImportAllBtn.ShowImage = true;
-            this.ImportAllBtn.SuperTip = "Import all VB files from the same directory as this workbook.";
-            this.ImportAllBtn.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.ImportAllBtn_Click);
-            // 
-            // BrowseBtn
-            // 
-            this.BrowseBtn.ControlSize = Microsoft.Office.Core.RibbonControlSize.RibbonControlSizeLarge;
-            this.BrowseBtn.Label = "From Other Source";
-            this.BrowseBtn.Name = "BrowseBtn";
-            this.BrowseBtn.OfficeImageId = "BrowseBackgroundImage";
-            this.BrowseBtn.ScreenTip = "Import VB File From Other Source";
-            this.BrowseBtn.ShowImage = true;
-            this.BrowseBtn.SuperTip = "Import modules from your computer or from other computers you\'re connected to.";
-            this.BrowseBtn.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BrowseBtn_Click);
-            // 
-            // ExportAllBtn
-            // 
-            this.ExportAllBtn.ControlSize = Microsoft.Office.Core.RibbonControlSize.RibbonControlSizeLarge;
-            this.ExportAllBtn.Label = "Export All";
-            this.ExportAllBtn.Name = "ExportAllBtn";
-            this.ExportAllBtn.OfficeImageId = "Export";
-            this.ExportAllBtn.ScreenTip = "Export All";
-            this.ExportAllBtn.ShowImage = true;
-            this.ExportAllBtn.SuperTip = "Export all VB files in this workbook to its containing directory";
-            this.ExportAllBtn.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.ExportAllBtn_Click);
             // 
             // AlwaysReplaceRadio
             // 
@@ -251,12 +251,12 @@
             this.Load += new Microsoft.Office.Tools.Ribbon.RibbonUIEventHandler(this.MainRibbon_Load);
             this.ModLoaderTab.ResumeLayout(false);
             this.ModLoaderTab.PerformLayout();
+            this.RefreshGrp.ResumeLayout(false);
+            this.RefreshGrp.PerformLayout();
             this.ImportGrp.ResumeLayout(false);
             this.ImportGrp.PerformLayout();
             this.ExportGrp.ResumeLayout(false);
             this.ExportGrp.PerformLayout();
-            this.RefreshGrp.ResumeLayout(false);
-            this.RefreshGrp.PerformLayout();
             this.OverwriteGrp.ResumeLayout(false);
             this.OverwriteGrp.PerformLayout();
             this.ResumeLayout(false);
