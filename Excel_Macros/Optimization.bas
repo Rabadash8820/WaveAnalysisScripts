@@ -5,7 +5,7 @@ Option Private Module
 'Global variables
 Public programStart As Date
 
-Public Sub setupOptimizations()    
+Public Sub setupOptimizations()
     'Optimize application while macro runs
     Application.ScreenUpdating = False
     Application.DisplayStatusBar = False

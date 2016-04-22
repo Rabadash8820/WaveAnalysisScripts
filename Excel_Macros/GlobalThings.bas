@@ -2,6 +2,7 @@ Attribute VB_Name = "GlobalThings"
 Option Explicit
 Option Private Module
 
+'ABSTRACT DATA TYPES
 Public Enum BurstUseType
     All
     WABs
@@ -11,49 +12,73 @@ Public Enum wbComboType
     PropertyWkbk
     SttcWkbk
 End Enum
+
+'CONFIG VARIABLES
 Public BURSTS_TO_USE As BurstUseType
 Public ASSOC_SAME_CHANNEL_UNITS As Boolean
-
 Public MEA_ROWS, MEA_COLS As Integer
 Public NUM_CHANNELS As Integer
 Public Const GROUND_CHANNEL = 4     'adch_15
 Public Const MAX_UNITS_PER_CHANNEL = 10
 Public MAX_POSSIBLE_UNITS As Integer
-
 Public CORRELATION_DT As Double              'seconds
-
 Public NUM_BINS, MIN_BINS As Double
 Public MIN_ASSOC_UNITS As Integer
-
 Public MIN_DURATION, MAX_DURATION As Double
 Public Const MEAN_FREQ_DIFF = 3, PEAK_FREQ_DIFF = 10     'I.e., 300% and 1000%
 
-Public Const CHANNEL_PREFIX = "adch_"
+'SHEET NAMES
+Public Const POPS_SHT_NAME = "Populations"
+Public Const TISSUES_SHT_NAME = "Tissues"
+Public Const ANALYZE_SHT_NAME = "Analyze"
+Public Const COMBINE_SHT_NAME = "Combine Results"
+Public Const INVALIDS_SHT_NAME = "Invalid Units"
+Public Const CONFIG_SHT_NAME = "Config"
+Public Const CONTENTS_SHT_NAME = "Contents"
+Public Const STTC_SHT_NAME = "STTC"
+Public Const ALL_AVGS_SHT_NAME = "All_Avgs"
+Public Const BURST_AVGS_SHT_NAME = "Burst_Avgs"
+Public Const STATS_SHT_NAME = "Stats"
+Public Const PROPFIGS_SHT_NAME = "Property Figures"
+Public Const STTCFIGS_SHT_NAME = "STTC Figures"
 
-Public Const CONFIG_SHEET_NAME = "Analyze"
-Public Const COMBINE_SHEET_NAME = "Combine Results"
-Public Const INVALIDS_SHEET_NAME = "Invalid Units"
-Public Const POPULATIONS_SHEET_NAME = "Populations"
-Public Const CONTENTS_SHEET_NAME = "Contents"
-Public Const ALL_AVGS_SHEET_NAME = "All_Avgs"
-Public Const BURST_AVGS_SHEET_NAME = "Burst_Avgs"
-Public Const STTC_SHEET_NAME = "STTC"
+'TABLE NAMES
+Public Const CONFIG_TBL_NAME = "ConfigTbl"
+Public Const POPS_TBL_NAME = "PopsTbl"
+Public Const TISSUES_TBL_NAME = "TissuesTbl"
+Public Const CONTENTS_TBL_NAME = "ContentsTbl"
+Public Const STATS_TBL_NAME = "StatsTbl"
+Public Const STTC_TBL_NAME = "SttcTbl"
+Public Const SUMMARY_TBL_NAME = "SummaryTbl"
+Public Const INVALIDS_TBL_NAME = "InvalidUnitsTbl"
 
+'STRINGS
 Public Const CELL_STR = "Cell"
 Public Const RECORDING_STR = "Recording_"
 Public Const STTC_HEADER_STR = "Spike Time Tiling Coefficient Values for Every Cell Pair"
 Public Const INTER_ELECTRODE_DIST_STR = "Inter-Electrode Distance"
 Public Const STTC_STR = "STTC"
-    
+Public Const CHANNEL_PREFIX = "adch_"
+
+'Arrays/collections and associated values
 Public NUM_PROPERTIES As Integer
 Public NUM_BKGRD_PROPERTIES As Integer
 Public NUM_BURST_PROPERTIES As Integer
 Public PROPERTIES() As String
 Public PROP_UNITS() As String
+Public pops As New Dictionary
+Public wbTypes As Variant
+Public ctrlPop As Population
 
-Dim configSht As Worksheet
+'OTHER VALUES
+Public Const MAX_EXCEL_ROWS = 1048576
 
-Public Function pickWorkbook(ByVal pickMsg As String) As String
+'GLOBAL VARIABLES FOR THIS MODULE
+Dim configTbl As ListObject
+Dim popsTbl As ListObject
+Dim tissueTbl As ListObject
+
+Public Function PickWorkbook(ByVal pickMsg As String) As String
     Dim wbName As Workbook
     
     'Create the file-selection dialog box
@@ -64,7 +89,7 @@ Public Function pickWorkbook(ByVal pickMsg As String) As String
     
     'If the user didn't select anything, then return an empty string
     If dialog.Show = False Then
-        pickWorkbook = ""
+        PickWorkbook = ""
         Exit Function
     End If
     
@@ -81,25 +106,98 @@ Public Function pickWorkbook(ByVal pickMsg As String) As String
     End If
     
     'If it was then return its name
-    pickWorkbook = wbFile.name
+    PickWorkbook = wbFile.name
 End Function
-    
-Public Sub initParams()
-    Set configSht = Worksheets(CONFIG_SHEET_NAME)
 
-    Call getPropertyNames
-    Call getParams
-    Call getBurstsToUse
+Public Sub DefinePopulations()
+    
+    'Get the Populations and Tissues tables
+    Dim popsSht As Worksheet, tissueSht As Worksheet
+    Set popsSht = Worksheets(POPS_SHT_NAME)
+    Set popsTbl = popsSht.ListObjects(POPS_TBL_NAME)
+    Set tissueSht = Worksheets(TISSUES_SHT_NAME)
+    
+    'Get burst types
+    Dim numWbTypes As Integer, t As Integer, wbType As String
+    Set tissueTbl = tissueSht.ListObjects(TISSUES_TBL_NAME)
+    wbTypes = tissueTbl.HeaderRowRange(1, 3).Resize(1, tissueTbl.ListColumns.Count - 2).value
+    numWbTypes = UBound(wbTypes, 2)
+    For t = 1 To numWbTypes
+        wbType = wbTypes(1, t)
+        wbType = Left(wbType, Len(wbType) - Len(" Workbook"))
+        wbTypes(1, t) = wbType
+    Next t
+    
+    'Store the population info (or just return if none was provided)
+    Dim lsRow As ListRow, result As VbMsgBoxResult
+    If popsTbl.DataBodyRange Is Nothing Then
+        result = MsgBox("No experimental populations have been defined.  Provide this info on the " & POPS_SHT_NAME & " sheet", vbOKOnly)
+        Exit Sub
+    End If
+    Dim pop As Population
+    pops.RemoveAll
+    For Each lsRow In popsTbl.ListRows
+        Set pop = New Population
+        pop.ID = lsRow.Range(1, popsTbl.ListColumns("Population ID").Index).value
+        pop.name = lsRow.Range(1, popsTbl.ListColumns("Name").Index).value
+        pop.Abbreviation = lsRow.Range(1, popsTbl.ListColumns("Abbreviation").Index).value
+        pop.IsControl = (lsRow.Range(1, popsTbl.ListColumns("Control?").Index).value <> "")
+        pop.ForeColor = lsRow.Range(1, popsTbl.ListColumns("Population ID").Index).Font.Color
+        pop.BackColor = lsRow.Range(1, popsTbl.ListColumns("Population ID").Index).Interior.Color
+        pops.Add pop.ID, pop
+    Next lsRow
+    
+    'Identify the control population
+    Dim numCtrlPops As Integer, p As Integer
+    numCtrlPops = 0
+    For p = 0 To pops.Count - 1
+        Set pop = pops.items()(p)
+        If pop.IsControl Then
+            Set ctrlPop = pop
+            numCtrlPops = numCtrlPops + 1
+        End If
+    Next p
+    If numCtrlPops <> 1 Then
+        result = MsgBox("You must identify one (and only one) experimental population as the control.", vbOKOnly)
+        Exit Sub
+    End If
+
+    'If no Tissue info was provided on the Combine sheet, then just return
+    Dim numTissues As Integer
+    numTissues = tissueTbl.ListRows.Count
+    If tissueTbl.DataBodyRange Is Nothing Then
+        result = MsgBox("No tissues have been defined.  Provide this info on the " & TISSUES_SHT_NAME & " sheet", vbOKOnly)
+        Exit Sub
+    End If
+    
+    'Otherwise, create the Tissue objects
+    Dim popID As Integer, wbPath As String, tiss As Tissue
+    For Each lsRow In tissueTbl.ListRows
+        Set tiss = New Tissue
+        tiss.ID = lsRow.Range(1, tissueTbl.ListColumns("Tissue ID").Index).value
+        popID = lsRow.Range(1, tissueTbl.ListColumns("Population ID").Index).value
+        Set tiss.Population = pops(popID)
+        For t = 1 To numWbTypes
+            wbPath = lsRow.Range(1, tissueTbl.ListColumns(wbTypes(1, t) & " Workbook").Index).value
+            tiss.WorkbookPaths.Add wbTypes(1, t), wbPath
+        Next t
+        pops(popID).Tissues.Add tiss
+    Next lsRow
+
 End Sub
 
-Private Sub getParams()
+Public Sub GetConfigVars()
+    'Prepare the property units array
+    NUM_PROPERTIES = 11
+    NUM_BKGRD_PROPERTIES = 6
     ReDim PROP_UNITS(1 To NUM_PROPERTIES)
-
+    
     'Get the config parameters from the Params table
-    Dim params As Variant
-    Dim paramsTbl As ListObject
-    Set paramsTbl = configSht.ListObjects("ParamsTbl")
-    params = paramsTbl.DataBodyRange.Resize(, 2).value
+    Dim analyzeSht As Worksheet, configSht As Worksheet, params As Variant
+    Set analyzeSht = Worksheets(ANALYZE_SHT_NAME)
+    Set configSht = Worksheets(CONFIG_SHT_NAME)
+    Set configTbl = configSht.ListObjects(CONFIG_TBL_NAME)
+    params = configTbl.DataBodyRange.Resize(, 2).value
     
     'Loop through each of its rows to cache parameter values
     Dim p As Integer
@@ -111,13 +209,25 @@ Private Sub getParams()
         Call storeParam(name, val)
     Next p
     
-    'Get config info from Form Controls on sheet
-    Call getBurstsToUse
-    ASSOC_SAME_CHANNEL_UNITS = (configSht.Shapes("SameChannelAssocChk").OLEFormat.Object.value = 1)
-    
     'Initialize parameters that depend on other parameters
     NUM_CHANNELS = MEA_ROWS * MEA_COLS
     MAX_POSSIBLE_UNITS = MAX_UNITS_PER_CHANNEL * NUM_CHANNELS  'Theoretically, no recording could possibly yield more sorted units than this
+    NUM_BURST_PROPERTIES = NUM_PROPERTIES - NUM_BKGRD_PROPERTIES
+    
+    'Set property name strings
+    'Try to just use alphanumeric characters w/o spaces since these will be Excel table headers later
+    ReDim PROPERTIES(1 To NUM_PROPERTIES)
+    PROPERTIES(1) = "BkgrdFiringRate"
+    PROPERTIES(2) = "BkgrdISI"
+    PROPERTIES(3) = "PercentSpikesInBursts"
+    PROPERTIES(4) = "BurstFrequency"
+    PROPERTIES(5) = "IBI"
+    PROPERTIES(6) = "PercentBurstsInWaves"
+    PROPERTIES(7) = "BurstDuration"
+    PROPERTIES(8) = "BurstFiringRate"
+    PROPERTIES(9) = "BurstISI"
+    PROPERTIES(10) = "PercentBurstTimeAbove10Hz"
+    PROPERTIES(11) = "SpikesPerBurst"
     
 End Sub
 
@@ -161,34 +271,4 @@ Private Sub storeParam(ByVal name As String, ByVal value As Variant)
     ElseIf name = "SpikesPerBurst Units" Then
         PROP_UNITS(11) = CStr(value)
     End If
-End Sub
-
-Private Sub getPropertyNames()
-    'Set property "constants"
-    NUM_PROPERTIES = 11
-    NUM_BKGRD_PROPERTIES = 6
-    NUM_BURST_PROPERTIES = NUM_PROPERTIES - NUM_BKGRD_PROPERTIES
-    
-    'Set property name strings
-    'Try to just use alphanumeric characters w/o spaces since these will be Excel table headers later
-    ReDim PROPERTIES(1 To NUM_PROPERTIES) As String
-    PROPERTIES(1) = "BkgrdFiringRate"
-    PROPERTIES(2) = "BkgrdISI"
-    PROPERTIES(3) = "PercentSpikesInBursts"
-    PROPERTIES(4) = "BurstFrequency"
-    PROPERTIES(5) = "IBI"
-    PROPERTIES(6) = "PercentBurstsInWaves"
-    PROPERTIES(7) = "BurstDuration"
-    PROPERTIES(8) = "BurstFiringRate"
-    PROPERTIES(9) = "BurstISI"
-    PROPERTIES(10) = "PercentBurstTimeAbove10Hz"
-    PROPERTIES(11) = "SpikesPerBurst"
-End Sub
-
-Private Sub getBurstsToUse()
-    Dim allChecked As Boolean, wabsChecked As Boolean
-    allChecked = (configSht.Shapes("AllRadio").OLEFormat.Object.value = 1)
-    wabsChecked = (configSht.Shapes("WabsRadio").OLEFormat.Object.value = 1)
-    
-    BURSTS_TO_USE = IIf(allChecked, BurstUseType.All, IIf(wabsChecked, BurstUseType.WABs, BurstUseType.NonWABs))
 End Sub

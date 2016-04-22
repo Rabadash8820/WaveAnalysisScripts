@@ -5,91 +5,22 @@ Private Const NUM_CONTENTS_COLS = 4
 
 Dim keepOpen As Boolean, dataPaired As Boolean
 Dim numAllTissues As Integer
-Dim pops As New Dictionary, wbTypes As Variant
-Dim ctrlPop As Population
 Dim propNames() As String, wbTypePropNames() As String
 Dim combineWb As Workbook
 
 Public Sub CombineData()
     Call setupOptimizations
-    Call initParams
     
-    'Only continue if at least one combination operation was selected
-    Dim result As VbMsgBoxResult
-    Dim thisWb As Workbook
-    Set thisWb = ActiveWorkbook
-    Dim combineSht As Worksheet, popsSht As Worksheet
-    Set combineSht = thisWb.Worksheets(COMBINE_SHEET_NAME)
-    Set popsSht = thisWb.Worksheets(POPULATIONS_SHEET_NAME)
-    Dim combineProps As Boolean, combineSttc As Boolean
+    Call GetConfigVars
+    Call DefinePopulations
     
-    'Store the population info (or just return if none was provided)
-    Dim popsTbl As ListObject, lsRow As ListRow
-    Set popsTbl = popsSht.ListObjects("PopTbl")
-    If popsTbl.DataBodyRange Is Nothing Then
-        result = MsgBox("No experimental populations have been defined.  Provide this info on the " & POPULATIONS_SHEET_NAME & " sheet", vbOKOnly)
-        GoTo ExitSub
-    End If
-    Dim pop As Population
-    pops.RemoveAll
-    For Each lsRow In popsTbl.ListRows
-        Set pop = New Population
-        pop.ID = lsRow.Range(1, popsTbl.ListColumns("Population ID").Index).value
-        pop.name = lsRow.Range(1, popsTbl.ListColumns("Name").Index).value
-        pop.Abbreviation = lsRow.Range(1, popsTbl.ListColumns("Abbreviation").Index).value
-        pop.IsControl = (lsRow.Range(1, popsTbl.ListColumns("Control?").Index).value <> "")
-        pop.ForeColor = lsRow.Range(1, popsTbl.ListColumns("Population ID").Index).Font.Color
-        pop.BackColor = lsRow.Range(1, popsTbl.ListColumns("Population ID").Index).Interior.Color
-        pops.Add pop.ID, pop
-    Next lsRow
-    
-    'Identify the control population
-    Dim numCtrlPops As Integer, p As Integer
-    numCtrlPops = 0
-    For p = 0 To pops.Count - 1
-        Set pop = pops.items()(p)
-        If pop.IsControl Then
-            Set ctrlPop = pop
-            numCtrlPops = numCtrlPops + 1
-        End If
-    Next p
-    If numCtrlPops <> 1 Then
-        result = MsgBox("You must identify one (and only one) experimental population as the control.", vbOKOnly)
-        GoTo ExitSub
-    End If
-
-    'If no Tissue info was provided on the Combine sheet, then just return
-    Dim tissueTbl As ListObject
-    Dim numTissues As Integer
-    Set tissueTbl = combineSht.ListObjects("TissuesTbl")
-    numTissues = tissueTbl.ListRows.Count
-    If tissueTbl.DataBodyRange Is Nothing Then
-        result = MsgBox("No tissue workbook paths were provided.", vbOKOnly)
-        GoTo ExitSub
-    End If
-    
-    'Otherwise, create the Tissue objects
-    Dim popID As Integer, t As Integer, wbType As String, wbPath As String, numWbTypes As Integer
-    wbTypes = tissueTbl.HeaderRowRange(1, 3).Resize(1, tissueTbl.ListColumns.Count - 2).value
-    numWbTypes = UBound(wbTypes, 2)
+    'Initialize some variables
+    Dim combineSht As Worksheet, popsSht As Worksheet, tissueSht As Worksheet, tissueTbl As ListObject
+    Set combineSht = ThisWorkbook.Worksheets(COMBINE_SHT_NAME)
+    Set popsSht = ThisWorkbook.Worksheets(POPS_SHT_NAME)
+    Set tissueSht = ThisWorkbook.Worksheets(TISSUES_SHT_NAME)
+    Set tissueTbl = tissueSht.ListObjects(TISSUES_TBL_NAME)
     numAllTissues = tissueTbl.ListRows.Count
-    For t = 1 To numWbTypes
-        wbType = wbTypes(1, t)
-        wbType = Left(wbType, Len(wbType) - Len(" Workbook"))
-        wbTypes(1, t) = wbType
-    Next t
-    Dim tiss As Tissue
-    For Each lsRow In tissueTbl.ListRows
-        Set tiss = New Tissue
-        tiss.ID = lsRow.Range(1, tissueTbl.ListColumns("Tissue ID").Index).value
-        popID = lsRow.Range(1, tissueTbl.ListColumns("Population ID").Index).value
-        Set tiss.Population = pops(popID)
-        For t = 1 To numWbTypes
-            wbPath = lsRow.Range(1, tissueTbl.ListColumns(wbTypes(1, t) & " Workbook").Index).value
-            tiss.WorkbookPaths.Add wbTypes(1, t), wbPath
-        Next t
-        pops(popID).Tissues.Add tiss
-    Next lsRow
     
     'Get some user options from the Form Controls within the workbook
     keepOpen = (combineSht.Shapes("KeepOpenChk").OLEFormat.Object.value = 1)
@@ -102,14 +33,13 @@ Public Sub CombineData()
     Call combineIntoWb(numGoodTissues)
     
     'Display a succeessful completion dialog
-    Dim combineMsg As String
+    Dim combineMsg As String, result As VbMsgBoxResult
     combineMsg = "Property and STTC data was combined into the provided workbook"
     result = MsgBox(numGoodTissues & " data workbooks for " & numAllTissues & " tissues were successfully opened." & vbCr & _
                     combineMsg & vbCr & _
                     "Time taken: " & Format(ProgramDuration(), "hh:mm:ss"), _
                     vbOKOnly)
                     
-ExitSub:
     Call tearDownOptimizations
 End Sub
 
@@ -120,7 +50,7 @@ Private Function buildComboWorkbook() As Workbook
     
     'Build Contents and Stats sheets
     Call buildContentsSheet
-    Worksheets.Add After:=Worksheets("Contents")
+    Worksheets.Add After:=Worksheets(CONTENTS_SHT_NAME)
     Call buildStatsSheet
     
     'Store base property names
@@ -161,9 +91,9 @@ Private Function buildComboWorkbook() As Workbook
     Next popV
 
     'Build Figures sheets (must be built last so that table references are valid)
-    Worksheets.Add After:=Worksheets("Stats")
+    Worksheets.Add After:=Worksheets(STATS_SHT_NAME)
     Call buildPropFiguresSheet
-    Worksheets.Add After:=Worksheets("Property Figures")
+    Worksheets.Add After:=Worksheets(PROPFIGS_SHT_NAME)
     Call buildSttcFiguresSheet
 
     
@@ -180,11 +110,11 @@ Private Sub buildContentsSheet()
     numWbTypes = UBound(wbTypes, 2)
         
     'Build the Contents sheet
-    ActiveSheet.name = "Contents"
+    ActiveSheet.name = CONTENTS_SHT_NAME
         
     'Create the contents table on the Contents sheet
     Set tbl = ActiveSheet.ListObjects.Add(xlSrcRange, Range("A1"), , xlYes)
-    tbl.name = "ContentsTbl"
+    tbl.name = CONTENTS_TBL_NAME
     
     'Add its columns
     For col = 1 To NUM_CONTENTS_COLS - 1
@@ -241,11 +171,11 @@ Private Sub buildStatsSheet()
     numWbTypes = UBound(wbTypes, 2)
     
     'Build the Stats sheet
-    ActiveSheet.name = "Stats"
+    ActiveSheet.name = STATS_SHT_NAME
         
     'Create the contents table on the Contents sheet
     Set tbl = ActiveSheet.ListObjects.Add(xlSrcRange, Range("A1"), , xlYes)
-    tbl.name = "StatsTbl"
+    tbl.name = STATS_TBL_NAME
     
     'Add its columns
     numCols = 3
@@ -408,7 +338,7 @@ Private Sub buildPropFiguresSheet()
     Set cornerCell = Cells(2, 1)
     
     'Build the Figures sheet
-    ActiveSheet.name = "Property Figures"
+    ActiveSheet.name = PROPFIGS_SHT_NAME
 
     'Store column headers
     Dim rOffset As Integer, cOffset As Integer
@@ -681,7 +611,7 @@ Private Sub buildSttcFiguresSheet()
     numWbTypes = UBound(wbTypes, 2)
 
     'Build the Figures sheet
-    ActiveSheet.name = "STTC Figures"
+    ActiveSheet.name = STTCFIGS_SHT_NAME
 
     'Store named distances
     Dim cornerCell As Range
@@ -702,7 +632,7 @@ Private Sub buildSttcFiguresSheet()
     numChartCols = 10
     numSpaceRows = 5
     Set tbl = ActiveSheet.ListObjects.Add(xlSrcRange, cornerCell.offset(numChartRows + numSpaceRows, 0), , xlYes)
-    tbl.name = "SttcTbl"
+    tbl.name = STTC_TBL_NAME
     
     'Add its columns
     Dim pop As Population, tiss As Tissue
@@ -765,7 +695,7 @@ Private Sub buildSttcFiguresSheet()
         Set pop = pops.items()(p)
         Set firstTiss = pop.Tissues(1)
         Set lastTiss = pop.Tissues(pop.Tissues.Count)
-        popRngStr = "SttcTbl[@[" & pop.Abbreviation & "_" & firstTiss.ID & "]:[" & pop.Abbreviation & "_" & lastTiss.ID & "]]"
+        popRngStr = STTC_TBL_NAME & "[@[" & pop.Abbreviation & "_" & firstTiss.ID & "]:[" & pop.Abbreviation & "_" & lastTiss.ID & "]]"
         tbl.ListColumns(numCols + 1).DataBodyRange.Formula = "=AVERAGE(" & popRngStr & ")"
         tbl.ListColumns(numCols + 2).DataBodyRange.Formula = "=STDEV.S(" & popRngStr & ")/SQRT(COUNT(" & popRngStr & "))"
         For t = 1 To pop.Tissues.Count
@@ -1076,7 +1006,7 @@ Private Sub combineIntoWb(ByRef numGoodTissues As Integer)
     Next popV
     
     'Pretty up the sheets now that data is present
-    Call cleanSheets(combineWb, "Contents")
+    Call cleanSheets(combineWb, CONTENTS_SHT_NAME)
     Call cleanSheets(combineWb, "_STTC")
     Call cleanSheets(combineWb, "_Bursts")
     Call cleanSheets(combineWb, "_WABs")
@@ -1126,12 +1056,12 @@ Private Sub fetchTissue(ByRef Tissue As Tissue, ByRef numGoodTissues As Integer)
             popName = Tissue.Population.name
             Select Case wbTypeName
                 Case "Processed WAB Workbook"
-                    Call copyTissueData(tissueWb, STTC_SHEET_NAME, popName & "_STTC", Tissue.ID)
-                    Call copyTissueData(tissueWb, ALL_AVGS_SHEET_NAME, popName & "_Bursts", Tissue.ID)
-                    Call copyTissueData(tissueWb, BURST_AVGS_SHEET_NAME, popName & "_WABs", Tissue.ID)
+                    Call copyTissueData(tissueWb, STTC_SHT_NAME, popName & "_STTC", Tissue.ID)
+                    Call copyTissueData(tissueWb, ALL_AVGS_SHT_NAME, popName & "_Bursts", Tissue.ID)
+                    Call copyTissueData(tissueWb, BURST_AVGS_SHT_NAME, popName & "_WABs", Tissue.ID)
                     
                 Case "Processed NonWAB Workbook"
-                    Call copyTissueData(tissueWb, BURST_AVGS_SHEET_NAME, popName & "_NonWABs", Tissue.ID)
+                    Call copyTissueData(tissueWb, BURST_AVGS_SHT_NAME, popName & "_NonWABs", Tissue.ID)
             End Select
             tissueWb.Close
         End If

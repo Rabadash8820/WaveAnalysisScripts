@@ -66,7 +66,7 @@ Public Sub ProcessPopulationFolders()
             End If
         
             'Finalize the Contents sheet
-            With Worksheets(CONTENTS_SHEET_NAME)
+            With Worksheets(CONTENTS_SHT_NAME)
                 .Cells.VerticalAlignment = xlCenter
                 .Cells.HorizontalAlignment = xlLeft
                 .Columns.EntireColumn.AutoFit
@@ -93,7 +93,7 @@ End Sub
 
 Private Sub addContentsSheet()
     'Initialize Contents sheet
-    ActiveSheet.name = CONTENTS_SHEET_NAME
+    ActiveSheet.name = CONTENTS_SHT_NAME
     
     'Add the time generated info
     Dim timeGenRng As Range
@@ -114,7 +114,7 @@ Private Sub addContentsSheet()
     '...and put it in a table
     Dim summaryTbl As ListObject
     Set summaryTbl = ActiveSheet.ListObjects.Add(xlSrcRange, infoCell.CurrentRegion, , xlYes)
-    summaryTbl.name = "SummaryTbl"
+    summaryTbl.name = SUMMARY_TBL_NAME
     
     'Delete any extra sheets if this workbook was generated in Excel 2010 or earlier
     Application.DisplayAlerts = False
@@ -135,7 +135,7 @@ Private Sub openFile(recording As File, ByVal fileIndex As Integer)
     
     'Add this recording to the Contents sheet
     Dim summaryTbl As ListObject, rng As Range
-    Set summaryTbl = Worksheets(CONTENTS_SHEET_NAME).ListObjects("SummaryTbl")
+    Set summaryTbl = Worksheets(CONTENTS_SHT_NAME).ListObjects(SUMMARY_TBL_NAME)
     Set rng = summaryTbl.ListRows.Add.Range
     rng.Cells(1, 1) = recording.name
     rng.Cells(1, 2) = RECORDING_STR & fileIndex

@@ -15,7 +15,7 @@ Public Sub ProcessExistingWorkbook()
     
     'Let the user pick the workbook to analyze
     Dim wbName As String
-    wbName = pickWorkbook("Select an existing retinal summary workbook")
+    wbName = PickWorkbook("Select an existing retinal summary workbook")
     If wbName = "" Then
         result = MsgBox("No workbook selected.", vbOKOnly)
         Exit Sub

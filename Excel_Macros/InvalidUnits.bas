@@ -7,31 +7,26 @@ Const MARK_STYLE = "Bad"
 Const NORMAL_STYLE = "Normal"
 
 Dim invalids As Variant
-Dim markBurstDurUnits As Boolean, deleteAlso As Boolean
+Dim markBurstDurUnits As Boolean, deleteAlso As Boolean, keepOpen As Boolean
 
 'THE DATA VALIDATION WORKSHEET SHOULD LIST UNITS THAT WILL BE *MARKED FOR REMOVAL*
 
 Public Sub markInvalidUnits()
     Call setupOptimizations
     
+    Call DefinePopulations
+    
     'Only continue if at least one invalidation operation was selected
     Dim result As VbMsgBoxResult
     Dim thisWb As Workbook
     Set thisWb = ActiveWorkbook
     Dim invalidSht As Worksheet
-    Set invalidSht = thisWb.Worksheets(INVALIDS_SHEET_NAME)
-    Dim markProps As Boolean, markSttc As Boolean
-    markProps = (invalidSht.Shapes("MarkPropsChk").OLEFormat.Object.value = 1)
-    markSttc = (invalidSht.Shapes("MarkSttcChk").OLEFormat.Object.value = 1)
-    If Not markProps And Not markSttc Then
-        result = MsgBox("No invalidation operations selected.", vbOKOnly)
-        GoTo ExitSub
-    End If
+    Set invalidSht = thisWb.Worksheets(INVALIDS_SHT_NAME)
     
     'Get all the provided invalid unit info
     Dim invalidUnitsTbl As ListObject
-    Set invalidSht = Worksheets(INVALIDS_SHEET_NAME)
-    Set invalidUnitsTbl = invalidSht.ListObjects("InvalidUnitsTbl")
+    Set invalidSht = Worksheets(INVALIDS_SHT_NAME)
+    Set invalidUnitsTbl = invalidSht.ListObjects(INVALIDS_TBL_NAME)
     If invalidUnitsTbl.DataBodyRange Is Nothing Then
         result = MsgBox("No invalid units provided.", vbOKOnly)
         GoTo ExitSub
@@ -39,38 +34,25 @@ Public Sub markInvalidUnits()
         invalids = invalidUnitsTbl.DataBodyRange.value
     End If
     
-    'Let the user pick the workbooks in which to mark invalid units
-    Dim propWbName As String, sttcWbName As String
-    If markProps Then
-        propWbName = pickWorkbook("Select the Properties workbook in which to mark invalid units")
-        If propWbName = "" Then markProps = False
-    End If
-    If markSttc Then
-        sttcWbName = pickWorkbook("Select the STTC workbook in which to mark invalid units")
-        If sttcWbName = "" Then markSttc = False
-    End If
-    If Not markProps And Not markSttc Then
-        result = MsgBox("No invalidation operations could be completed.", vbOKOnly)
-        GoTo ExitSub
-    End If
-    If markProps And markSttc And propWbName = sttcWbName Then
-        result = MsgBox("Property and STTC workbooks must be distinct.", vbOKOnly)
-        GoTo ExitSub
-    End If
-    
     'Get some other config flags set by the user
-    deleteAlso = (invalidSht.Shapes("InvalidDeleteChk").OLEFormat.Object.value = 1)
     markBurstDurUnits = (invalidSht.Shapes("MarkBurstDurChk").OLEFormat.Object.value = 1)
+    deleteAlso = (invalidSht.Shapes("InvalidDeleteChk").OLEFormat.Object.value = 1)
+    keepOpen = (invalidSht.Shapes("KeepOpenChk").OLEFormat.Object.value = 1)
+    
+    'Let the user pick the workbook in which to mark invalid units
+    Dim wbName As String, sttcWbName As String
+    wbName = PickWorkbook("Select the Summary workbook in which to mark invalid units")
 
-    'Open these workbooks and mark any invalid units therein (they will be left open)
-    Dim wb As Workbook, numMarkedUnits As Long
-    numMarkedUnits = 0
-    If markProps Then
-        Set wb = Workbooks.Open(propWbName)
+    'Open this workbook and mark any invalid units therein
+    If wbName = "" Then
+        result = MsgBox("No workbook selected.", vbOKOnly)
+        GoTo ExitSub
+    Else
+        Dim wb As Workbook, numMarkedUnits As Long
+        numMarkedUnits = 0
+        Set wb = Workbooks.Open(wbName)
         Call markDataOnWbType(wb, wbComboType.PropertyWkbk, numMarkedUnits)
-    End If
-    If markSttc Then
-        Set wb = Workbooks.Open(sttcWbName)
+        Set wb = Workbooks.Open(wbName)
         Call markDataOnWbType(wb, wbComboType.SttcWkbk, numMarkedUnits)
     End If
     
@@ -108,9 +90,9 @@ End Sub
 
 Private Sub markPropWbData(ByRef wkbk As Workbook, ByRef numMarkedUnits As Long)
     'For each invalid unit...
-    'Find the _All, _WABs, and _NonWABs sheets that match its population name,
+    'Find the data sheets that match its population name,
     'Find the table rows on those sheets that match its retina and Unit IDs,
-    'And mark that row with a noticeable style, or delete it (if requested)
+    'And mark that row with a noticeable style, or delete it if requested
     Dim numPops As Integer
     numPops = Worksheets.Count - NUM_NONPOP_SHEETS
     Dim i As Long, lr As Long, sh As Integer, sht As Worksheet
