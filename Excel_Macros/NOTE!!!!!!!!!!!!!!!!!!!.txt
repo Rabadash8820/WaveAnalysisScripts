@@ -1,2 +1,0 @@
-Make sure that the Light Properties Template uses ACTUAL percent changes for all properties,
-not just percent changes from an average like with DTA.

@@ -2,15 +2,13 @@ Attribute VB_Name = "CombineData"
 Option Explicit
 
 Private Const NUM_CONTENTS_COLS = 4
-Dim derp
 
 Dim keepOpen As Boolean, dataPaired As Boolean
 Dim numAllTissues As Integer
 Dim pops As New Dictionary, wbTypes As Variant
 Dim ctrlPop As Population
 Dim propNames() As String, wbTypePropNames() As String
-Dim propWb As Workbook, sttcWb As Workbook
-Dim propContentsTbl As ListObject, sttcContentsTbl As ListObject
+Dim combineWb As Workbook
 
 Public Sub CombineData()
     Call setupOptimizations
@@ -33,6 +31,7 @@ Public Sub CombineData()
         GoTo ExitSub
     End If
     Dim pop As Population
+    pops.RemoveAll
     For Each lsRow In popsTbl.ListRows
         Set pop = New Population
         pop.ID = lsRow.Range(1, popsTbl.ListColumns("Population ID").Index).value
@@ -96,24 +95,11 @@ Public Sub CombineData()
     keepOpen = (combineSht.Shapes("KeepOpenChk").OLEFormat.Object.value = 1)
     dataPaired = (popsSht.Shapes("DataPairedChk").OLEFormat.Object.value = 1)
     
-    'Let the user pick the workbooks in which to combine data
-    Dim propWbName As String, sttcWbName As String
-    propWbName = buildComboWorkbook().name
-    
-    'Open these workbooks and combine data into them (they will be left open)
-    Dim wb As Workbook, numGoodTissues As Integer
+    'Build the workbook in which to combine data, and combine data!
+    Set combineWb = buildComboWorkbook()
+    Dim numGoodTissues As Integer
     numGoodTissues = 0
-    Dim propKeywords(4) As String
-    propKeywords(2) = "_Bursts"
-    propKeywords(3) = "_WABs"
-    propKeywords(4) = "_NonWABs"
-    Set wb = Workbooks.Open(propWbName)
-    Call combineIntoWb(wb, wbComboType.PropertyWkbk, propKeywords, numGoodTissues)
-    
-    Dim sttcKeywords(2) As String
-    sttcKeywords(2) = "_STTC"
-    Set wb = Workbooks.Open(sttcWbName)
-    Call combineIntoWb(wb, wbComboType.SttcWkbk, sttcKeywords, numGoodTissues)
+    Call combineIntoWb(numGoodTissues)
     
     'Display a succeessful completion dialog
     Dim combineMsg As String
@@ -230,19 +216,18 @@ Private Sub buildContentsSheet()
     Next popV
     tbl.DataBodyRange.value = contents
     
-    'Add the retina count row
+    'Add the tissue count row
     tbl.ShowTotals = True
     tbl.TotalsRowRange(1, 1).value = "Count"
     tbl.ListColumns(2).TotalsCalculation = xlTotalsCalculationCount
     tbl.ListColumns(NUM_CONTENTS_COLS).TotalsCalculation = xlTotalsCalculationNone
     
     'Format sheet
+    'Columns/rows will be autofitted after combining data
     Cells.VerticalAlignment = xlCenter
     Cells.HorizontalAlignment = xlLeft
     tbl.ListColumns(1).DataBodyRange.HorizontalAlignment = xlCenter
     tbl.ListColumns(2).DataBodyRange.HorizontalAlignment = xlCenter
-    Columns.EntireColumn.AutoFit
-    Rows.EntireRow.AutoFit
 
 End Sub
 
@@ -357,11 +342,10 @@ Private Sub buildDataSheet(ByRef pop As Population, ByVal wbTypeName As String, 
     Application.DisplayAlerts = True
     
     'Format sheet
+    'Columns/rows will be autofitted after combining data
     Cells.HorizontalAlignment = xlCenter
     Cells.VerticalAlignment = xlCenter
     tbl.HeaderRowRange.HorizontalAlignment = xlLeft
-    Columns.AutoFit
-    Rows.AutoFit
     ActiveSheet.Visible = xlSheetHidden
 
 End Sub
@@ -404,11 +388,10 @@ Private Sub buildSttcDataSheet(ByRef pop As Population, ByRef sttcHeaders() As S
     Application.DisplayAlerts = True
     
     'Format sheet
+    'Columns/rows will be autofitted after combining data
     Cells.HorizontalAlignment = xlCenter
     Cells.VerticalAlignment = xlCenter
     tbl.HeaderRowRange.HorizontalAlignment = xlLeft
-    Columns.AutoFit
-    Rows.AutoFit
     ActiveSheet.Visible = xlSheetHidden
 
 End Sub
@@ -1082,160 +1065,96 @@ Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, 
 
 End Sub
 
-Private Function uniqueItems(ByRef items As Variant) As Variant
-
-    Dim unique() As String
-    ReDim unique(1 To UBound(items))
-    Dim numUniques As Integer, str As Variant, s As Integer, found As Boolean
-    
-    'For each provided string...
-    numUniques = 0
-    For Each str In items
-        'Check if this string has already been stored
-        found = False
-        For s = 1 To numUniques
-            If (unique(s) = str) Then
-                found = True
-                Exit For
-            End If
-        Next s
-        
-        'If not, then store it
-        If Not found Then
-            numUniques = numUniques + 1
-            unique(numUniques) = str
-        End If
-    Next str
-    
-    'Trim up the unique item array and return it
-    ReDim Preserve unique(1 To numUniques)
-    uniqueItems = unique
-End Function
-
-Private Sub combineIntoWb(ByRef wb As Workbook, ByVal wbType As wbComboType, ByRef tblKeywords() As String, ByRef numGoodTissues As Integer)
-    'Open combination workbook (it will be kept open)
-    Dim contentsTbl As ListObject
-    Set contentsTbl = wb.Worksheets(CONTENTS_SHEET_NAME).ListObjects(CONTENTS_SHEET_NAME)
-    
-    'Clear any existing data in that workbook
-    Dim k As Integer
-    For k = 1 To UBound(tblKeywords)
-        Call clearTables(wb, tblKeywords(k))
-    Next k
-    
-    'Open it, fetch its data, and re-close it
+Private Sub combineIntoWb(ByRef numGoodTissues As Integer)
+    'For each tissue, open its workbooks, fetch their data, and re-close the workbooks
     Dim popV As Variant, pop As Population, t As Tissue
     For Each popV In pops.items
         Set pop = popV
         For Each t In pop.Tissues
-            Call fetchRetina(wbType, wb, t, numGoodTissues)
+            Call fetchTissue(t, numGoodTissues)
         Next t
     Next popV
     
     'Pretty up the sheets now that data is present
-    For k = 1 To UBound(tblKeywords)
-        Call cleanSheets(wb, tblKeywords(k))
-    Next k
-    
+    Call cleanSheets(combineWb, "Contents")
+    Call cleanSheets(combineWb, "_STTC")
+    Call cleanSheets(combineWb, "_Bursts")
+    Call cleanSheets(combineWb, "_WABs")
+    Call cleanSheets(combineWb, "_NonWABs")
+
     'Save/close the workbook if the user doesn't want to keep it open
     If Not keepOpen Then _
-        Call wb.Close(True)
+        Call combineWb.Close(True)
 
 End Sub
 
-Private Sub fetchRetina(ByVal wbType As wbComboType, ByRef summaryWb As Workbook, ByRef Tissue As Tissue, ByRef numGoodTissues As Integer)
-    'Make sure an ID was provided for this retina
+Private Sub fetchTissue(ByRef Tissue As Tissue, ByRef numGoodTissues As Integer)
+    'Make sure an ID was provided for this tissue
     Dim result As VbMsgBoxResult
-    If Tissue.ID = "" Then
+    If Tissue.ID = 0 Then
         result = MsgBox("A tissue in population " & Tissue.Population.name & " was not given an ID." & vbCr & _
-                        "Data will not be loaded.")
+                        "Its data will not be loaded.")
         Exit Sub
     End If
     
     'If so, then Initialize some local variables
     Dim fs As New FileSystemObject
-    Dim retinaWb As Workbook
+    Dim tissueWb As Workbook
     Dim numWbTypes As Integer
     numWbTypes = UBound(wbTypes, 2)
     
-    'For each type of data, load that data from its provided workbook (if it exists),
-    'and store it in the workbooks requested by the user
-    Dim wbTypeName As Variant, wbPath As String
+    'For each type of data...
+    Dim wbFound As Boolean, wbTypeName As Variant, wbPath As String
     For Each wbTypeName In wbTypes
+        'Check that a workbook was provided and exists (display error dialogs if not)
+        wbFound = False
         wbPath = Tissue.WorkbookPaths(wbTypeName)
         If fs.FileExists(wbPath) Then
-            Set retinaWb = Workbooks.Open(wbPath)
-            Call fetchRetinaData(wbType, Tissue.ID, summaryWb, retinaWb, Tissue.Population.name, wbTypeName)
-            retinaWb.Close
+            wbFound = True
             numGoodTissues = numGoodTissues + 1
         ElseIf wbPath = "" Then
-            result = MsgBox("No " & wbType & " workbook provided for tissue " & Tissue.ID & " in population " & Tissue.Population.name, vbOKOnly)
+            result = MsgBox("No " & wbTypeName & " workbook provided for tissue " & Tissue.ID & " in population " & Tissue.Population.name & ".", vbOKOnly)
         Else
-            result = MsgBox("Workbook " & wbPath & " could not be found" & vbCr & _
-                            "Make sure you provided the correct " & wbTypeName & " path.", vbOKOnly)
+            result = MsgBox("Workbook """ & wbPath & """ could not be found." & vbCr & _
+                            "Make sure you provided the correct path to the " & wbTypeName & " workbook.", vbOKOnly)
+        End If
+        
+        'Load the tissue's data and store it in the appropriate sheets of the combination workbook
+        If wbFound Then
+            Dim popName As String
+            Set tissueWb = Workbooks.Open(wbPath)
+            popName = Tissue.Population.name
+            Select Case wbTypeName
+                Case "Processed WAB Workbook"
+                    Call copyTissueData(tissueWb, STTC_SHEET_NAME, popName & "_STTC", Tissue.ID)
+                    Call copyTissueData(tissueWb, ALL_AVGS_SHEET_NAME, popName & "_Bursts", Tissue.ID)
+                    Call copyTissueData(tissueWb, BURST_AVGS_SHEET_NAME, popName & "_WABs", Tissue.ID)
+                    
+                Case "Processed NonWAB Workbook"
+                    Call copyTissueData(tissueWb, BURST_AVGS_SHEET_NAME, popName & "_NonWABs", Tissue.ID)
+            End Select
+            tissueWb.Close
         End If
     Next wbTypeName
 
 End Sub
 
-Private Sub clearTables(ByRef wb As Workbook, ByVal keyword As String)
-    Dim sht As Worksheet, tbl As ListObject
-    Dim needsClearing As Boolean
-    
-    'Clear the data table on each sheet with the given keyword in the name
-    For Each sht In wb.Worksheets
-        needsClearing = (InStr(1, sht.name, keyword) > 0)
-        If needsClearing Then
-            Set tbl = sht.ListObjects(sht.name)
-            If Not tbl.DataBodyRange Is Nothing Then _
-                tbl.DataBodyRange.Delete
-        End If
-    Next sht
-End Sub
-
-Private Sub fetchRetinaData(ByVal wbType As wbComboType, ByVal retinaID, ByRef summaryWb As Workbook, ByRef retinaWb As Workbook, ByVal popName As String, ByVal typeName As String)
-    Select Case wbType
-    
-        'Combine data for Property workbooks
-        Case wbComboType.PropertyWkbk
-            Select Case typeName
-                Case "Processed WAB Workbook"
-                    Call copyRetinaData(summaryWb, retinaWb, "All Avgs", "AllAvgsTbl", popName & "_All", popName & "_All", retinaID)
-                    Call copyRetinaData(summaryWb, retinaWb, "Burst Avgs", "BurstAvgsTbl", popName & "_WABs", popName & "_WABs", retinaID)
-                    
-                Case "Processed NonWAB Workbook"
-                    Call copyRetinaData(summaryWb, retinaWb, "Burst Avgs", "BurstAvgsTbl", popName & "_NonWABs", popName & "_NonWABs", retinaID)
-            End Select
-            
-        'Combine data for STTC workbooks
-        Case wbComboType.SttcWkbk
-            Select Case typeName
-                Case "Processed WAB Workbook"
-                    Call copyRetinaData(summaryWb, retinaWb, "STTC", "SttcTbl", popName & "_STTC", popName & "_STTC", retinaID)
-            End Select
-            
-    End Select
-End Sub
-
-Private Sub copyRetinaData(ByRef summaryWb As Workbook, ByRef retinaWb As Workbook, _
-                           ByVal fetchSheetName As String, ByVal fetchTableName As String, ByVal outputSheetName As String, ByVal outputTableName As String, _
-                           ByVal retinaID As String)
-    'Set the Range of data to be copied from the retinal workbook
+Private Sub copyTissueData(ByRef tissueWb As Workbook, ByVal fetchName As String, ByVal outputName As String, ByVal tissueID As String)
+    'Set the Range of data to be copied from the tissue workbook
     Dim fetchRng As Range
-    Set fetchRng = retinaWb.Worksheets(fetchSheetName).ListObjects(fetchTableName).DataBodyRange
+    Set fetchRng = tissueWb.Worksheets(fetchName).ListObjects(fetchName).DataBodyRange
     
     'Set the Range to be copied to in the summary workbook
-    Dim outputTbl As ListObject
-    Set outputTbl = summaryWb.Worksheets(outputSheetName).ListObjects(outputTableName)
+    Dim outputTbl As ListObject, outputRng
+    Set outputTbl = combineWb.Worksheets(outputName).ListObjects(outputName)
     outputTbl.ListRows.Add
-    Dim outputRng As Range
     Set outputRng = outputTbl.ListRows(outputTbl.ListRows.Count).Range.Cells(1, 2)
     
-    'Copy the data, and add the provided retinaID to each row
-    fetchRng.Copy Destination:=outputRng
+    'Copy the data, and add the provided tissueID to each row
     Dim idRng As Range
+    fetchRng.Copy Destination:=outputRng
     Set idRng = outputRng.offset(0, -1).Resize(fetchRng.Rows.Count, 1)
-    idRng.value = retinaID
+    idRng.value = tissueID
 
 End Sub
 

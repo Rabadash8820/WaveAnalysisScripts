@@ -91,7 +91,7 @@ Private Sub addAllAvgsSheet(ByVal retinaName As String, ByRef unitNames As Varia
         xlSrcRange, _
         avgsRng.CurrentRegion, , _
         xlYes) _
-    .name = "AllAvgsTbl"
+    .name = ALL_AVGS_SHEET_NAME
     avgsRng.Resize(numUnits, NUM_BKGRD_PROPERTIES).NumberFormat = "0.000"
 End Sub
 
@@ -132,7 +132,7 @@ Private Sub addBurstAvgsSheet(ByVal retinaName As String, ByRef unitNames As Var
         xlSrcRange, _
         avgsRng.CurrentRegion, , _
         xlYes) _
-    .name = "BurstAvgsTbl"
+    .name = BURST_AVGS_SHEET_NAME
     avgsRng.Resize(numUnits, NUM_BURST_PROPERTIES).NumberFormat = "0.000"
 End Sub
 
@@ -183,7 +183,7 @@ Private Sub addSttcSheet(ByVal retinaName As String, ByRef unitNames As Variant)
         xlSrcRange, _
         sttcRng.CurrentRegion, , _
         xlYes) _
-    .name = "SttcTbl"
+    .name = STTC_SHEET_NAME
     sttcRng.offset(0, 2).Resize(numRows, 2).NumberFormat = "0.000"
     
 End Sub
