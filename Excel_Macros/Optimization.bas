@@ -2,25 +2,11 @@ Attribute VB_Name = "Optimization"
 Option Explicit
 Option Private Module
 
-'Local optimization variables
-Dim screenUpdateState As Boolean
-Dim statusBarState As Boolean
-Dim eventState As Boolean
-Dim pageBreakState As Boolean
-Dim calcState As XlCalculation
-
-'Global optimization variables
+'Global variables
 Public programStart As Date
 
-Public Sub setupOptimizations()
-    'Store application state
-    screenUpdateState = Application.ScreenUpdating
-    statusBarState = Application.DisplayStatusBar
-    calcState = Application.Calculation
-    eventState = Application.EnableEvents
-    
+Public Sub setupOptimizations()    
     'Optimize application while macro runs
-    Application.ScreenUpdating = False
     Application.ScreenUpdating = False
     Application.DisplayStatusBar = False
     Application.Calculation = xlCalculationManual
@@ -32,10 +18,10 @@ End Sub
 
 Public Sub tearDownOptimizations()
     'Restore application state
-    Application.ScreenUpdating = screenUpdateState
-    Application.DisplayStatusBar = statusBarState
-    Application.Calculation = calcState
-    Application.EnableEvents = eventState
+    Application.ScreenUpdating = True
+    Application.DisplayStatusBar = True
+    Application.Calculation = xlCalculationAutomatic
+    Application.EnableEvents = True
 End Sub
 
 Public Function ProgramDuration() As Date
