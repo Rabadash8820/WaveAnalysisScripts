@@ -66,9 +66,9 @@ Public NUM_BKGRD_PROPERTIES As Integer
 Public NUM_BURST_PROPERTIES As Integer
 Public PROPERTIES() As String
 Public PROP_UNITS() As String
-Public pops As New Dictionary
-Public wbTypes As Variant
-Public ctrlPop As Population
+Public POPULATIONS As New Dictionary
+Public CTRL_POP As Population
+Public BURST_TYPES As Variant
 
 'OTHER VALUES
 Public Const MAX_EXCEL_ROWS = 1048576
@@ -118,14 +118,14 @@ Public Sub DefinePopulations()
     Set tissueSht = Worksheets(TISSUES_SHT_NAME)
     
     'Get burst types
-    Dim numWbTypes As Integer, t As Integer, wbType As String
+    Dim numBurstTypes As Integer, t As Integer, bType As String
     Set tissueTbl = tissueSht.ListObjects(TISSUES_TBL_NAME)
-    wbTypes = tissueTbl.HeaderRowRange(1, 3).Resize(1, tissueTbl.ListColumns.Count - 2).value
-    numWbTypes = UBound(wbTypes, 2)
-    For t = 1 To numWbTypes
-        wbType = wbTypes(1, t)
-        wbType = Left(wbType, Len(wbType) - Len(" Workbook"))
-        wbTypes(1, t) = wbType
+    BURST_TYPES = tissueTbl.HeaderRowRange(1, 3).Resize(1, tissueTbl.ListColumns.Count - 2).value
+    numBurstTypes = UBound(BURST_TYPES, 2)
+    For t = 1 To numBurstTypes
+        bType = BURST_TYPES(1, t)
+        bType = Left(bType, Len(bType) - Len(" Workbook"))
+        BURST_TYPES(1, t) = bType
     Next t
     
     'Store the population info (or just return if none was provided)
@@ -135,7 +135,7 @@ Public Sub DefinePopulations()
         Exit Sub
     End If
     Dim pop As Population
-    pops.RemoveAll
+    POPULATIONS.RemoveAll
     For Each lsRow In popsTbl.ListRows
         Set pop = New Population
         pop.ID = lsRow.Range(1, popsTbl.ListColumns("Population ID").Index).value
@@ -144,16 +144,16 @@ Public Sub DefinePopulations()
         pop.IsControl = (lsRow.Range(1, popsTbl.ListColumns("Control?").Index).value <> "")
         pop.ForeColor = lsRow.Range(1, popsTbl.ListColumns("Population ID").Index).Font.Color
         pop.BackColor = lsRow.Range(1, popsTbl.ListColumns("Population ID").Index).Interior.Color
-        pops.Add pop.ID, pop
+        POPULATIONS.Add pop.ID, pop
     Next lsRow
     
     'Identify the control population
     Dim numCtrlPops As Integer, p As Integer
     numCtrlPops = 0
-    For p = 0 To pops.Count - 1
-        Set pop = pops.items()(p)
+    For p = 0 To POPULATIONS.Count - 1
+        Set pop = POPULATIONS.items()(p)
         If pop.IsControl Then
-            Set ctrlPop = pop
+            Set CTRL_POP = pop
             numCtrlPops = numCtrlPops + 1
         End If
     Next p
@@ -176,12 +176,12 @@ Public Sub DefinePopulations()
         Set tiss = New Tissue
         tiss.ID = lsRow.Range(1, tissueTbl.ListColumns("Tissue ID").Index).value
         popID = lsRow.Range(1, tissueTbl.ListColumns("Population ID").Index).value
-        Set tiss.Population = pops(popID)
-        For t = 1 To numWbTypes
-            wbPath = lsRow.Range(1, tissueTbl.ListColumns(wbTypes(1, t) & " Workbook").Index).value
-            tiss.WorkbookPaths.Add wbTypes(1, t), wbPath
+        Set tiss.Population = POPULATIONS(popID)
+        For t = 1 To numBurstTypes
+            wbPath = lsRow.Range(1, tissueTbl.ListColumns(BURST_TYPES(1, t) & " Workbook").Index).value
+            tiss.WorkbookPaths.Add BURST_TYPES(1, t), wbPath
         Next t
-        pops(popID).Tissues.Add tiss
+        POPULATIONS(popID).Tissues.Add tiss
     Next lsRow
 
 End Sub

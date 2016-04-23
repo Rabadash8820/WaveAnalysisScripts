@@ -6,7 +6,7 @@ Option Explicit
 Private maxBursts As Integer
 Private unitNames As Variant
 
-Public Sub processRetinalWorkbook(ByVal wbName As String, ByRef numRecordings As Integer)
+Public Sub processTissueWorkbook(ByVal wbName As String, ByRef numRecordings As Integer)
     Dim rec As Integer, u As Integer
     
     'Make sure the property strings and constants are initialized
@@ -39,11 +39,11 @@ Public Sub processRetinalWorkbook(ByVal wbName As String, ByRef numRecordings As
     unitNames = Application.Transpose(wksht.Cells(1, 1).Resize(1, numUnits))
     
     'Add output sheets
-    Call addAllAvgsSheet(wb.name, unitNames)
-    Call addBurstAvgsSheet(wb.name, unitNames)
-    Call addSttcSheet(wb.name, unitNames)
+    Call addAllAvgsSheet(unitNames)
+    Call addBurstAvgsSheet(unitNames)
+    Call addSttcSheet(unitNames)
     
-    'Process each recording for this retina (represented as separate sheets)
+    'Process each recording for this tissue (represented as separate sheets)
     Dim recRow As ListRow, recName As String
     Dim startT As Double, endT As Double
     For Each recRow In summaryTbl.ListRows
@@ -62,7 +62,7 @@ ExitSub:
     Call tearDownOptimizations
 End Sub
 
-Private Sub addAllAvgsSheet(ByVal retinaName As String, ByRef unitNames As Variant)
+Private Sub addAllAvgsSheet(ByRef unitNames As Variant)
     Dim zeroes() As Variant
     Dim u, p As Integer
     
@@ -104,7 +104,7 @@ Private Sub addAllAvgsSheet(ByVal retinaName As String, ByRef unitNames As Varia
     avgsRng.Resize(numUnits, NUM_BKGRD_PROPERTIES).NumberFormat = "0.000"
 End Sub
 
-Private Sub addBurstAvgsSheet(ByVal retinaName As String, ByRef unitNames As Variant)
+Private Sub addBurstAvgsSheet(ByRef unitNames As Variant)
     Dim zeroes() As Variant
     Dim u, p As Integer
     
@@ -145,7 +145,7 @@ Private Sub addBurstAvgsSheet(ByVal retinaName As String, ByRef unitNames As Var
     avgsRng.Resize(numUnits, NUM_BURST_PROPERTIES).NumberFormat = "0.000"
 End Sub
 
-Private Sub addSttcSheet(ByVal retinaName As String, ByRef unitNames As Variant)
+Private Sub addSttcSheet(ByRef unitNames As Variant)
     Dim initial() As Variant
     Dim u, p As Integer
     

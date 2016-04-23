@@ -1,15 +1,13 @@
 Attribute VB_Name = "InvalidUnits"
 Option Explicit
 
-Const NUM_NONPOP_SHEETS = 3
+Const NUM_NONPOP_SHEETS = 4
 Const BURST_DUR_COL = 3
 Const MARK_STYLE = "Bad"
 Const NORMAL_STYLE = "Normal"
 
 Dim invalids As Variant
 Dim markBurstDurUnits As Boolean, deleteAlso As Boolean, keepOpen As Boolean
-
-'THE DATA VALIDATION WORKSHEET SHOULD LIST UNITS THAT WILL BE *MARKED FOR REMOVAL*
 
 Public Sub markInvalidUnits()
     Call setupOptimizations
@@ -42,19 +40,20 @@ Public Sub markInvalidUnits()
     'Let the user pick the workbook in which to mark invalid units
     Dim wbName As String, sttcWbName As String
     wbName = PickWorkbook("Select the Summary workbook in which to mark invalid units")
-
-    'Open this workbook and mark any invalid units therein
     If wbName = "" Then
         result = MsgBox("No workbook selected.", vbOKOnly)
         GoTo ExitSub
-    Else
-        Dim wb As Workbook, numMarkedUnits As Long
-        numMarkedUnits = 0
-        Set wb = Workbooks.Open(wbName)
-        Call markDataOnWbType(wb, wbComboType.PropertyWkbk, numMarkedUnits)
-        Set wb = Workbooks.Open(wbName)
-        Call markDataOnWbType(wb, wbComboType.SttcWkbk, numMarkedUnits)
     End If
+    
+    'Open this workbook and mark any invalid units therein
+    Dim wb As Workbook, numMarkedUnits As Long
+    numMarkedUnits = 0
+    Set wb = Workbooks.Open(wbName)
+    Call resetRanges
+    Call markPropWbData(wb, numMarkedUnits)
+    If markBurstDurUnits Then _
+        Call markZeroBurstDurUnits(wb)
+    Call markSttcWbData(wb, numMarkedUnits)
     
     'Warn user to remove zero property values also
     Dim markedStr As String, msg As String
@@ -70,51 +69,34 @@ ExitSub:
     Call tearDownOptimizations
 End Sub
 
-Private Sub markDataOnWbType(ByRef wkbk As Workbook, ByVal wbType As wbComboType, ByRef numMarkedUnits As Long)
-    Call resetRanges
-            
-    Select Case wbType
-        'If we're marking a Properties workbook...
-        'These workbooks have the option to also mark units with zero burst duration
-        Case wbComboType.PropertyWkbk
-            Call markPropWbData(wkbk, numMarkedUnits)
-            If markBurstDurUnits Then _
-                Call markZeroBurstDurUnits(wkbk)
-        
-        'If we're marking an STTC workbook...
-        Case wbComboType.SttcWkbk
-            Call markSttcWbData(wkbk, numMarkedUnits)
-        
-    End Select
-End Sub
-
 Private Sub markPropWbData(ByRef wkbk As Workbook, ByRef numMarkedUnits As Long)
     'For each invalid unit...
     'Find the data sheets that match its population name,
-    'Find the table rows on those sheets that match its retina and Unit IDs,
-    'And mark that row with a noticeable style, or delete it if requested
+    'Find the table rows on those sheets that match its tissue and Unit IDs,
+    'And mark that row with a noticeable style, or delete them if requested
     Dim numPops As Integer
     numPops = Worksheets.Count - NUM_NONPOP_SHEETS
     Dim i As Long, lr As Long, sh As Integer, sht As Worksheet
     Dim marked As Boolean
-    Dim popName As String, retinaID As String, unitID As String
+    Dim pop As Population, tissueID As String, unitID As String
     Dim shtMatches As Boolean, rowMatches As Boolean
     Dim lsRows As ListRows, lsRng As Range
     Dim numInvalids As Integer
     numInvalids = UBound(invalids, 1)
     For i = 1 To numInvalids
-        popName = invalids(i, 1)
-        retinaID = invalids(i, 2)
-        unitID = invalids(i, 3)
         marked = False
+        Set pop = POPULATIONS(invalids(i, 1))
+        tissueID = invalids(i, 2)
+        unitID = invalids(i, 3)
+        
         For sh = 1 To numPops
             Set sht = Worksheets(NUM_NONPOP_SHEETS + sh)
-            shtMatches = (InStr(1, sht.name, popName) <> 0)
+            shtMatches = (InStr(1, sht.name, pop.name) <> 0) And (InStr(1, sht.name, "STTC") = 0)
             If shtMatches Then
                 Set lsRows = sht.ListObjects(sht.name).ListRows
                 For lr = 1 To lsRows.Count
                     Set lsRng = lsRows(lr).Range
-                    rowMatches = lsRng.Cells(1, 1).value = retinaID And lsRng.Cells(1, 2).value = unitID
+                    rowMatches = lsRng.Cells(1, 1).value = tissueID And lsRng.Cells(1, 2).value = unitID
                     If rowMatches Then
                         Call markUnit(lsRows(lr))
                         marked = True
@@ -123,6 +105,7 @@ Private Sub markPropWbData(ByRef wkbk As Workbook, ByRef numMarkedUnits As Long)
                 Next lr
             End If
         Next sh
+        
         If marked Then _
             numMarkedUnits = numMarkedUnits + 1
     Next i
@@ -130,44 +113,40 @@ End Sub
 
 Private Sub markSttcWbData(ByRef wkbk As Workbook, ByRef numMarkedUnits As Long)
     'For each invalid unit...
-    'Find the _STTC sheets that match its population name,
-    'Find the table rows on those sheets that match its retina and Unit IDs,
-    'And mark those rows with a noticeable style, or delete it (if requested)
+    'Find the STTC sheet that matches its population name,
+    'Find the table rows on those sheets that match its tissue and Unit IDs,
+    'And mark those rows with a noticeable style, or delete them if requested
     Dim numPops As Integer
     numPops = Worksheets.Count - NUM_NONPOP_SHEETS
-    Dim i As Long, lr As Long, currRow As Long, sh As Integer, sht As Worksheet
+    Dim i As Long, lr As Long, currRow As Long, sht As Worksheet
     Dim marked As Boolean
-    Dim popName As String, retinaID As String, unitID As String
-    Dim shtMatches As Boolean, rowMatches As Boolean
-    Dim lsRows As ListRows, lsRng As Range
+    Dim pop As Population, tissueID As String, unitID As String
+    Dim rowMatches As Boolean, lsRows As ListRows, lsRng As Range
     Dim numInvalids As Integer
     numInvalids = UBound(invalids, 1)
     For i = 1 To numInvalids
-        popName = invalids(i, 1)
-        retinaID = invalids(i, 2)
-        unitID = invalids(i, 3)
         marked = False
-        For sh = 1 To numPops
-            Set sht = Worksheets(NUM_NONPOP_SHEETS + sh)
-            shtMatches = (InStr(1, sht.name, popName) <> 0)
-            If shtMatches Then
-                currRow = 1
-                Set lsRows = sht.ListObjects(sht.name).ListRows
-                For lr = 1 To lsRows.Count
-                    Set lsRng = lsRows(currRow).Range
-                    rowMatches = (lsRng.Cells(1, 1).value = retinaID And _
-                                 (lsRng.Cells(1, 2).value = unitID Or lsRng.Cells(1, 3).value = unitID))
-                    If rowMatches Then
-                        Call markUnit(lsRows(currRow))
-                        marked = True
-                        If Not deleteAlso Then _
-                            currRow = currRow + 1
-                    Else
-                        currRow = currRow + 1
-                    End If
-                Next lr
+        Set pop = POPULATIONS(invalids(i, 1))
+        tissueID = invalids(i, 2)
+        unitID = invalids(i, 3)
+        
+        Set sht = Worksheets(pop.name & "_STTC")
+        currRow = 1
+        Set lsRows = sht.ListObjects(sht.name).ListRows
+        For lr = 1 To lsRows.Count
+            Set lsRng = lsRows(currRow).Range
+            rowMatches = (lsRng.Cells(1, 1).value = tissueID And _
+                         (lsRng.Cells(1, 2).value = unitID Or lsRng.Cells(1, 3).value = unitID))
+            If rowMatches Then
+                Call markUnit(lsRows(currRow))
+                marked = True
+                If Not deleteAlso Then _
+                    currRow = currRow + 1
+            Else
+                currRow = currRow + 1
             End If
-        Next sh
+        Next lr
+        
         If marked Then _
             numMarkedUnits = numMarkedUnits + 1
     Next i
@@ -209,26 +188,20 @@ End Sub
 
 Private Sub resetRanges()
     'Clear any old mark styles
-    Dim numPops As Integer
+    Dim numPops As Integer, sh As Integer, sht As Worksheet, lsRng As Range
     numPops = Worksheets.Count - NUM_NONPOP_SHEETS
-    Dim sh As Integer, sht As Worksheet
-    Dim lsRng As Range
     For sh = 1 To numPops
         Set sht = Worksheets(NUM_NONPOP_SHEETS + sh)
         Set lsRng = sht.ListObjects(sht.name).DataBodyRange
-        Call resetRange(lsRng)
+        With lsRng
+            .Style = NORMAL_STYLE
+            .VerticalAlignment = xlCenter
+            .HorizontalAlignment = xlCenter
+        End With
     Next sh
 End Sub
 
-Private Sub resetRange(ByRef rng As Range)
-    rng.Style = NORMAL_STYLE
-    rng.VerticalAlignment = xlCenter
-    rng.HorizontalAlignment = xlCenter
-End Sub
-
 Private Sub markUnit(ByRef lsRow As ListRow)
-'   Debug.Print ("Marking <" & popName & ", " & retinaID & ", " & unitID & "> on sheet " & sht.Name)
-
     If deleteAlso Then
         lsRow.Delete
     Else

@@ -9,20 +9,19 @@ Private folderContents As New Dictionary
 
 Public Sub ProcessExistingWorkbook()
     Dim result As VbMsgBoxResult
-    Dim retinaWb As Workbook
     Dim unitNames As Variant
     Dim numRecs As Integer
     
     'Let the user pick the workbook to analyze
     Dim wbName As String
-    wbName = PickWorkbook("Select an existing retinal summary workbook")
+    wbName = PickWorkbook("Select an existing tissue summary workbook")
     If wbName = "" Then
         result = MsgBox("No workbook selected.", vbOKOnly)
         Exit Sub
     End If
     
     'Process the selected workbook (it will be left open)
-    Call processRetinalWorkbook(wbName, numRecs)
+    Call processTissueWorkbook(wbName, numRecs)
             
     'Display log information (time taken and how many sheets were processed)
     Dim log As New LogForm
@@ -83,7 +82,7 @@ Private Sub processDir(ByRef dir As Folder, ByVal pathAbove As String, ByRef num
             tempNumFiles = tempNumFiles + 1
             
             'Record how many recordings in this workbook were analyzed
-            Call processRetinalWorkbook(wkbk.path, numRecs)
+            Call processTissueWorkbook(wkbk.path, numRecs)
             folderContents.Add pathAbove & "\" & wkbk.name, numRecs
 
             'Save/close the workbook

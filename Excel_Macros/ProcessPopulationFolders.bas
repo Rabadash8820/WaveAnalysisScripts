@@ -10,10 +10,10 @@ Private Const TIME_COL = 5
 
 Public Sub ProcessPopulationFolders()
     Dim dialog As FileDialog
-    Dim rootFolder, popFolder, retFolder As Folder
+    Dim rootFolder, popFolder, tissFolder As Folder
     Dim recording As File
     Dim result As VbMsgBoxResult
-    Dim retinaWb As Workbook
+    Dim tissueWb As Workbook
     Dim wbName As String
     Dim numFiles As Integer
     Dim tempStr As String
@@ -39,28 +39,28 @@ Public Sub ProcessPopulationFolders()
     Dim folderContents As New Dictionary
     For Each popFolder In rootFolder.SubFolders
     
-        'For each retinal folder in this population folder
-        For Each retFolder In popFolder.SubFolders
+        'For each tissue folder in this population folder
+        For Each tissFolder In popFolder.SubFolders
                 
-            'Initialize a new summary workbook for this retina
-            Set retinaWb = Workbooks.Add
+            'Initialize a new summary workbook for this tissue
+            Set tissueWb = Workbooks.Add
                         
             'Add each text file to the Contents sheet and load them on a new sheet
             Call addContentsSheet
             numFiles = 0
-            For Each recording In retFolder.Files
+            For Each recording In tissFolder.Files
                 If recording.Type = "TXT File" Or recording.Type = "Text Document" Then
                     numFiles = numFiles + 1
                     Call openFile(recording, numFiles)
                 End If
             Next recording
-            folderContents.Add retFolder.path, numFiles
+            folderContents.Add tissFolder.path, numFiles
             
             'If no files were found, just display a message and return
             If numFiles = 0 Then
                 result = MsgBox("No files found to process.", vbOKOnly, "Routine complete")
                 Application.DisplayAlerts = False
-                retinaWb.Close
+                tissueWb.Close
                 Application.DisplayAlerts = True
                 GoTo ExitSub
             End If
@@ -73,14 +73,14 @@ Public Sub ProcessPopulationFolders()
                 .Rows.EntireRow.AutoFit
             End With
 
-            'Save the workbook as popFolderPath\retFolderName.xlsx (overwriting any previous one)
-            wbName = popFolder.path & "\" & retFolder.name
+            'Save the workbook as popFolderPath\tissFolderName.xlsx (overwriting any previous one)
+            wbName = popFolder.path & "\" & tissFolder.name
             Application.DisplayAlerts = False
-            retinaWb.SaveAs fileName:=wbName, FileFormat:=xlOpenXMLWorkbook, ConflictResolution:=Excel.XlSaveConflictResolution.xlLocalSessionChanges
-            retinaWb.Close
+            tissueWb.SaveAs fileName:=wbName, FileFormat:=xlOpenXMLWorkbook, ConflictResolution:=Excel.XlSaveConflictResolution.xlLocalSessionChanges
+            tissueWb.Close
             Application.DisplayAlerts = True
             
-        Next retFolder
+        Next tissFolder
         
     Next popFolder
     
