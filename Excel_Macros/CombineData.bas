@@ -1,7 +1,7 @@
 Attribute VB_Name = "CombineData"
 Option Explicit
 
-Private Const NUM_CONTENTS_COLS = 4
+Private Const NUM_CONTENTS_COLS = 5
 
 Dim keepOpen As Boolean, dataPaired As Boolean
 Dim numAllTissues As Integer
@@ -16,10 +16,10 @@ Public Sub CombineData()
     
     'Initialize some variables
     Dim combineSht As Worksheet, popsSht As Worksheet, tissueSht As Worksheet, tissueTbl As ListObject
-    Set combineSht = ThisWorkbook.Worksheets(COMBINE_SHT_NAME)
-    Set popsSht = ThisWorkbook.Worksheets(POPS_SHT_NAME)
-    Set tissueSht = ThisWorkbook.Worksheets(TISSUES_SHT_NAME)
-    Set tissueTbl = tissueSht.ListObjects(TISSUES_TBL_NAME)
+    Set combineSht = ThisWorkbook.Worksheets(COMBINE_NAME)
+    Set popsSht = ThisWorkbook.Worksheets(POPS_NAME)
+    Set tissueSht = ThisWorkbook.Worksheets(TISSUES_NAME)
+    Set tissueTbl = tissueSht.ListObjects(TISSUES_NAME)
     numAllTissues = tissueTbl.ListRows.Count
     
     'Get some user options from the Form Controls within the workbook
@@ -31,6 +31,10 @@ Public Sub CombineData()
     Dim numGoodTissues As Integer
     numGoodTissues = 0
     Call combineIntoWb(numGoodTissues)
+
+    'Save/close the workbook if the user doesn't want to keep it open
+    If Not keepOpen Then _
+        Call combineWb.Close(True)
     
     'Display a succeessful completion dialog
     Dim combineMsg As String, result As VbMsgBoxResult
@@ -50,7 +54,7 @@ Private Function buildComboWorkbook() As Workbook
     
     'Build Contents and Stats sheets
     Call buildContentsSheet
-    Worksheets.Add After:=Worksheets(CONTENTS_SHT_NAME)
+    Worksheets.Add After:=Worksheets(CONTENTS_NAME)
     Call buildStatsSheet
     
     'Store base property names
@@ -78,7 +82,7 @@ Private Function buildComboWorkbook() As Workbook
     
     'Build data sheets (one per workbook type per experimental population)
     Dim popV As Variant, pop As Population, bType As Integer
-    For Each popV In POPULATIONS.items
+    For Each popV In POPULATIONS.Items
         Set pop = popV
         Worksheets.Add After:=Worksheets(Worksheets.Count)
         Call buildSttcDataSheet(pop, sttcHeaders)
@@ -91,9 +95,9 @@ Private Function buildComboWorkbook() As Workbook
     Next popV
 
     'Build Figures sheets (must be built last so that table references are valid)
-    Worksheets.Add After:=Worksheets(STATS_SHT_NAME)
+    Worksheets.Add After:=Worksheets(STATS_NAME)
     Call buildPropFiguresSheet
-    Worksheets.Add After:=Worksheets(PROPFIGS_SHT_NAME)
+    Worksheets.Add After:=Worksheets(PROPERTIES_NAME)
     Call buildSttcFiguresSheet
 
     
@@ -110,11 +114,11 @@ Private Sub buildContentsSheet()
     numBurstTypes = UBound(BURST_TYPES, 2)
         
     'Build the Contents sheet
-    ActiveSheet.name = CONTENTS_SHT_NAME
+    ActiveSheet.name = CONTENTS_NAME
         
     'Create the contents table on the Contents sheet
     Set tbl = ActiveSheet.ListObjects.Add(xlSrcRange, Range("A1"), , xlYes)
-    tbl.name = CONTENTS_TBL_NAME
+    tbl.name = CONTENTS_NAME
     
     'Add its columns
     For col = 1 To NUM_CONTENTS_COLS - 1
@@ -122,25 +126,29 @@ Private Sub buildContentsSheet()
     Next col
     ReDim headers(1 To 1, 1 To NUM_CONTENTS_COLS)
     headers(1, 1) = "Tissue ID"
-    headers(1, 2) = "Population ID"
+    headers(1, 2) = "Tissue ID On Sheets"
+    headers(1, 3) = "Population ID"
     For t = 1 To numBurstTypes
-        headers(1, 2 + t) = BURST_TYPES(1, t) & " Workbook"
+        headers(1, 3 + t) = BURST_TYPES(1, t) & " Workbook"
     Next t
     tbl.HeaderRowRange.value = headers
     
     'Copy data to its DataBodyRange
-    Dim contents As Variant, popV As Variant, pop As Population, tiss As Tissue
+    Dim contents As Variant, popV As Variant, pop As Population, tiss As Tissue, tIndex As Integer
     ReDim contents(1 To numAllTissues, 1 To NUM_CONTENTS_COLS)
     row = 0
-    For Each popV In POPULATIONS.items
+    For Each popV In POPULATIONS.Items
         Set pop = popV
+        tIndex = 0
         For Each tiss In pop.Tissues
+            tIndex = tIndex + 1
             row = row + 1
             tbl.ListRows.Add
             contents(row, 1) = tiss.ID
-            contents(row, 2) = pop.ID
+            contents(row, 2) = tIndex
+            contents(row, 3) = pop.ID
             For t = 1 To numBurstTypes
-                contents(row, 2 + t) = tiss.WorkbookPaths(BURST_TYPES(1, t))
+                contents(row, 3 + t) = tiss.WorkbookPaths(BURST_TYPES(1, t))
             Next t
         Next tiss
     Next popV
@@ -158,6 +166,7 @@ Private Sub buildContentsSheet()
     Cells.HorizontalAlignment = xlLeft
     tbl.ListColumns(1).DataBodyRange.HorizontalAlignment = xlCenter
     tbl.ListColumns(2).DataBodyRange.HorizontalAlignment = xlCenter
+    tbl.ListColumns(3).DataBodyRange.HorizontalAlignment = xlCenter
 
 End Sub
 
@@ -171,11 +180,11 @@ Private Sub buildStatsSheet()
     numBurstTypes = UBound(BURST_TYPES, 2)
     
     'Build the Stats sheet
-    ActiveSheet.name = STATS_SHT_NAME
+    ActiveSheet.name = STATS_NAME
         
     'Create the contents table on the Contents sheet
     Set tbl = ActiveSheet.ListObjects.Add(xlSrcRange, Range("A1"), , xlYes)
-    tbl.name = STATS_TBL_NAME
+    tbl.name = STATS_NAME
     
     'Add its columns
     numCols = 3
@@ -338,25 +347,22 @@ Private Sub buildPropFiguresSheet()
     Set cornerCell = Cells(2, 1)
     
     'Build the Figures sheet
-    ActiveSheet.name = PROPFIGS_SHT_NAME
+    ActiveSheet.name = PROPERTIES_NAME
 
     'Store column headers
     Dim rOffset As Integer, cOffset As Integer
     numRows = 1 + NUM_BKGRD_PROPERTIES + numBurstTypes * NUM_BURST_PROPERTIES
-    numCols = 1 + 7 * POPULATIONS.Count
+    numCols = 1 + 4 * POPULATIONS.Count
     ReDim data(1 To numRows, 1 To numCols)
     data(1, 1) = "Property"
     Dim pop As Population
     For p = 0 To POPULATIONS.Count - 1
-        Set pop = POPULATIONS.items()(p)
+        Set pop = POPULATIONS.Items()(p)
         cOffset = 1 + 4 * p + 1
         data(1, cOffset + 0) = pop.Abbreviation & "_Avg"
         data(1, cOffset + 1) = pop.Abbreviation & "_SEM"
         data(1, cOffset + 2) = pop.Abbreviation & "_%Change"
         data(1, cOffset + 3) = pop.Abbreviation & "_%Change_SEM"
-        data(1, 1 + 4 * POPULATIONS.Count + 3 * p + 1) = pop.Abbreviation & "_Avg"
-        data(1, 1 + 4 * POPULATIONS.Count + 3 * p + 2) = pop.Abbreviation & "_%Change"
-        data(1, 1 + 4 * POPULATIONS.Count + 3 * p + 3) = pop.Abbreviation & "_pValue"
     Next p
     cOffset = 1 + 5 * POPULATIONS.Count + 1
 
@@ -408,17 +414,12 @@ Private Sub buildPropFiguresSheet()
         rOffset = NUM_BKGRD_PROPERTIES + t * NUM_BURST_PROPERTIES
         cornerCell.offset(rOffset, 0).Resize(1, numCols).Borders(xlEdgeBottom).Weight = xlThin
     Next t
-    cornerCell.offset(0, 1).Resize(1, 4).Interior.Color = POPULATIONS.items()(0).BackColor
-    cornerCell.offset(0, 1).Resize(1, 4).Font.Color = POPULATIONS.items()(0).ForeColor
-    cornerCell.offset(0, 4 * POPULATIONS.Count + 1).Resize(1, 3).Interior.Color = POPULATIONS.items()(0).BackColor
-    cornerCell.offset(0, 4 * POPULATIONS.Count + 1).Resize(1, 3).Font.Color = POPULATIONS.items()(0).ForeColor
+    cornerCell.offset(0, 1).Resize(1, 4).Interior.Color = POPULATIONS.Items()(0).BackColor
+    cornerCell.offset(0, 1).Resize(1, 4).Font.Color = POPULATIONS.Items()(0).ForeColor
     For p = 1 To POPULATIONS.Count - 1
-        cornerCell.offset(0, 4 * p + 1).Resize(1, 4).Interior.Color = POPULATIONS.items()(p).BackColor
-        cornerCell.offset(0, 4 * p + 1).Resize(1, 4).Font.Color = POPULATIONS.items()(p).ForeColor
-        cornerCell.offset(0, 4 * POPULATIONS.Count + 3 * p + 1).Resize(1, 3).Interior.Color = POPULATIONS.items()(p).BackColor
-        cornerCell.offset(0, 4 * POPULATIONS.Count + 3 * p + 1).Resize(1, 3).Font.Color = POPULATIONS.items()(p).ForeColor
+        cornerCell.offset(0, 4 * p + 1).Resize(1, 4).Interior.Color = POPULATIONS.Items()(p).BackColor
+        cornerCell.offset(0, 4 * p + 1).Resize(1, 4).Font.Color = POPULATIONS.Items()(p).ForeColor
         cornerCell.offset(0, 4 * p).Resize(numRows, 1).Borders(xlEdgeRight).Weight = xlThin
-        cornerCell.offset(0, 4 * POPULATIONS.Count + 3 * p).Resize(numRows, 1).Borders(xlEdgeRight).Weight = xlThin
     Next p
     cornerCell.Resize(1, numCols).Font.Bold = True
     cornerCell.Resize(numRows, 1).Font.Bold = True
@@ -428,7 +429,7 @@ Private Sub buildPropFiguresSheet()
 
     'Determine the max number of Tissues in any Population
     Dim maxTissues As Integer, popV As Variant
-    For Each popV In POPULATIONS.items
+    For Each popV In POPULATIONS.Items
         Set pop = popV
         maxTissues = WorksheetFunction.Max(maxTissues, pop.Tissues.Count)
     Next popV
@@ -492,7 +493,7 @@ Private Sub buildPropFiguresSheet()
         Dim errorRng As Range, numSeries As Integer
         numSeries = 0
         For p = 0 To POPULATIONS.Count - 1
-            Set pop = POPULATIONS.items()(p)
+            Set pop = POPULATIONS.Items()(p)
             If pop.ID <> CTRL_POP.ID Then
                 numSeries = numSeries + 1
                 .SeriesCollection.Add Source:=cornerCell.offset(0, 4 * p + 3).Resize(numRows, 1)
@@ -550,7 +551,7 @@ Private Sub buildPropFiguresSheet()
         'Formats the Chart's Series
         numSeries = 0
         For p = 0 To POPULATIONS.Count - 1
-            Set pop = POPULATIONS.items()(p)
+            Set pop = POPULATIONS.Items()(p)
             If pop.ID <> CTRL_POP.ID Then
                 numSeries = numSeries + 1
                 With .FullSeriesCollection(numSeries)
@@ -598,7 +599,6 @@ Private Sub buildPropFiguresSheet()
     Rows.AutoFit
     cornerCell.offset(-1, 0).Resize(1, numRows - 1).value = chartTitles
     Rows(cornerCell.row - 1).Hidden = True
-    Range(Columns(2), Columns(4 * POPULATIONS.Count + 1)).Hidden = True
 
 End Sub
 
@@ -611,7 +611,7 @@ Private Sub buildSttcFiguresSheet()
     numBurstTypes = UBound(BURST_TYPES, 2)
 
     'Build the Figures sheet
-    ActiveSheet.name = STTCFIGS_SHT_NAME
+    ActiveSheet.name = STTC_NAME
 
     'Store named distances
     Dim cornerCell As Range
@@ -632,14 +632,14 @@ Private Sub buildSttcFiguresSheet()
     numChartCols = 10
     numSpaceRows = 5
     Set tbl = ActiveSheet.ListObjects.Add(xlSrcRange, cornerCell.offset(numChartRows + numSpaceRows, 0), , xlYes)
-    tbl.name = STTC_TBL_NAME
+    tbl.name = STTC_NAME
     
     'Add its columns
     Dim pop As Population, tiss As Tissue
     numCols = 2
     tbl.ListColumns.Add
     For p = 0 To POPULATIONS.Count - 1
-        Set pop = POPULATIONS.items()(p)
+        Set pop = POPULATIONS.Items()(p)
         tbl.ListColumns.Add     'For mean
         tbl.ListColumns.Add     'For SEM
         numCols = numCols + 2
@@ -653,13 +653,13 @@ Private Sub buildSttcFiguresSheet()
     headers(1, 2) = "Real Distance"
     col = 2
     For p = 0 To POPULATIONS.Count - 1
-        Set pop = POPULATIONS.items()(p)
+        Set pop = POPULATIONS.Items()(p)
         headers(1, col + 1) = pop.Abbreviation & "_Avg"
         headers(1, col + 2) = pop.Abbreviation & "_SEM"
         col = col + 2
         For t = 0 To pop.Tissues.Count - 1
             Set tiss = pop.Tissues.Item(t + 1)
-            headers(1, col + 1) = pop.Abbreviation & "_" & tiss.ID
+            headers(1, col + 1) = pop.Abbreviation & "_" & CStr(t + 1)
             col = col + 1
         Next t
     Next p
@@ -688,20 +688,18 @@ Private Sub buildSttcFiguresSheet()
     End With
     
     'Add formulas to the remaining rows/columns
-    Dim firstTiss As Tissue, lastTiss As Tissue, popRngStr As String, popSttcTblStr As String
+    Dim popRngStr As String, popSttcTblStr As String
     numCols = 2
     tbl.ListColumns(2).DataBodyRange.Formula = "=IF(InterElectrodeDist*[@Unit Distance]<=IgnoreDist,InterElectrodeDist*[@[Unit Distance]],NA())"
     For p = 0 To POPULATIONS.Count - 1
-        Set pop = POPULATIONS.items()(p)
-        Set firstTiss = pop.Tissues(1)
-        Set lastTiss = pop.Tissues(pop.Tissues.Count)
-        popRngStr = STTC_TBL_NAME & "[@[" & pop.Abbreviation & "_" & firstTiss.ID & "]:[" & pop.Abbreviation & "_" & lastTiss.ID & "]]"
+        Set pop = POPULATIONS.Items()(p)
+        popRngStr = STTC_NAME & "[@[" & pop.Abbreviation & "_1]:[" & pop.Abbreviation & "_" & pop.Tissues.Count & "]]"
         tbl.ListColumns(numCols + 1).DataBodyRange.Formula = "=AVERAGE(" & popRngStr & ")"
         tbl.ListColumns(numCols + 2).DataBodyRange.Formula = "=STDEV.S(" & popRngStr & ")/SQRT(COUNT(" & popRngStr & "))"
         For t = 1 To pop.Tissues.Count
             Set tiss = pop.Tissues.Item(t)
             popSttcTblStr = pop.name & "_STTC"
-            tbl.ListColumns(numCols + 2 + t).DataBodyRange.Formula = "=AVERAGEIFS(" & popSttcTblStr & "[STTC]," & popSttcTblStr & "[Tissue],""" & tiss.ID & """," & popSttcTblStr & "[Unit Distance],[@Unit Distance])"
+            tbl.ListColumns(numCols + 2 + t).DataBodyRange.Formula = "=AVERAGEIFS(" & popSttcTblStr & "[STTC]," & popSttcTblStr & "[Tissue],""" & t & """," & popSttcTblStr & "[Unit Distance],[@Unit Distance])"
         Next t
         numCols = numCols + 2 + pop.Tissues.Count
     Next p
@@ -720,7 +718,7 @@ Private Sub buildSttcFiguresSheet()
     tbl.DataBodyRange.NumberFormat = "0.000"
     numCols = 3
     For p = 0 To POPULATIONS.Count - 1
-        Set pop = POPULATIONS.items(p)
+        Set pop = POPULATIONS.Items(p)
         tbl.ListColumns(numCols).Range.Borders(xlEdgeLeft).Weight = xlMedium
         tbl.ListColumns(numCols + 2).Range.Borders(xlEdgeLeft).Weight = xlThin
         numCols = numCols + pop.Tissues.Count + 2
@@ -750,7 +748,7 @@ Private Sub buildSttcFiguresSheet()
         numSeries = 0
         numCols = 2
         For p = 0 To POPULATIONS.Count - 1
-            Set pop = POPULATIONS.items()(p)
+            Set pop = POPULATIONS.Items()(p)
             numSeries = numSeries + 1
             .SeriesCollection.Add Source:=tbl.ListColumns(numCols + 1).DataBodyRange
             .SeriesCollection(numSeries).name = pop.name
@@ -813,16 +811,17 @@ Private Sub buildSttcFiguresSheet()
 
         'Formats the Chart's Series
         For p = 0 To POPULATIONS.Count - 1
-            Set pop = POPULATIONS.items()(p)
+            Set pop = POPULATIONS.Items()(p)
             With .FullSeriesCollection(p + 1)
                 .Trendlines.Add Type:=xlPolynomial, Order:=3, name:=""
                 .Trendlines(1).Format.Line.DashStyle = msoLineDash
                 .Trendlines(1).Format.Line.ForeColor.RGB = pop.BackColor
+                .Trendlines(1).Format.Line.Weight = 1.5
                 .MarkerStyle = xlMarkerStyleCircle
                 .MarkerSize = 7
                 .MarkerBackgroundColor = pop.BackColor
                 .MarkerForegroundColor = vbBlack
-                .Format.Line.Weight = 1.5
+                .Format.Line.Visible = False
                 .ErrorBars.Format.Line.ForeColor.RGB = vbBlack
                 .ErrorBars.Format.Line.Weight = 2
             End With
@@ -860,7 +859,7 @@ Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, 
     Dim numPopCols As Integer
     numPopCols = 2
     For p = 0 To POPULATIONS.Count - 1
-        Set pop = POPULATIONS.items()(p)
+        Set pop = POPULATIONS.Items()(p)
         cOffset = 1 + p * numPopCols
         headers(1, cOffset + 1) = pop.Abbreviation & "_Avg"
         headers(1, cOffset + 2) = pop.Abbreviation & "_%Change"
@@ -873,7 +872,7 @@ Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, 
     'Identify the control population's data range
     Dim ctrlRng As Range
     For p = 0 To POPULATIONS.Count - 1
-        Set pop = POPULATIONS.items()(p)
+        Set pop = POPULATIONS.Items()(p)
         If pop.ID = CTRL_POP.ID Then
             cOffset = numPopCols * p
             Set ctrlRng = cornerCell.offset(3, cOffset + 1).Resize(maxTissues, 1)
@@ -886,7 +885,7 @@ Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, 
     For t = 1 To maxTissues
         cornerCell.offset(2 + t, 0).value = t
         For p = 0 To POPULATIONS.Count - 1
-            Set pop = POPULATIONS.items()(p)
+            Set pop = POPULATIONS.Items()(p)
             Set tissueCell = cornerCell.offset(2 + t, p * numPopCols + 1)
             ctrlValueStr = IIf(dataPaired, ctrlRng.Cells(t, 1).Address, "AVERAGE(" & ctrlRng.Address & ")")
             tissueCell.Formula = "=IFERROR(AVERAGEIF(" & pop.name & "_" & bType & "s[Tissue]," & cornerCell.offset(2 + t, 0).Address & "," & pop.name & "_" & bType & "s[" & tblRowCell.value & "]), """")"
@@ -896,7 +895,7 @@ Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, 
     cornerCell.offset(3, 0).Resize(maxTissues, 1).Font.Bold = True
     
     'Add formulas to the main table
-    Dim formulaRng As Range, propRng As Range, summaryRng As Range
+    Dim formulaRng As Range, propRng As Range
     For p = 0 To POPULATIONS.Count - 1
         Set formulaRng = tblRowCell.offset(0, 4 * p)
         Set propRng = cornerCell.offset(3, 2 * p).Resize(maxTissues, 1)
@@ -904,10 +903,6 @@ Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, 
         formulaRng.offset(0, 2).Formula = "=IFERROR(STDEV.S(" & propRng.offset(0, 1).Address & ")/SQRT(COUNT(" & propRng.offset(0, 1).Address & ")), """")"
         formulaRng.offset(0, 3).Formula = "=IFERROR(AVERAGE(" & propRng.offset(0, 2).Address & "), """")"
         formulaRng.offset(0, 4).Formula = "=IFERROR(STDEV.S(" & propRng.offset(0, 2).Address & ")/SQRT(COUNT(" & propRng.offset(0, 2).Address & ")), """")"
-        Set summaryRng = tblRowCell.offset(0, 4 * POPULATIONS.Count + 3 * p)
-        summaryRng.offset(0, 1).Formula = "=TEXT(" & formulaRng.offset(0, 1).Address & ",""0.000"")&"" ± ""&TEXT(" & formulaRng.offset(0, 2).Address & ",""0.000"")"
-        summaryRng.offset(0, 2).Formula = "=TEXT(" & formulaRng.offset(0, 3).Address & ",""0.0"")&"" ± ""&TEXT(" & formulaRng.offset(0, 4).Address & ",""0.0"")"
-        summaryRng.offset(0, 3).Formula = "=IFERROR(TEXT(T.TEST(" & cornerCell.offset(3, 2 * p + 1).Resize(maxTissues, 1).Address & "," & ctrlRng.Address & ",TTTails,TTType), ""0.000""), """")"
     Next p
     
     'Add the new bar chart object
@@ -930,7 +925,7 @@ Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, 
         .PlotVisibleOnly = False
         Dim errorRng As Range
         For p = 0 To POPULATIONS.Count - 1
-            Set pop = POPULATIONS.items()(p)
+            Set pop = POPULATIONS.Items()(p)
             .SeriesCollection.Add Source:=tblRowCell.offset(0, 4 * p + 1)
             .SeriesCollection(p + 1).name = pop.name
             Set errorRng = tblRowCell.offset(0, 4 * p + 2)
@@ -981,7 +976,7 @@ Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, 
         
         'Formats the Chart's Series
         For p = 0 To POPULATIONS.Count - 1
-            Set pop = POPULATIONS.items()(p)
+            Set pop = POPULATIONS.Items()(p)
             With .FullSeriesCollection(p + 1)
                 .Format.Fill.ForeColor.RGB = pop.BackColor
                 .Format.Line.ForeColor.RGB = vbBlack
@@ -997,32 +992,28 @@ End Sub
 
 Private Sub combineIntoWb(ByRef numGoodTissues As Integer)
     'For each tissue, open its workbooks, fetch their data, and re-close the workbooks
-    Dim popV As Variant, pop As Population, t As Tissue
-    For Each popV In POPULATIONS.items
-        Set pop = popV
-        For Each t In pop.Tissues
-            Call fetchTissue(t, numGoodTissues)
+    Dim p As Integer, t As Integer, pop As Population, tiss As Tissue
+    For p = 0 To POPULATIONS.Count - 1
+        Set pop = POPULATIONS.Items()(p)
+        For t = 1 To pop.Tissues.Count
+            Set tiss = pop.Tissues.Item(t)
+            Call fetchTissue(tiss, t, numGoodTissues)
         Next t
-    Next popV
+    Next p
     
     'Pretty up the sheets now that data is present
-    Call cleanSheets(combineWb, CONTENTS_SHT_NAME)
+    Call cleanSheets(combineWb, CONTENTS_NAME)
     Call cleanSheets(combineWb, "_STTC")
     Call cleanSheets(combineWb, "_Bursts")
     Call cleanSheets(combineWb, "_WABs")
     Call cleanSheets(combineWb, "_NonWABs")
-
-    'Save/close the workbook if the user doesn't want to keep it open
-    If Not keepOpen Then _
-        Call combineWb.Close(True)
-
 End Sub
 
-Private Sub fetchTissue(ByRef Tissue As Tissue, ByRef numGoodTissues As Integer)
+Private Sub fetchTissue(ByRef tiss As Tissue, ByVal tissueShtID As Integer, ByRef numGoodTissues As Integer)
     'Make sure an ID was provided for this tissue
     Dim result As VbMsgBoxResult
-    If Tissue.ID = 0 Then
-        result = MsgBox("A tissue in population " & Tissue.Population.name & " was not given an ID." & vbCr & _
+    If tiss.ID = 0 Then
+        result = MsgBox("A tissue in population " & tiss.Population.name & " was not given an ID." & vbCr & _
                         "Its data will not be loaded.")
         Exit Sub
     End If
@@ -1038,12 +1029,12 @@ Private Sub fetchTissue(ByRef Tissue As Tissue, ByRef numGoodTissues As Integer)
     For Each wbTypeName In BURST_TYPES
         'Check that a workbook was provided and exists (display error dialogs if not)
         wbFound = False
-        wbPath = Tissue.WorkbookPaths(wbTypeName)
+        wbPath = tiss.WorkbookPaths(wbTypeName)
         If fs.FileExists(wbPath) Then
             wbFound = True
             numGoodTissues = numGoodTissues + 1
         ElseIf wbPath = "" Then
-            result = MsgBox("No " & wbTypeName & " workbook provided for tissue " & Tissue.ID & " in population " & Tissue.Population.name & ".", vbOKOnly)
+            result = MsgBox("No " & wbTypeName & " workbook provided for tissue " & tiss.ID & " in population " & tiss.Population.name & ".", vbOKOnly)
         Else
             result = MsgBox("Workbook """ & wbPath & """ could not be found." & vbCr & _
                             "Make sure you provided the correct path to the " & wbTypeName & " workbook.", vbOKOnly)
@@ -1053,15 +1044,15 @@ Private Sub fetchTissue(ByRef Tissue As Tissue, ByRef numGoodTissues As Integer)
         If wbFound Then
             Dim popName As String
             Set tissueWb = Workbooks.Open(wbPath)
-            popName = Tissue.Population.name
+            popName = tiss.Population.name
             Select Case wbTypeName
-                Case "Processed WAB Workbook"
-                    Call copyTissueData(tissueWb, STTC_SHT_NAME, popName & "_STTC", Tissue.ID)
-                    Call copyTissueData(tissueWb, ALL_AVGS_SHT_NAME, popName & "_Bursts", Tissue.ID)
-                    Call copyTissueData(tissueWb, BURST_AVGS_SHT_NAME, popName & "_WABs", Tissue.ID)
+                Case "WAB"
+                    Call copyTissueData(tissueWb, STTC_NAME, popName & "_STTC", tissueShtID)
+                    Call copyTissueData(tissueWb, ALL_AVGS_NAME, popName & "_Bursts", tissueShtID)
+                    Call copyTissueData(tissueWb, BURST_AVGS_NAME, popName & "_WABs", tissueShtID)
                     
-                Case "Processed NonWAB Workbook"
-                    Call copyTissueData(tissueWb, BURST_AVGS_SHT_NAME, popName & "_NonWABs", Tissue.ID)
+                Case "NonWAB"
+                    Call copyTissueData(tissueWb, BURST_AVGS_NAME, popName & "_NonWABs", tissueShtID)
             End Select
             tissueWb.Close
         End If

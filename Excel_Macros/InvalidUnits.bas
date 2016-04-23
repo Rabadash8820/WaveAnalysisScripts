@@ -19,12 +19,12 @@ Public Sub markInvalidUnits()
     Dim thisWb As Workbook
     Set thisWb = ActiveWorkbook
     Dim invalidSht As Worksheet
-    Set invalidSht = thisWb.Worksheets(INVALIDS_SHT_NAME)
+    Set invalidSht = thisWb.Worksheets(INVALIDS_NAME)
     
     'Get all the provided invalid unit info
     Dim invalidUnitsTbl As ListObject
-    Set invalidSht = Worksheets(INVALIDS_SHT_NAME)
-    Set invalidUnitsTbl = invalidSht.ListObjects(INVALIDS_TBL_NAME)
+    Set invalidSht = Worksheets(INVALIDS_NAME)
+    Set invalidUnitsTbl = invalidSht.ListObjects(INVALIDS_NAME)
     If invalidUnitsTbl.DataBodyRange Is Nothing Then
         result = MsgBox("No invalid units provided.", vbOKOnly)
         GoTo ExitSub
@@ -39,7 +39,7 @@ Public Sub markInvalidUnits()
     
     'Let the user pick the workbook in which to mark invalid units
     Dim wbName As String, sttcWbName As String
-    wbName = PickWorkbook("Select the Summary workbook in which to mark invalid units")
+    wbName = PickWorkbook("Select the Results workbook in which to mark invalid units")
     If wbName = "" Then
         result = MsgBox("No workbook selected.", vbOKOnly)
         GoTo ExitSub
@@ -54,6 +54,10 @@ Public Sub markInvalidUnits()
     If markBurstDurUnits Then _
         Call markZeroBurstDurUnits(wb)
     Call markSttcWbData(wb, numMarkedUnits)
+
+    'Save/close the workbook if the user doesn't want to keep it open
+    If Not keepOpen Then _
+        Call wb.Close(True)
     
     'Warn user to remove zero property values also
     Dim markedStr As String, msg As String

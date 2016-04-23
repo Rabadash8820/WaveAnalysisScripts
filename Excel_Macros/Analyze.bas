@@ -16,7 +16,7 @@ Public Sub processTissueWorkbook(ByVal wbName As String, ByRef numRecordings As 
     
     'Get some additional config settings from the user
     Dim analyzeSht As Worksheet, allChecked As Boolean, wabsChecked As Boolean
-    Set analyzeSht = Worksheets(ANALYZE_SHT_NAME)
+    Set analyzeSht = Worksheets(ANALYZE_NAME)
     allChecked = (analyzeSht.Shapes("AllRadio").OLEFormat.Object.value = 1)
     wabsChecked = (analyzeSht.Shapes("WabsRadio").OLEFormat.Object.value = 1)
     BURSTS_TO_USE = IIf(allChecked, BurstUseType.All, IIf(wabsChecked, BurstUseType.WABs, BurstUseType.NonWABs))
@@ -25,15 +25,15 @@ Public Sub processTissueWorkbook(ByVal wbName As String, ByRef numRecordings As 
     'If there are no recordings in this workbook then just return
     Dim wb As Workbook
     Set wb = Workbooks.Open(wbName)
-    Dim summaryTbl As ListObject
-    Set summaryTbl = wb.Worksheets(CONTENTS_SHT_NAME).ListObjects(SUMMARY_TBL_NAME)
-    numRecordings = summaryTbl.ListRows.Count
+    Dim contentsTbl As ListObject
+    Set contentsTbl = wb.Worksheets(CONTENTS_NAME).ListObjects(CONTENTS_NAME)
+    numRecordings = contentsTbl.ListRows.Count
     If numRecordings = 0 Then _
         GoTo ExitSub
             
     'Get the names of all units on the first sheet (assumed to be same on all other recording sheets)
     Dim wksht As Worksheet
-    Set wksht = wb.Worksheets(summaryTbl.ListRows(1).Range(1, 2).value)
+    Set wksht = wb.Worksheets(contentsTbl.ListRows(1).Range(1, 2).value)
     Dim numUnits As Integer
     numUnits = wksht.Cells(1, 1).End(xlToRight).Column / 3    'Since every unit is mentioned once for spikes, burst_start, and burst_end
     unitNames = Application.Transpose(wksht.Cells(1, 1).Resize(1, numUnits))
@@ -46,7 +46,7 @@ Public Sub processTissueWorkbook(ByVal wbName As String, ByRef numRecordings As 
     'Process each recording for this tissue (represented as separate sheets)
     Dim recRow As ListRow, recName As String
     Dim startT As Double, endT As Double
-    For Each recRow In summaryTbl.ListRows
+    For Each recRow In contentsTbl.ListRows
         recName = recRow.Range(1, 2)
         startT = recRow.Range(1, 3)
         endT = recRow.Range(1, 4)
@@ -71,9 +71,9 @@ Private Sub addAllAvgsSheet(ByRef unitNames As Variant)
     
     'Add the Averages sheet, write out row (unit) headers, and add formatting
     Dim avgsRng As Range
-    Worksheets.Add After:=Sheets(CONTENTS_SHT_NAME)
-    ActiveSheet.name = ALL_AVGS_SHT_NAME
-    Set avgsRng = Worksheets(ALL_AVGS_SHT_NAME).Cells(2, 2)
+    Worksheets.Add After:=Sheets(CONTENTS_NAME)
+    ActiveSheet.name = ALL_AVGS_NAME
+    Set avgsRng = Worksheets(ALL_AVGS_NAME).Cells(2, 2)
     Cells(1, 1).value = CELL_STR
     avgsRng.offset(0, -1).Resize(numUnits, 1).value = unitNames
     avgsRng.offset(-1, 0).Resize(1, NUM_BKGRD_PROPERTIES).value = PROPERTIES
@@ -96,11 +96,11 @@ Private Sub addAllAvgsSheet(ByRef unitNames As Variant)
     avgsRng.Resize(numUnits, NUM_BKGRD_PROPERTIES).value = zeroes
         
     'Make a table for all the average values
-    Worksheets(ALL_AVGS_SHT_NAME).ListObjects.Add( _
+    Worksheets(ALL_AVGS_NAME).ListObjects.Add( _
         xlSrcRange, _
         avgsRng.CurrentRegion, , _
         xlYes) _
-    .name = ALL_AVGS_SHT_NAME
+    .name = ALL_AVGS_NAME
     avgsRng.Resize(numUnits, NUM_BKGRD_PROPERTIES).NumberFormat = "0.000"
 End Sub
 
@@ -113,9 +113,9 @@ Private Sub addBurstAvgsSheet(ByRef unitNames As Variant)
     
     'Add the Averages sheet, write out row (unit) headers, and add formatting
     Dim avgsRng As Range
-    Worksheets.Add After:=Sheets(ALL_AVGS_SHT_NAME)
-    ActiveSheet.name = BURST_AVGS_SHT_NAME
-    Set avgsRng = Worksheets(BURST_AVGS_SHT_NAME).Cells(2, 2)
+    Worksheets.Add After:=Sheets(ALL_AVGS_NAME)
+    ActiveSheet.name = BURST_AVGS_NAME
+    Set avgsRng = Worksheets(BURST_AVGS_NAME).Cells(2, 2)
     Cells(1, 1).value = CELL_STR
     avgsRng.offset(0, -1).Resize(numUnits, 1).value = unitNames
     avgsRng.offset(-1, -1).Resize(numUnits + 1).Font.Bold = True
@@ -137,11 +137,11 @@ Private Sub addBurstAvgsSheet(ByRef unitNames As Variant)
     avgsRng.Resize(numUnits, NUM_BURST_PROPERTIES).value = zeroes
         
     'Make a table for all the average values
-    Worksheets(BURST_AVGS_SHT_NAME).ListObjects.Add( _
+    Worksheets(BURST_AVGS_NAME).ListObjects.Add( _
         xlSrcRange, _
         avgsRng.CurrentRegion, , _
         xlYes) _
-    .name = BURST_AVGS_SHT_NAME
+    .name = BURST_AVGS_NAME
     avgsRng.Resize(numUnits, NUM_BURST_PROPERTIES).NumberFormat = "0.000"
 End Sub
 
@@ -156,9 +156,9 @@ Private Sub addSttcSheet(ByRef unitNames As Variant)
     
     'Add the STTC sheet, write out row/column (channel) headers, and add formatting
     Dim sttcRng As Range
-    Worksheets.Add After:=Sheets(BURST_AVGS_SHT_NAME)
-    ActiveSheet.name = STTC_SHT_NAME
-    Set sttcRng = Worksheets(STTC_SHT_NAME).Cells(4, 1)
+    Worksheets.Add After:=Sheets(BURST_AVGS_NAME)
+    ActiveSheet.name = STTC_NAME
+    Set sttcRng = Worksheets(STTC_NAME).Cells(4, 1)
     With sttcRng
         .offset(-3, 0).value = STTC_HEADER_STR
         .offset(-3, 0).Font.Bold = True
@@ -188,11 +188,11 @@ Private Sub addSttcSheet(ByRef unitNames As Variant)
     sttcRng.Resize(numRows, 3).value = initial
         
     'Make a table for all the STTC values
-    Worksheets(STTC_SHT_NAME).ListObjects.Add( _
+    Worksheets(STTC_NAME).ListObjects.Add( _
         xlSrcRange, _
         sttcRng.CurrentRegion, , _
         xlYes) _
-    .name = STTC_SHT_NAME
+    .name = STTC_NAME
     sttcRng.offset(0, 2).Resize(numRows, 2).NumberFormat = "0.000"
     
 End Sub
@@ -298,7 +298,7 @@ Private Sub storeSttcValues(ByVal duration As Double, ByVal numUnits As Long)
     Next u1
         
     'Output spike time tiling coefficients for all pairs of units with this unit, adding new results to the old ones
-    Set outputRng = Worksheets(STTC_SHT_NAME).Cells(4, 4).Resize(numRows, 1)
+    Set outputRng = Worksheets(STTC_NAME).Cells(4, 4).Resize(numRows, 1)
     oldResults = outputRng.value
     outputRng.value = Application.Pmt(0, -1, oldResults, newResults)   'Pmt() acts like Sum() but can accept two variants (of equal dimension)
 End Sub
@@ -593,7 +593,7 @@ Private Sub storePreValues(ByVal cellIndex As Integer, ByRef spikes As Variant, 
     'Output values to the All Averages sheet, adding new results to the old ones
     Dim preCell As Range
     Dim oldResults As Variant
-    Set preCell = Worksheets(ALL_AVGS_SHT_NAME).Cells(cellIndex + 1, 1 + 1)
+    Set preCell = Worksheets(ALL_AVGS_NAME).Cells(cellIndex + 1, 1 + 1)
     oldResults = preCell.Resize(1, NUM_BKGRD_PROPERTIES).value
     preCell.Resize(1, NUM_BKGRD_PROPERTIES).value = Application.Pmt(0, -1, oldResults, newResults)   'Pmt() acts like Sum() but can accept two variants (of equal dimension)
 End Sub
@@ -611,14 +611,14 @@ Private Sub storePostValues(ByVal cellIndex As Integer, ByRef spikes As Variant,
     'Output values to the Bursts Averages sheet, adding new results to the old ones
     Dim postCell As Range
     Dim oldResults As Variant
-    Set postCell = Worksheets(BURST_AVGS_SHT_NAME).Cells(cellIndex + 1, 1 + 1)
+    Set postCell = Worksheets(BURST_AVGS_NAME).Cells(cellIndex + 1, 1 + 1)
     oldResults = postCell.Resize(1, NUM_BURST_PROPERTIES).value
     postCell.Resize(1, NUM_BURST_PROPERTIES).value = Application.Pmt(0, -1, oldResults, newResults)   'Pmt() acts like Sum() but can accept two variants (of equal dimension)
     
     'Output the PercentBurstInWaves value to the All Averages sheet, adding it the old result
     Dim pbwCell As Range
     Dim oldPBW As Double
-    Set pbwCell = Worksheets(ALL_AVGS_SHT_NAME).Cells(cellIndex + 1, NUM_BKGRD_PROPERTIES + 1)
+    Set pbwCell = Worksheets(ALL_AVGS_NAME).Cells(cellIndex + 1, NUM_BKGRD_PROPERTIES + 1)
     oldPBW = pbwCell.value
     pbwCell.value = oldPBW + wabRatio * 100
 End Sub
@@ -678,7 +678,7 @@ Private Sub reduceToAvgs(ByVal numRecordings As Integer, ByVal numUnits As Integ
         Exit Sub
     
     'Reduce all sums of WAB property-values to averages
-    Set data = Worksheets(ALL_AVGS_SHT_NAME).Cells(2, 2).Resize(numUnits, NUM_PROPERTIES)
+    Set data = Worksheets(ALL_AVGS_NAME).Cells(2, 2).Resize(numUnits, NUM_PROPERTIES)
     averages = data.value
     For r = 1 To numUnits
         For c = 1 To NUM_PROPERTIES
@@ -688,7 +688,7 @@ Private Sub reduceToAvgs(ByVal numRecordings As Integer, ByVal numUnits As Integ
     data.value = averages
       
     'Reduce all sums of STTC-values to averages
-    Set data = Worksheets(STTC_SHT_NAME).Cells(3, 2).Resize(numUnits, numUnits)
+    Set data = Worksheets(STTC_NAME).Cells(3, 2).Resize(numUnits, numUnits)
     sttcs = data.value
     For r = 1 To numUnits
         For c = 1 To numUnits
@@ -700,7 +700,7 @@ End Sub
 
 Public Sub finalize(ByVal numUnits As Integer)
     'Finalize the Averages sheet
-    With Worksheets(ALL_AVGS_SHT_NAME)
+    With Worksheets(ALL_AVGS_NAME)
         .Cells.HorizontalAlignment = xlCenter
         .Cells.VerticalAlignment = xlCenter
         .Rows(1).Cells.HorizontalAlignment = xlLeft
@@ -709,7 +709,7 @@ Public Sub finalize(ByVal numUnits As Integer)
     End With
     
     'Finalize the STTC sheet
-    With Worksheets(STTC_SHT_NAME)
+    With Worksheets(STTC_NAME)
         .Cells.HorizontalAlignment = xlCenter
         .Cells.VerticalAlignment = xlCenter
         .Columns.EntireColumn.AutoFit
@@ -718,5 +718,5 @@ Public Sub finalize(ByVal numUnits As Integer)
         .Cells.EntireRow.AutoFit
     End With
     
-    Worksheets(ALL_AVGS_SHT_NAME).Activate
+    Worksheets(ALL_AVGS_NAME).Activate
 End Sub

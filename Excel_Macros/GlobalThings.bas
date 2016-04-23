@@ -27,30 +27,20 @@ Public MIN_ASSOC_UNITS As Integer
 Public MIN_DURATION, MAX_DURATION As Double
 Public Const MEAN_FREQ_DIFF = 3, PEAK_FREQ_DIFF = 10     'I.e., 300% and 1000%
 
-'SHEET NAMES
-Public Const POPS_SHT_NAME = "Populations"
-Public Const TISSUES_SHT_NAME = "Tissues"
-Public Const ANALYZE_SHT_NAME = "Analyze"
-Public Const COMBINE_SHT_NAME = "Combine Results"
-Public Const INVALIDS_SHT_NAME = "Invalid Units"
-Public Const CONFIG_SHT_NAME = "Config"
-Public Const CONTENTS_SHT_NAME = "Contents"
-Public Const STTC_SHT_NAME = "STTC"
-Public Const ALL_AVGS_SHT_NAME = "All_Avgs"
-Public Const BURST_AVGS_SHT_NAME = "Burst_Avgs"
-Public Const STATS_SHT_NAME = "Stats"
-Public Const PROPFIGS_SHT_NAME = "Property Figures"
-Public Const STTCFIGS_SHT_NAME = "STTC Figures"
-
-'TABLE NAMES
-Public Const CONFIG_TBL_NAME = "ConfigTbl"
-Public Const POPS_TBL_NAME = "PopsTbl"
-Public Const TISSUES_TBL_NAME = "TissuesTbl"
-Public Const CONTENTS_TBL_NAME = "ContentsTbl"
-Public Const STATS_TBL_NAME = "StatsTbl"
-Public Const STTC_TBL_NAME = "SttcTbl"
-Public Const SUMMARY_TBL_NAME = "SummaryTbl"
-Public Const INVALIDS_TBL_NAME = "InvalidUnitsTbl"
+'SHEET/TABLE NAMES
+'Since these could be table names, they should use only alphanumeric characters and NO spaces
+Public Const POPS_NAME = "Populations"
+Public Const TISSUES_NAME = "Tissues"
+Public Const ANALYZE_NAME = "Analyze"
+Public Const COMBINE_NAME = "Combine_Results"
+Public Const INVALIDS_NAME = "Invalid_Units"
+Public Const CONFIG_NAME = "Config"
+Public Const CONTENTS_NAME = "Contents"
+Public Const ALL_AVGS_NAME = "All_Avgs"
+Public Const BURST_AVGS_NAME = "Burst_Avgs"
+Public Const STATS_NAME = "Stats"
+Public Const PROPERTIES_NAME = "Properties"
+Public Const STTC_NAME = "STTC"
 
 'STRINGS
 Public Const CELL_STR = "Cell"
@@ -113,13 +103,13 @@ Public Sub DefinePopulations()
     
     'Get the Populations and Tissues tables
     Dim popsSht As Worksheet, tissueSht As Worksheet
-    Set popsSht = Worksheets(POPS_SHT_NAME)
-    Set popsTbl = popsSht.ListObjects(POPS_TBL_NAME)
-    Set tissueSht = Worksheets(TISSUES_SHT_NAME)
+    Set popsSht = Worksheets(POPS_NAME)
+    Set popsTbl = popsSht.ListObjects(POPS_NAME)
+    Set tissueSht = Worksheets(TISSUES_NAME)
     
     'Get burst types
     Dim numBurstTypes As Integer, t As Integer, bType As String
-    Set tissueTbl = tissueSht.ListObjects(TISSUES_TBL_NAME)
+    Set tissueTbl = tissueSht.ListObjects(TISSUES_NAME)
     BURST_TYPES = tissueTbl.HeaderRowRange(1, 3).Resize(1, tissueTbl.ListColumns.Count - 2).value
     numBurstTypes = UBound(BURST_TYPES, 2)
     For t = 1 To numBurstTypes
@@ -131,7 +121,7 @@ Public Sub DefinePopulations()
     'Store the population info (or just return if none was provided)
     Dim lsRow As ListRow, result As VbMsgBoxResult
     If popsTbl.DataBodyRange Is Nothing Then
-        result = MsgBox("No experimental populations have been defined.  Provide this info on the " & POPS_SHT_NAME & " sheet", vbOKOnly)
+        result = MsgBox("No experimental populations have been defined.  Provide this info on the " & POPS_NAME & " sheet", vbOKOnly)
         Exit Sub
     End If
     Dim pop As Population
@@ -151,7 +141,7 @@ Public Sub DefinePopulations()
     Dim numCtrlPops As Integer, p As Integer
     numCtrlPops = 0
     For p = 0 To POPULATIONS.Count - 1
-        Set pop = POPULATIONS.items()(p)
+        Set pop = POPULATIONS.Items()(p)
         If pop.IsControl Then
             Set CTRL_POP = pop
             numCtrlPops = numCtrlPops + 1
@@ -166,7 +156,7 @@ Public Sub DefinePopulations()
     Dim numTissues As Integer
     numTissues = tissueTbl.ListRows.Count
     If tissueTbl.DataBodyRange Is Nothing Then
-        result = MsgBox("No tissues have been defined.  Provide this info on the " & TISSUES_SHT_NAME & " sheet", vbOKOnly)
+        result = MsgBox("No tissues have been defined.  Provide this info on the " & TISSUES_NAME & " sheet", vbOKOnly)
         Exit Sub
     End If
     
@@ -194,9 +184,9 @@ Public Sub GetConfigVars()
     
     'Get the config parameters from the Params table
     Dim analyzeSht As Worksheet, configSht As Worksheet, params As Variant
-    Set analyzeSht = Worksheets(ANALYZE_SHT_NAME)
-    Set configSht = Worksheets(CONFIG_SHT_NAME)
-    Set configTbl = configSht.ListObjects(CONFIG_TBL_NAME)
+    Set analyzeSht = Worksheets(ANALYZE_NAME)
+    Set configSht = Worksheets(CONFIG_NAME)
+    Set configTbl = configSht.ListObjects(CONFIG_NAME)
     params = configTbl.DataBodyRange.Resize(, 2).value
     
     'Loop through each of its rows to cache parameter values
