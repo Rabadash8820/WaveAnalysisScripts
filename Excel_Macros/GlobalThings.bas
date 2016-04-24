@@ -8,14 +8,8 @@ Public Enum BurstUseType
     WABs
     NonWABs
 End Enum
-Public Enum wbComboType
-    PropertyWkbk
-    SttcWkbk
-End Enum
 
 'CONFIG VARIABLES
-Public BURSTS_TO_USE As BurstUseType
-Public ASSOC_SAME_CHANNEL_UNITS As Boolean
 Public MEA_ROWS, MEA_COLS As Integer
 Public NUM_CHANNELS As Integer
 Public Const GROUND_CHANNEL = 4     'adch_15
@@ -41,6 +35,8 @@ Public Const BURST_AVGS_NAME = "Burst_Avgs"
 Public Const STATS_NAME = "Stats"
 Public Const PROPERTIES_NAME = "Properties"
 Public Const STTC_NAME = "STTC"
+Public Const RECORDINGS_NAME = "Recordings"
+Public Const RECORDING_VIEWS_NAME = "Recordings"
 
 'STRINGS
 Public Const CELL_STR = "Cell"
@@ -50,25 +46,31 @@ Public Const INTER_ELECTRODE_DIST_STR = "Inter-Electrode Distance"
 Public Const STTC_STR = "STTC"
 Public Const CHANNEL_PREFIX = "adch_"
 
+'FLAGS
+Public ASSOC_SAME_CHANNEL_UNITS As Boolean
+Public ASSOC_MULTIPLE_UNITS As Boolean
+Public MARK_BURST_DUR_UNITS As Boolean
+Public DELETE_UNITS_ALSO As Boolean
+Public KEEP_WB_OPEN As Boolean
+Public DATA_PAIRED As Boolean
+
 'Arrays/collections and associated values
 Public NUM_PROPERTIES As Integer
 Public NUM_BKGRD_PROPERTIES As Integer
 Public NUM_BURST_PROPERTIES As Integer
 Public PROPERTIES() As String
 Public PROP_UNITS() As String
-Public POPULATIONS As New Dictionary
-Public CTRL_POP As Population
 Public BURST_TYPES As Variant
+Public CTRL_POP As Population
+Public POPULATIONS As New Dictionary
+Public TISSUES As New Dictionary
+Public Recordings As New Dictionary
+Public INVALIDS As Variant
 
 'OTHER VALUES
 Public Const MAX_EXCEL_ROWS = 1048576
 
-'GLOBAL VARIABLES FOR THIS MODULE
-Dim configTbl As ListObject
-Dim popsTbl As ListObject
-Dim tissueTbl As ListObject
-
-Public Function PickWorkbook(ByVal pickMsg As String) As String
+Public Function PickWorkbook(ByVal pickMsg As String) As File
     Dim wbName As Workbook
     
     'Create the file-selection dialog box
@@ -79,7 +81,7 @@ Public Function PickWorkbook(ByVal pickMsg As String) As String
     
     'If the user didn't select anything, then return an empty string
     If dialog.Show = False Then
-        PickWorkbook = ""
+        Set PickWorkbook = Nothing
         Exit Function
     End If
     
@@ -95,28 +97,110 @@ Public Function PickWorkbook(ByVal pickMsg As String) As String
         Exit Function
     End If
     
-    'If it was then return its name
-    PickWorkbook = wbFile.name
+    'If it was then return the File
+    Set PickWorkbook = wbFile
 End Function
 
-Public Sub DefinePopulations()
+Public Function DefineObjects(ByVal getInvalids As Boolean) As Boolean
+    Dim success As Boolean
+    success = False
     
-    'Get the Populations and Tissues tables
-    Dim popsSht As Worksheet, tissueSht As Worksheet
+    'Open the Data Summary workbook
+    Dim summaryFile As File, result As VbMsgBoxResult
+    Set summaryFile = PickWorkbook("Select the Data Summary workbook")
+    If summaryFile Is Nothing Then
+        result = MsgBox("No workbook selected.", vbOKOnly, "Routine complete")
+        GoTo ExitFunc
+    End If
+    
+    'Open the Population-definition workbook
+    Dim popFile As File
+    Set popFile = PickWorkbook("Select the workbook that defines your experimental populations")
+    If popFile Is Nothing Then
+        result = MsgBox("No workbook selected.", vbOKOnly, "Routine complete")
+        GoTo ExitFunc
+    End If
+    
+    'Get Tissue/Recording and experimental Population info
+    Workbooks.Open (summaryFile.Path)
+    Call DefineRecordings
+    Workbooks(summaryFile.Name).Close
+    
+    Workbooks.Open (popFile.Path)
+    Call DefinePopulations
+    If getInvalids Then _
+        Call getInvalidUnits
+    Workbooks(popFile.Name).Close
+    
+    success = True
+    
+ExitFunc:
+    DefineObjects = success
+End Function
+
+Private Sub DefineTissues()
+    'Get the Tissues table
+    Dim tissueSht As Worksheet, tissueTbl As ListObject
+    Set tissueSht = Worksheets(TISSUES_NAME)
+    Set tissueTbl = tissueSht.ListObjects(TISSUES_NAME)
+    
+    'Store the population info (or just return if none was provided)
+    Dim lsRow As ListRow
+    Dim tiss As Tissue
+    TISSUES.RemoveAll
+    For Each lsRow In tissueTbl.ListRows
+        Set tiss = New Tissue
+        tiss.ID = lsRow.Range(1, tissueTbl.ListColumns("ID").Index).value
+        tiss.DatePrepared = lsRow.Range(1, tissueTbl.ListColumns("Date Prepared").Index).value
+        tiss.Age = lsRow.Range(1, tissueTbl.ListColumns("Age").Index).value
+        tiss.Genotype = lsRow.Range(1, tissueTbl.ListColumns("Genotype").Index).value
+        TISSUES.Add tiss.ID, tiss
+    Next lsRow
+
+End Sub
+
+Private Sub DefineRecordings()
+    'Make sure parent objects are defined first
+    Call DefineTissues
+
+    'Get the Recordings table
+    Dim recSht As Worksheet, recTbl As ListObject
+    Set recSht = Worksheets(RECORDINGS_NAME)
+    Set recTbl = recSht.ListObjects(RECORDINGS_NAME)
+    
+    'Store the population info (or just return if none was provided)
+    Dim lsRow As ListRow
+    Dim rec As Recording, tissueID As Integer
+    Recordings.RemoveAll
+    For Each lsRow In recTbl.ListRows
+        Set rec = New Recording
+        rec.ID = lsRow.Range(1, recTbl.ListColumns("ID").Index).value
+        rec.MEA = lsRow.Range(1, recTbl.ListColumns("MEA").Index).value
+        rec.Number = lsRow.Range(1, recTbl.ListColumns("Recording Number").Index).value
+        rec.StartTime = lsRow.Range(1, recTbl.ListColumns("StartStamp").Index).value
+        rec.Duration = lsRow.Range(1, recTbl.ListColumns("Duration").Index).value
+        tissueID = lsRow.Range(1, recTbl.ListColumns("Tissue ID").Index).value
+        Set rec.Tissue = TISSUES(tissueID)
+        TISSUES(tissueID).Recordings.Add rec
+        Recordings.Add rec.ID, rec
+    Next lsRow
+
+End Sub
+
+Private Sub DefinePopulations()
+    'Get the Populations and Recordings tables
+    Dim popsSht As Worksheet, recSht As Worksheet, popsTbl As ListObject, recTbl As ListObject
     Set popsSht = Worksheets(POPS_NAME)
     Set popsTbl = popsSht.ListObjects(POPS_NAME)
-    Set tissueSht = Worksheets(TISSUES_NAME)
+    Set recSht = Worksheets(RECORDING_VIEWS_NAME)
+    Set recTbl = recSht.ListObjects(RECORDING_VIEWS_NAME)
     
     'Get burst types
     Dim numBurstTypes As Integer, t As Integer, bType As String
-    Set tissueTbl = tissueSht.ListObjects(TISSUES_NAME)
-    BURST_TYPES = tissueTbl.HeaderRowRange(1, 3).Resize(1, tissueTbl.ListColumns.Count - 2).value
+    ReDim BURST_TYPES(1 To 1, 1 To 2)
+    BURST_TYPES(1, 1) = "WAB"
+    BURST_TYPES(1, 2) = "NonWAB"
     numBurstTypes = UBound(BURST_TYPES, 2)
-    For t = 1 To numBurstTypes
-        bType = BURST_TYPES(1, t)
-        bType = Left(bType, Len(bType) - Len(" Workbook"))
-        BURST_TYPES(1, t) = bType
-    Next t
     
     'Store the population info (or just return if none was provided)
     Dim lsRow As ListRow, result As VbMsgBoxResult
@@ -129,7 +213,7 @@ Public Sub DefinePopulations()
     For Each lsRow In popsTbl.ListRows
         Set pop = New Population
         pop.ID = lsRow.Range(1, popsTbl.ListColumns("Population ID").Index).value
-        pop.name = lsRow.Range(1, popsTbl.ListColumns("Name").Index).value
+        pop.Name = lsRow.Range(1, popsTbl.ListColumns("Name").Index).value
         pop.Abbreviation = lsRow.Range(1, popsTbl.ListColumns("Abbreviation").Index).value
         pop.IsControl = (lsRow.Range(1, popsTbl.ListColumns("Control?").Index).value <> "")
         pop.ForeColor = lsRow.Range(1, popsTbl.ListColumns("Population ID").Index).Font.Color
@@ -152,28 +236,76 @@ Public Sub DefinePopulations()
         Exit Sub
     End If
 
-    'If no Tissue info was provided on the Combine sheet, then just return
-    Dim numTissues As Integer
-    numTissues = tissueTbl.ListRows.Count
-    If tissueTbl.DataBodyRange Is Nothing Then
-        result = MsgBox("No tissues have been defined.  Provide this info on the " & TISSUES_NAME & " sheet", vbOKOnly)
+    'If no Recording info was provided on the Combine sheet, then just return
+    Dim numRecs As Integer
+    numRecs = recTbl.ListRows.Count
+    If recTbl.DataBodyRange Is Nothing Then
+        result = MsgBox("No recording-population associations have been specified.  Provide this info on the " & RECORDING_VIEWS_NAME & " sheet", vbOKOnly)
         Exit Sub
     End If
     
-    'Otherwise, create the Tissue objects
-    Dim popID As Integer, wbPath As String, tiss As Tissue
-    For Each lsRow In tissueTbl.ListRows
-        Set tiss = New Tissue
-        tiss.ID = lsRow.Range(1, tissueTbl.ListColumns("Tissue ID").Index).value
-        popID = lsRow.Range(1, tissueTbl.ListColumns("Population ID").Index).value
-        Set tiss.Population = POPULATIONS(popID)
-        For t = 1 To numBurstTypes
-            wbPath = lsRow.Range(1, tissueTbl.ListColumns(BURST_TYPES(1, t) & " Workbook").Index).value
-            tiss.WorkbookPaths.Add BURST_TYPES(1, t), wbPath
-        Next t
-        POPULATIONS(popID).Tissues.Add tiss
+    'For each Population, associate each of its Tissues with a TissueView
+    Dim tvs As New Dictionary, tv As TissueView
+    For p = 0 To POPULATIONS.Count - 1
+        Set pop = POPULATIONS.Items()(p)
+        tvs.Add pop.ID, New Dictionary
+    Next p
+    
+    'Build Views...
+    Dim popID As Integer, recID As Integer, tID As Integer, rv As RecordingView
+    Dim txtPath As String, wbPath As String
+    For Each lsRow In recTbl.ListRows
+        'Create the TissueView object (if it doesn't already exist)
+        'This includes defining its summary workbook paths
+        popID = lsRow.Range(1, recTbl.ListColumns("Population ID").Index).value
+        recID = lsRow.Range(1, recTbl.ListColumns("Recording ID").Index).value
+        tID = Recordings(recID).Tissue.ID
+        txtPath = lsRow.Range(1, recTbl.ListColumns("Text File").Index).value
+        If tvs(popID).Exists(tID) Then
+            Set tv = tvs(popID)(tID)
+        Else
+            Set tv = New TissueView
+            Set tv.Tissue = TISSUES(tID)
+            tvs(popID).Add tID, tv
+            For t = 1 To UBound(BURST_TYPES, 2)
+                bType = BURST_TYPES(1, t)
+                wbPath = Left(txtPath, InStrRev(txtPath, "\"))
+                wbPath = wbPath & lsRow.Index & "_" & Format(tv.Tissue.DatePrepared, "yyyy-mm-dd") & "_" & bType & ".xlsx"
+                tv.WorkbookPaths.Add bType, wbPath
+            Next t
+        End If
+        
+        'Create the RecordingView object
+        Set rv = New RecordingView
+        Set rv.Recording = Recordings(recID)
+        Set rv.TissueView = tv
+        tv.RecordingViews.Add rv
+        Set tv.Population = POPULATIONS(popID)
+        POPULATIONS(popID).TissueViews.Add tv
+        rv.TextPath = txtPath
     Next lsRow
+    
+    'Get some other config flags set by the user
+    DATA_PAIRED = (popsSht.Shapes("DataPairedChk").OLEFormat.Object.value = 1)
 
+End Sub
+
+Private Sub getInvalidUnits()
+    'Get all the provided invalid unit info
+    Dim invalidSht As Worksheet, invalidsTbl As ListObject, result As VbMsgBoxResult
+    Set invalidSht = Worksheets(INVALIDS_NAME)
+    Set invalidsTbl = invalidSht.ListObjects(INVALIDS_NAME)
+    If invalidsTbl.DataBodyRange Is Nothing Then
+        result = MsgBox("No invalid units provided.", vbOKOnly)
+        Exit Sub
+    Else
+        INVALIDS = invalidsTbl.DataBodyRange.value
+    End If
+            
+    'Get some other config flags set by the user
+    MARK_BURST_DUR_UNITS = (invalidSht.Shapes("MarkBurstDurChk").OLEFormat.Object.value = 1)
+    DELETE_UNITS_ALSO = (invalidSht.Shapes("InvalidDeleteChk").OLEFormat.Object.value = 1)
+    KEEP_WB_OPEN = (invalidSht.Shapes("KeepOpenChk").OLEFormat.Object.value = 1)
 End Sub
 
 Public Sub GetConfigVars()
@@ -183,7 +315,7 @@ Public Sub GetConfigVars()
     ReDim PROP_UNITS(1 To NUM_PROPERTIES)
     
     'Get the config parameters from the Params table
-    Dim analyzeSht As Worksheet, configSht As Worksheet, params As Variant
+    Dim analyzeSht As Worksheet, configSht As Worksheet, configTbl As ListObject, params As Variant
     Set analyzeSht = Worksheets(ANALYZE_NAME)
     Set configSht = Worksheets(CONFIG_NAME)
     Set configTbl = configSht.ListObjects(CONFIG_NAME)
@@ -191,12 +323,12 @@ Public Sub GetConfigVars()
     
     'Loop through each of its rows to cache parameter values
     Dim p As Integer
-    Dim name As String
+    Dim Name As String
     Dim val As Variant
     For p = 1 To UBound(params, 1)
-        name = params(p, 1)
+        Name = params(p, 1)
         val = params(p, 2)
-        Call storeParam(name, val)
+        Call storeParam(Name, val)
     Next p
     
     'Initialize parameters that depend on other parameters
@@ -219,46 +351,50 @@ Public Sub GetConfigVars()
     PROPERTIES(10) = "PercentBurstTimeAbove10Hz"
     PROPERTIES(11) = "SpikesPerBurst"
     
+    'Get some other config flags set by the user
+    ASSOC_SAME_CHANNEL_UNITS = (analyzeSht.Shapes("SameChannelAssocChk").OLEFormat.Object.value = 1)
+    ASSOC_MULTIPLE_UNITS = (analyzeSht.Shapes("MultipleUnitsAssocChk").OLEFormat.Object.value = 1)
+    
 End Sub
 
-Private Sub storeParam(ByVal name As String, ByVal value As Variant)
-    If name = "MEA Rows" Then
+Private Sub storeParam(ByVal Name As String, ByVal value As Variant)
+    If Name = "MEA Rows" Then
         MEA_ROWS = CInt(value)
-    ElseIf name = "MEA Columns" Then
+    ElseIf Name = "MEA Columns" Then
         MEA_COLS = CInt(value)
-    ElseIf name = "Min Burst Duration" Then
+    ElseIf Name = "Min Burst Duration" Then
         MIN_DURATION = CDbl(value)
-    ElseIf name = "Max Burst Duration" Then
+    ElseIf Name = "Max Burst Duration" Then
         MAX_DURATION = CDbl(value)
-    ElseIf name = "Correlation dT" Then
+    ElseIf Name = "Correlation dT" Then
         CORRELATION_DT = CDbl(value)
-    ElseIf name = "Min Correlated Units" Then
+    ElseIf Name = "Min Correlated Units" Then
         MIN_ASSOC_UNITS = CInt(value)
-    ElseIf name = "Min Correlated Bins" Then
+    ElseIf Name = "Min Correlated Bins" Then
         MIN_BINS = CInt(value)
-    ElseIf name = "Num Bins" Then
+    ElseIf Name = "Num Bins" Then
         NUM_BINS = CInt(value)
-    ElseIf name = "BkgrdFiringRate Units" Then
+    ElseIf Name = "BkgrdFiringRate Units" Then
         PROP_UNITS(1) = CStr(value)
-    ElseIf name = "BkgrdISI Units" Then
+    ElseIf Name = "BkgrdISI Units" Then
         PROP_UNITS(2) = CStr(value)
-    ElseIf name = "PercentSpikesInBursts Units" Then
+    ElseIf Name = "PercentSpikesInBursts Units" Then
         PROP_UNITS(3) = CStr(value)
-    ElseIf name = "BurstFrequency Units" Then
+    ElseIf Name = "BurstFrequency Units" Then
         PROP_UNITS(4) = CStr(value)
-    ElseIf name = "IBI Units" Then
+    ElseIf Name = "IBI Units" Then
         PROP_UNITS(5) = CStr(value)
-    ElseIf name = "PercentBurstsInWaves Units" Then
+    ElseIf Name = "PercentBurstsInWaves Units" Then
         PROP_UNITS(6) = CStr(value)
-    ElseIf name = "BurstDuration Units" Then
+    ElseIf Name = "BurstDuration Units" Then
         PROP_UNITS(7) = CStr(value)
-    ElseIf name = "BurstFiringRate Units" Then
+    ElseIf Name = "BurstFiringRate Units" Then
         PROP_UNITS(8) = CStr(value)
-    ElseIf name = "BurstISI Units" Then
+    ElseIf Name = "BurstISI Units" Then
         PROP_UNITS(9) = CStr(value)
-    ElseIf name = "PercentBurstTimeAbove10Hz Units" Then
+    ElseIf Name = "PercentBurstTimeAbove10Hz Units" Then
         PROP_UNITS(10) = CStr(value)
-    ElseIf name = "SpikesPerBurst Units" Then
+    ElseIf Name = "SpikesPerBurst Units" Then
         PROP_UNITS(11) = CStr(value)
     End If
 End Sub

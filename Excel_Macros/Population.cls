@@ -10,9 +10,9 @@ Attribute VB_Exposed = False
 Option Explicit
 
 Public ID As Integer
-Public name As String
+Public Name As String
 Public Abbreviation As String
 Public IsControl As Boolean
 Public ForeColor As Long
 Public BackColor As Long
-Public Tissues As New Collection
+Public TissueViews As New Collection

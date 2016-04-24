@@ -5,43 +5,36 @@ Option Explicit
 'Processing variables for this module
 Private maxBursts As Integer
 Private unitNames As Variant
-
-Public Sub processTissueWorkbook(ByVal wbName As String, ByRef numRecordings As Integer)
+Private sttcResults() As Double, bkgrdResults() As Double, burstResults() As Double
+Public Sub processTissueWorkbook(ByVal wbName As String, ByVal burstsToUse As BurstUseType)
     Dim rec As Integer, u As Integer
     
-    'Make sure the property strings and constants are initialized
-    Call setupOptimizations
-    
-    Call GetConfigVars
-    
-    'Get some additional config settings from the user
-    Dim analyzeSht As Worksheet, allChecked As Boolean, wabsChecked As Boolean
-    Set analyzeSht = Worksheets(ANALYZE_NAME)
-    allChecked = (analyzeSht.Shapes("AllRadio").OLEFormat.Object.value = 1)
-    wabsChecked = (analyzeSht.Shapes("WabsRadio").OLEFormat.Object.value = 1)
-    BURSTS_TO_USE = IIf(allChecked, BurstUseType.All, IIf(wabsChecked, BurstUseType.WABs, BurstUseType.NonWABs))
-    ASSOC_SAME_CHANNEL_UNITS = (analyzeSht.Shapes("SameChannelAssocChk").OLEFormat.Object.value = 1)
-    
     'If there are no recordings in this workbook then just return
-    Dim wb As Workbook
+    Dim wb As Workbook, numRecs As Integer
     Set wb = Workbooks.Open(wbName)
     Dim contentsTbl As ListObject
     Set contentsTbl = wb.Worksheets(CONTENTS_NAME).ListObjects(CONTENTS_NAME)
-    numRecordings = contentsTbl.ListRows.Count
-    If numRecordings = 0 Then _
-        GoTo ExitSub
+    numRecs = contentsTbl.ListRows.Count
+    If numRecs = 0 Then _
+        Exit Sub
             
     'Get the names of all units on the first sheet (assumed to be same on all other recording sheets)
     Dim wksht As Worksheet
     Set wksht = wb.Worksheets(contentsTbl.ListRows(1).Range(1, 2).value)
-    Dim numUnits As Integer
+    Dim numUnits As Long, numSttcRows As Long
     numUnits = wksht.Cells(1, 1).End(xlToRight).Column / 3    'Since every unit is mentioned once for spikes, burst_start, and burst_end
+    numSttcRows = numUnits * (numUnits - 1) / 2
     unitNames = Application.Transpose(wksht.Cells(1, 1).Resize(1, numUnits))
     
     'Add output sheets
-    Call addAllAvgsSheet(unitNames)
-    Call addBurstAvgsSheet(unitNames)
-    Call addSttcSheet(unitNames)
+    Call addAllAvgsSheet
+    Call addBurstAvgsSheet
+    Call addSttcSheet
+    
+    'Allocate the result arrays (will automatically be filled with zeroes...)
+    ReDim bkgrdResults(1 To numUnits, 1 To NUM_BKGRD_PROPERTIES)
+    ReDim burstResults(1 To numUnits, 1 To NUM_BURST_PROPERTIES)
+    ReDim sttcResults(1 To numSttcRows, 1 To 1)
     
     'Process each recording for this tissue (represented as separate sheets)
     Dim recRow As ListRow, recName As String
@@ -51,18 +44,16 @@ Public Sub processTissueWorkbook(ByVal wbName As String, ByRef numRecordings As 
         startT = recRow.Range(1, 3)
         endT = recRow.Range(1, 4)
         wb.Worksheets(recName).Activate
-        Call processRecording(unitNames, startT, endT)
+        Call processRecording(unitNames, burstsToUse, startT, endT)
     Next recRow
 
     'Reduce result sums to averages and finalize
-    Call reduceToAvgs(numRecordings, numUnits)
-    Call finalize(numUnits)
-    
-ExitSub:
-    Call tearDownOptimizations
+    Call storeAvgValues(numRecs, numUnits)
+    Call cleanSheets(numUnits)
+    wb.Close (True)
 End Sub
 
-Private Sub addAllAvgsSheet(ByRef unitNames As Variant)
+Private Sub addAllAvgsSheet()
     Dim zeroes() As Variant
     Dim u, p As Integer
     
@@ -72,7 +63,7 @@ Private Sub addAllAvgsSheet(ByRef unitNames As Variant)
     'Add the Averages sheet, write out row (unit) headers, and add formatting
     Dim avgsRng As Range
     Worksheets.Add After:=Sheets(CONTENTS_NAME)
-    ActiveSheet.name = ALL_AVGS_NAME
+    ActiveSheet.Name = ALL_AVGS_NAME
     Set avgsRng = Worksheets(ALL_AVGS_NAME).Cells(2, 2)
     Cells(1, 1).value = CELL_STR
     avgsRng.offset(0, -1).Resize(numUnits, 1).value = unitNames
@@ -100,11 +91,11 @@ Private Sub addAllAvgsSheet(ByRef unitNames As Variant)
         xlSrcRange, _
         avgsRng.CurrentRegion, , _
         xlYes) _
-    .name = ALL_AVGS_NAME
+    .Name = ALL_AVGS_NAME
     avgsRng.Resize(numUnits, NUM_BKGRD_PROPERTIES).NumberFormat = "0.000"
 End Sub
 
-Private Sub addBurstAvgsSheet(ByRef unitNames As Variant)
+Private Sub addBurstAvgsSheet()
     Dim zeroes() As Variant
     Dim u, p As Integer
     
@@ -114,7 +105,7 @@ Private Sub addBurstAvgsSheet(ByRef unitNames As Variant)
     'Add the Averages sheet, write out row (unit) headers, and add formatting
     Dim avgsRng As Range
     Worksheets.Add After:=Sheets(ALL_AVGS_NAME)
-    ActiveSheet.name = BURST_AVGS_NAME
+    ActiveSheet.Name = BURST_AVGS_NAME
     Set avgsRng = Worksheets(BURST_AVGS_NAME).Cells(2, 2)
     Cells(1, 1).value = CELL_STR
     avgsRng.offset(0, -1).Resize(numUnits, 1).value = unitNames
@@ -141,11 +132,11 @@ Private Sub addBurstAvgsSheet(ByRef unitNames As Variant)
         xlSrcRange, _
         avgsRng.CurrentRegion, , _
         xlYes) _
-    .name = BURST_AVGS_NAME
+    .Name = BURST_AVGS_NAME
     avgsRng.Resize(numUnits, NUM_BURST_PROPERTIES).NumberFormat = "0.000"
 End Sub
 
-Private Sub addSttcSheet(ByRef unitNames As Variant)
+Private Sub addSttcSheet()
     Dim initial() As Variant
     Dim u, p As Integer
     
@@ -157,7 +148,7 @@ Private Sub addSttcSheet(ByRef unitNames As Variant)
     'Add the STTC sheet, write out row/column (channel) headers, and add formatting
     Dim sttcRng As Range
     Worksheets.Add After:=Sheets(BURST_AVGS_NAME)
-    ActiveSheet.name = STTC_NAME
+    ActiveSheet.Name = STTC_NAME
     Set sttcRng = Worksheets(STTC_NAME).Cells(4, 1)
     With sttcRng
         .offset(-3, 0).value = STTC_HEADER_STR
@@ -188,16 +179,15 @@ Private Sub addSttcSheet(ByRef unitNames As Variant)
     sttcRng.Resize(numRows, 3).value = initial
         
     'Make a table for all the STTC values
-    Worksheets(STTC_NAME).ListObjects.Add( _
-        xlSrcRange, _
-        sttcRng.CurrentRegion, , _
-        xlYes) _
-    .name = STTC_NAME
-    sttcRng.offset(0, 2).Resize(numRows, 2).NumberFormat = "0.000"
+    Dim sttcTbl As ListObject
+    Set sttcTbl = Worksheets(STTC_NAME).ListObjects.Add(xlSrcRange, sttcRng.CurrentRegion, , xlYes)
+    sttcTbl.Name = STTC_NAME
+    sttcTbl.ListColumns(3).DataBodyRange.NumberFormat = "0.000"
+    sttcTbl.ListColumns(4).DataBodyRange.NumberFormat = "0.000"
     
 End Sub
 
-Private Sub processRecording(ByRef unitNames As Variant, ByVal startTime As Double, ByVal endtime As Double)
+Private Sub processRecording(ByRef unitNames As Variant, ByVal burstsToUse As BurstUseType, ByVal StartTime As Double, ByVal endtime As Double)
     Dim u As Integer
     Dim spikes As Variant, preBursts As Variant, postBursts As Variant
         
@@ -208,9 +198,9 @@ Private Sub processRecording(ByRef unitNames As Variant, ByVal startTime As Doub
     'Store STTC values using the entire spike trains of every possible pair of channels
     Dim numUnits As Integer
     numUnits = UBound(unitNames)
-    Dim duration As Double
-    duration = endtime - startTime
-    Call storeSttcValues(duration, numUnits)
+    Dim Duration As Double
+    Duration = endtime - StartTime
+    Call storeSttcValues(Duration, numUnits)
         
     'Remove bursts that start/end too late/early (lolwut?)
     'Adjust the start/end times of each unit, if necessary
@@ -219,8 +209,8 @@ Private Sub processRecording(ByRef unitNames As Variant, ByVal startTime As Doub
     For u = 1 To numUnits
         spikes = getSpikeTrain(u)
         preBursts = getBurstTrain(u, numUnits)
-        Call deleteBadBurstsFrom(u, numUnits, spikes, preBursts, startTime, endtime, startEndTimes)
-        Call deleteBadSpikesFrom(u, spikes, startTime, endtime, startEndTimes(u, 1), startEndTimes(u, 2))
+        Call deleteBadBurstsFrom(u, numUnits, spikes, preBursts, StartTime, endtime, startEndTimes)
+        Call deleteBadSpikesFrom(u, spikes, StartTime, endtime, startEndTimes(u, 1), startEndTimes(u, 2))
     Next u
     ActiveSheet.UsedRange   'Refresh used range by getting the property
     
@@ -232,15 +222,15 @@ Private Sub processRecording(ByRef unitNames As Variant, ByVal startTime As Doub
         spikes = getSpikeTrain(u)
         preBursts = getBurstTrain(u, numUnits)
         preBurstCounts(u) = UBound(preBursts, 1)
-        duration = startEndTimes(u, 2) - startEndTimes(u, 1)
-        Call storePreValues(u, spikes, preBursts, duration)
+        Duration = startEndTimes(u, 2) - startEndTimes(u, 1)
+        Call storePreValues(u, spikes, preBursts, Duration)
     Next u
     
     'Exclude unused bursts (WABs or non-WABs), if requested
-    If BURSTS_TO_USE <> BurstUseType.All Then
+    If burstsToUse <> BurstUseType.All Then
         Dim wabsOnly As Boolean
-        wabsOnly = (BURSTS_TO_USE = BurstUseType.WABs)
-        Call deleteUnusedBursts(wabsOnly, ASSOC_SAME_CHANNEL_UNITS, unitNames)
+        wabsOnly = (burstsToUse = BurstUseType.WABs)
+        Call deleteUnusedBursts(wabsOnly, unitNames)
     End If
         
     'Do POST ANALYSES on each unit
@@ -252,9 +242,9 @@ Private Sub processRecording(ByRef unitNames As Variant, ByVal startTime As Doub
         spikes = getSpikeTrain(u)
         postBursts = getBurstTrain(u, numUnits)
         postBurstCounts(u) = UBound(postBursts, 1)
-        duration = startEndTimes(u, 2) - startEndTimes(u, 1)
+        Duration = startEndTimes(u, 2) - startEndTimes(u, 1)
         wabRatio = postBurstCounts(u) / preBurstCounts(u)
-        Call storePostValues(u, spikes, postBursts, duration, wabRatio)
+        Call storePostValues(u, spikes, postBursts, Duration, wabRatio)
     Next u
     
     'Reformat the datasheet so its a little easier to view
@@ -263,13 +253,13 @@ Private Sub processRecording(ByRef unitNames As Variant, ByVal startTime As Doub
     Cells.EntireColumn.AutoFit
 End Sub
 
-Private Sub storeSttcValues(ByVal duration As Double, ByVal numUnits As Long)
+Private Sub storeSttcValues(ByVal Duration As Double, ByVal numUnits As Long)
     Dim tValues() As Double
     Dim cellIndex1, cellIndex2 As Integer
     Dim u1, u2 As Integer
     Dim sttc As Double
     Dim outputRng As Range
-    Dim oldResults, newResults() As Variant
+    Dim oldResults As Variant
     Dim spikes1, spikes2 As Variant
     
     Dim numRows As Long
@@ -277,14 +267,13 @@ Private Sub storeSttcValues(ByVal duration As Double, ByVal numUnits As Long)
             
     'Loop over each unit's spike timestamps (arranged in columns) to get T-values
     ReDim tValues(1 To numUnits)
-    ReDim newResults(1 To numRows, 1 To 1)
     For u1 = 1 To numUnits
         'For each unit, store the fraction of the recording's duration wherein its spikes are delta-t apart
         spikes1 = getSpikeTrain(u1)
-        tValues(u1) = CorrelatedTimeProportion(spikes1, duration)
+        tValues(u1) = CorrelatedTimeProportion(spikes1, Duration)
     Next u1
     
-    'Store STTC values using the entire spike trains of every possible pair of units
+    'Increment STTC values using the entire spike trains of every possible pair of units
     Dim row As Long
     row = 1
     For u1 = 1 To numUnits
@@ -292,15 +281,11 @@ Private Sub storeSttcValues(ByVal duration As Double, ByVal numUnits As Long)
         For u2 = u1 + 1 To numUnits
             spikes2 = getSpikeTrain(u2)
             sttc = SpikeTimeTilingCoefficient2(spikes1, spikes2, tValues(u1), tValues(u2))
-            newResults(row, 1) = sttc
+            sttcResults(row, 1) = sttcResults(row, 1) + sttc
             row = row + 1
         Next u2
     Next u1
-        
-    'Output spike time tiling coefficients for all pairs of units with this unit, adding new results to the old ones
-    Set outputRng = Worksheets(STTC_NAME).Cells(4, 4).Resize(numRows, 1)
-    oldResults = outputRng.value
-    outputRng.value = Application.Pmt(0, -1, oldResults, newResults)   'Pmt() acts like Sum() but can accept two variants (of equal dimension)
+    
 End Sub
 
 Private Sub deleteBadBurstsFrom(ByVal u As Integer, ByVal numUnits As Integer, ByRef spikes As Variant, ByRef bursts As Variant, ByVal recStart As Double, ByVal recEnd As Double, ByRef startEndTimes() As Double)
@@ -393,7 +378,7 @@ Private Sub deleteBadSpikesFrom(ByVal u As Integer, ByRef spikes As Variant, ByV
         
 End Sub
 
-Private Sub deleteUnusedBursts(ByVal wabsOnly As Boolean, ByVal assocSameChannelUnits As Boolean, ByRef unitNames As Variant)
+Private Sub deleteUnusedBursts(ByVal wabsOnly As Boolean, ByRef unitNames As Variant)
     Dim burstRng As Range
     Dim numBursts As Integer
     Dim bursts, trimmedBursts As Variant
@@ -424,7 +409,7 @@ Private Sub deleteUnusedBursts(ByVal wabsOnly As Boolean, ByVal assocSameChannel
         'Find the first and last unit on this same channel
         firstU = u
         lastU = u
-        If Not assocSameChannelUnits Then
+        If ASSOC_SAME_CHANNEL_UNITS Then
             Do While firstU > 0
                 If InStr(1, unitNames(firstU, 1), chStr) = 0 Then _
                     Exit Do
@@ -455,20 +440,22 @@ Private Sub deleteUnusedBursts(ByVal wabsOnly As Boolean, ByVal assocSameChannel
             'See if this burst has the minimum number of bins associated with
             'any bin of any burst on a same-channel unit (if requested)
             numAssocUnits = 0
-            If assocSameChannelUnits Then
+            If ASSOC_SAME_CHANNEL_UNITS Then
                 Call burstAssociatedWithUnits(firstU, lastU, bursts, chPos, b, numAssocUnits)
                 isWAB = (numAssocUnits >= MIN_ASSOC_UNITS)
-                If isWAB = wabsOnly Then Exit For
+                If isWAB Then Exit For
             End If
         
-            'If not, then loop over each of the unit's valid neighbor channels
+            'If not, then do the same check for each of the unit's valid neighbor channels
             For Each neighbor In validNeighbors
                 Call neighborUnitsAssociatedWithBurst(u, neighbor, b, bursts, numAssocUnits)
+                isWAB = (numAssocUnits >= MIN_ASSOC_UNITS)
+                If isWAB Then Exit For
             Next neighbor
             
-            'If the burst was associated with bursts on the minimum number of neighbor units,
+            'If the burst was or was not wave-associated (as requested by user),
             'then add its start/end timestamps to the "trimmed" array
-            If isWAB Then
+            If isWAB = wabsOnly Then
                 burstPos = burstPos + 1
                 trimmedBursts(burstPos, chPos) = bursts(b, chPos)
                 trimmedBursts(burstPos, chPos + 1) = bursts(b, chPos + 1)
@@ -549,8 +536,9 @@ Private Sub burstAssociatedWithUnits(ByVal firstUnit As Integer, ByVal lastUnit 
     
     'Loop over each unit between the two provided units (inclusive)
     'Don't just associate this unit with itself though, of course
-    Dim nU, nB, nChPos, nStart, nFinish, nBinDuration As Double
-    Dim associated As Boolean
+    Dim nU As Integer, nB As Integer, nChPos As Integer, nStart As Double, nFinish As Double, nBinDuration As Double
+    Dim associated As Boolean, assocUnitsHere As Integer
+    assocUnitsHere = 0
     For nU = firstUnit To lastUnit
         associated = False
         nChPos = 2 * nU - 1
@@ -567,60 +555,42 @@ Private Sub burstAssociatedWithUnits(ByVal firstUnit As Integer, ByVal lastUnit 
                 nBinDuration = (nFinish - nStart) / NUM_BINS
                 associated = burstsAssociated(start, binDuration, nStart, nBinDuration)
                 If associated Then
-                    numAssocUnits = numAssocUnits + 1
+                    assocUnitsHere = assocUnitsHere + 1
                     Exit For
                 End If
             Next nB
             
             'If the min number of associated units has been achieved, then exit the loop and return
-            If numAssocUnits >= MIN_ASSOC_UNITS Then _
+            Dim oneUnitAssoc As Boolean, enoughUnitsAssoc As Boolean
+            oneUnitAssoc = (assocUnitsHere = 1 And Not ASSOC_MULTIPLE_UNITS)
+            enoughUnitsAssoc = (numAssocUnits + assocUnitsHere >= MIN_ASSOC_UNITS)
+            If oneUnitAssoc Or enoughUnitsAssoc Then _
                 Exit For
         End If
     Next nU
     
+    numAssocUnits = numAssocUnits + assocUnitsHere
 End Sub
 
 Private Sub storePreValues(ByVal cellIndex As Integer, ByRef spikes As Variant, ByRef bursts As Variant, ByVal recDuration As Double)
     'Store background spiking properties (these deal w/ spikes outside ALL bursts, not just wave-bursts)
-    Dim newResults() As Variant
-    ReDim newResults(1 To NUM_BKGRD_PROPERTIES)
-    newResults(1) = backgroundFiringInUnit(spikes, bursts, recDuration)
-    newResults(2) = backgroundISIInUnit(spikes, bursts, recDuration)
-    newResults(3) = PercentBurstSpikesInUnit(spikes, bursts)
-    newResults(4) = burstFreqInUnit(bursts, recDuration)
-    newResults(5) = IBIInUnit(bursts, recDuration)
-    
-    'Output values to the All Averages sheet, adding new results to the old ones
-    Dim preCell As Range
-    Dim oldResults As Variant
-    Set preCell = Worksheets(ALL_AVGS_NAME).Cells(cellIndex + 1, 1 + 1)
-    oldResults = preCell.Resize(1, NUM_BKGRD_PROPERTIES).value
-    preCell.Resize(1, NUM_BKGRD_PROPERTIES).value = Application.Pmt(0, -1, oldResults, newResults)   'Pmt() acts like Sum() but can accept two variants (of equal dimension)
+    bkgrdResults(cellIndex, 1) = bkgrdResults(cellIndex, 1) + backgroundFiringInUnit(spikes, bursts, recDuration)
+    bkgrdResults(cellIndex, 2) = bkgrdResults(cellIndex, 2) + backgroundISIInUnit(spikes, bursts, recDuration)
+    bkgrdResults(cellIndex, 3) = bkgrdResults(cellIndex, 3) + PercentBurstSpikesInUnit(spikes, bursts)
+    bkgrdResults(cellIndex, 4) = bkgrdResults(cellIndex, 4) + burstFreqInUnit(bursts, recDuration)
+    bkgrdResults(cellIndex, 5) = bkgrdResults(cellIndex, 5) + IBIInUnit(bursts, recDuration)
 End Sub
 
 Private Sub storePostValues(ByVal cellIndex As Integer, ByRef spikes As Variant, ByRef bursts As Variant, ByVal recDuration As Double, ByVal wabRatio As Double)
-    'Store wave-associated spiking properties (if this channel HAD wave-associated bursts)
-    Dim newResults() As Variant
-    ReDim newResults(1 To NUM_BURST_PROPERTIES)
-    newResults(1) = BurstDurationInUnit(bursts)
-    newResults(2) = BurstSpikeFreqInUnit(spikes, bursts)
-    newResults(3) = BurstISIInUnit(spikes, bursts)
-    newResults(4) = PercentBurstTimeAboveFreqInUnit(spikes, bursts, 10)
-    newResults(5) = SpikesPerBurstInUnit(spikes, bursts)
+    'Store burst-specific spiking properties (if this channel HAD bursts of the correct type)
+    burstResults(cellIndex, 1) = burstResults(cellIndex, 1) + BurstDurationInUnit(bursts)
+    burstResults(cellIndex, 2) = burstResults(cellIndex, 2) + BurstSpikeFreqInUnit(spikes, bursts)
+    burstResults(cellIndex, 3) = burstResults(cellIndex, 3) + BurstISIInUnit(spikes, bursts)
+    burstResults(cellIndex, 4) = burstResults(cellIndex, 4) + PercentBurstTimeAboveFreqInUnit(spikes, bursts, 10)
+    burstResults(cellIndex, 5) = burstResults(cellIndex, 5) + SpikesPerBurstInUnit(spikes, bursts)
     
-    'Output values to the Bursts Averages sheet, adding new results to the old ones
-    Dim postCell As Range
-    Dim oldResults As Variant
-    Set postCell = Worksheets(BURST_AVGS_NAME).Cells(cellIndex + 1, 1 + 1)
-    oldResults = postCell.Resize(1, NUM_BURST_PROPERTIES).value
-    postCell.Resize(1, NUM_BURST_PROPERTIES).value = Application.Pmt(0, -1, oldResults, newResults)   'Pmt() acts like Sum() but can accept two variants (of equal dimension)
-    
-    'Output the PercentBurstInWaves value to the All Averages sheet, adding it the old result
-    Dim pbwCell As Range
-    Dim oldPBW As Double
-    Set pbwCell = Worksheets(ALL_AVGS_NAME).Cells(cellIndex + 1, NUM_BKGRD_PROPERTIES + 1)
-    oldPBW = pbwCell.value
-    pbwCell.value = oldPBW + wabRatio * 100
+    'Store other all-burst properties that had wait until after removing unneeded bursts
+    bkgrdResults(cellIndex, 6) = bkgrdResults(cellIndex, 6) + wabRatio * 100
 End Sub
 
 Private Function getSpikeTrain(ByVal spikeCol As Integer) As Variant
@@ -668,37 +638,41 @@ Private Function getBurstTrain(ByVal spikeCol As Integer, ByVal numUnits As Inte
     getBurstTrain = burstTrain
 End Function
 
-Private Sub reduceToAvgs(ByVal numRecordings As Integer, ByVal numUnits As Integer)
-    Dim data As Range
-    Dim averages, sttcs As Variant
-    Dim r, c As Integer
-
-    'Don't bother reducing if there were 0 or 1 recordings
-    If numRecordings <= 1 Then _
-        Exit Sub
+Private Sub storeAvgValues(ByVal numRecordings As Integer, ByVal numUnits As Integer)
+    'Don't bother dividing if there was only 1 recording (and don't divide by 0!)
+    If numRecordings > 1 Then
+        'Reduce all sums of firing-property-values to averages
+        Dim u As Integer, p As Integer
+        Dim bkgrdRng As Range, burstRng As Range
+        For u = 1 To numUnits
+            For p = 1 To NUM_BKGRD_PROPERTIES
+                bkgrdResults(u, p) = bkgrdResults(u, p) / numRecordings
+            Next p
+            For p = 1 To NUM_BURST_PROPERTIES
+                burstResults(u, p) = burstResults(u, p) / numRecordings
+            Next p
+        Next u
+          
+        'Reduce all sums of STTC-values to averages
+        Dim r As Integer, numRows As Long
+        numRows = numUnits * (numUnits - 1) / 2
+        Dim sttcRng As Range
+        For r = 1 To numRows
+            sttcResults(r, 1) = sttcResults(r, 1) / numRecordings
+        Next r
+    End If
     
-    'Reduce all sums of WAB property-values to averages
-    Set data = Worksheets(ALL_AVGS_NAME).Cells(2, 2).Resize(numUnits, NUM_PROPERTIES)
-    averages = data.value
-    For r = 1 To numUnits
-        For c = 1 To NUM_PROPERTIES
-            averages(r, c) = averages(r, c) / numRecordings
-        Next c
-    Next r
-    data.value = averages
-      
-    'Reduce all sums of STTC-values to averages
-    Set data = Worksheets(STTC_NAME).Cells(3, 2).Resize(numUnits, numUnits)
-    sttcs = data.value
-    For r = 1 To numUnits
-        For c = 1 To numUnits
-            sttcs(r, c) = sttcs(r, c) / numRecordings
-        Next c
-    Next r
-    data.value = sttcs
+    'Store results to their respective Excel tables
+    Dim allTbl As ListObject, burstTbl As ListObject, sttcTbl As ListObject
+    Set allTbl = Worksheets(ALL_AVGS_NAME).ListObjects(ALL_AVGS_NAME)
+    Set burstTbl = Worksheets(BURST_AVGS_NAME).ListObjects(BURST_AVGS_NAME)
+    Set sttcTbl = Worksheets(STTC_NAME).ListObjects(STTC_NAME)
+    allTbl.DataBodyRange.offset(0, 1).Resize(, allTbl.ListColumns.Count - 1).value = bkgrdResults
+    burstTbl.DataBodyRange.offset(0, 1).Resize(, burstTbl.ListColumns.Count - 1).value = burstResults
+    sttcTbl.DataBodyRange.offset(0, 3).Resize(, sttcTbl.ListColumns.Count - 3).value = sttcResults
 End Sub
 
-Public Sub finalize(ByVal numUnits As Integer)
+Public Sub cleanSheets(ByVal numUnits As Integer)
     'Finalize the Averages sheet
     With Worksheets(ALL_AVGS_NAME)
         .Cells.HorizontalAlignment = xlCenter

@@ -239,11 +239,11 @@ Public Function SpikesInBurst(ByRef spikes As Variant, ByRef bursts As Variant, 
     SpikesInBurst = endIndex - startIndex + 1
 End Function
 Public Function SpikeFreqInBurst(ByRef spikes As Variant, ByRef bursts As Variant, ByVal bIndex As Long) As Double
-    Dim duration As Double
+    Dim Duration As Double
     
     'Burst index is 1-based
-    duration = bursts(bIndex, 2) - bursts(bIndex, 1)
-    SpikeFreqInBurst = SpikesInBurst(spikes, bursts, bIndex) / duration
+    Duration = bursts(bIndex, 2) - bursts(bIndex, 1)
+    SpikeFreqInBurst = SpikesInBurst(spikes, bursts, bIndex) / Duration
 End Function
 Public Function peakFreqInBurst(ByRef spikes As Variant, ByRef bursts As Variant, ByVal bIndex As Long) As Double
     Dim first, last, s As Integer
