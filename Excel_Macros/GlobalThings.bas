@@ -150,10 +150,10 @@ Private Sub DefineTissues()
     TISSUES.RemoveAll
     For Each lsRow In tissueTbl.ListRows
         Set tiss = New Tissue
-        tiss.ID = lsRow.Range(1, tissueTbl.ListColumns("ID").Index).value
-        tiss.DatePrepared = lsRow.Range(1, tissueTbl.ListColumns("Date Prepared").Index).value
-        tiss.Age = lsRow.Range(1, tissueTbl.ListColumns("Age").Index).value
-        tiss.Genotype = lsRow.Range(1, tissueTbl.ListColumns("Genotype").Index).value
+        tiss.ID = lsRow.Range(1, tissueTbl.ListColumns("ID").index).value
+        tiss.DatePrepared = lsRow.Range(1, tissueTbl.ListColumns("Date Prepared").index).value
+        tiss.Age = lsRow.Range(1, tissueTbl.ListColumns("Age").index).value
+        tiss.Genotype = lsRow.Range(1, tissueTbl.ListColumns("Genotype").index).value
         TISSUES.Add tiss.ID, tiss
     Next lsRow
 
@@ -174,12 +174,12 @@ Private Sub DefineRecordings()
     Recordings.RemoveAll
     For Each lsRow In recTbl.ListRows
         Set rec = New Recording
-        rec.ID = lsRow.Range(1, recTbl.ListColumns("ID").Index).value
-        rec.MEA = lsRow.Range(1, recTbl.ListColumns("MEA").Index).value
-        rec.Number = lsRow.Range(1, recTbl.ListColumns("Recording Number").Index).value
-        rec.StartTime = lsRow.Range(1, recTbl.ListColumns("StartStamp").Index).value
-        rec.Duration = lsRow.Range(1, recTbl.ListColumns("Duration").Index).value
-        tissueID = lsRow.Range(1, recTbl.ListColumns("Tissue ID").Index).value
+        rec.ID = lsRow.Range(1, recTbl.ListColumns("ID").index).value
+        rec.MEA = lsRow.Range(1, recTbl.ListColumns("MEA").index).value
+        rec.Number = lsRow.Range(1, recTbl.ListColumns("Recording Number").index).value
+        rec.StartTime = lsRow.Range(1, recTbl.ListColumns("StartStamp").index).value
+        rec.Duration = lsRow.Range(1, recTbl.ListColumns("Duration").index).value
+        tissueID = lsRow.Range(1, recTbl.ListColumns("Tissue ID").index).value
         Set rec.Tissue = TISSUES(tissueID)
         TISSUES(tissueID).Recordings.Add rec
         Recordings.Add rec.ID, rec
@@ -212,12 +212,12 @@ Private Sub DefinePopulations()
     POPULATIONS.RemoveAll
     For Each lsRow In popsTbl.ListRows
         Set pop = New Population
-        pop.ID = lsRow.Range(1, popsTbl.ListColumns("Population ID").Index).value
-        pop.Name = lsRow.Range(1, popsTbl.ListColumns("Name").Index).value
-        pop.Abbreviation = lsRow.Range(1, popsTbl.ListColumns("Abbreviation").Index).value
-        pop.IsControl = (lsRow.Range(1, popsTbl.ListColumns("Control?").Index).value <> "")
-        pop.ForeColor = lsRow.Range(1, popsTbl.ListColumns("Population ID").Index).Font.Color
-        pop.BackColor = lsRow.Range(1, popsTbl.ListColumns("Population ID").Index).Interior.Color
+        pop.ID = lsRow.Range(1, popsTbl.ListColumns("Population ID").index).value
+        pop.Name = lsRow.Range(1, popsTbl.ListColumns("Name").index).value
+        pop.Abbreviation = lsRow.Range(1, popsTbl.ListColumns("Abbreviation").index).value
+        pop.IsControl = (lsRow.Range(1, popsTbl.ListColumns("Control?").index).value <> "")
+        pop.ForeColor = lsRow.Range(1, popsTbl.ListColumns("Population ID").index).Font.Color
+        pop.BackColor = lsRow.Range(1, popsTbl.ListColumns("Population ID").index).Interior.Color
         POPULATIONS.Add pop.ID, pop
     Next lsRow
     
@@ -257,10 +257,10 @@ Private Sub DefinePopulations()
     For Each lsRow In recTbl.ListRows
         'Create the TissueView object (if it doesn't already exist)
         'This includes defining its summary workbook paths
-        popID = lsRow.Range(1, recTbl.ListColumns("Population ID").Index).value
-        recID = lsRow.Range(1, recTbl.ListColumns("Recording ID").Index).value
+        popID = lsRow.Range(1, recTbl.ListColumns("Population ID").index).value
+        recID = lsRow.Range(1, recTbl.ListColumns("Recording ID").index).value
         tID = Recordings(recID).Tissue.ID
-        txtPath = lsRow.Range(1, recTbl.ListColumns("Text File").Index).value
+        txtPath = lsRow.Range(1, recTbl.ListColumns("Text File").index).value
         If tvs(popID).Exists(tID) Then
             Set tv = tvs(popID)(tID)
         Else
@@ -270,7 +270,7 @@ Private Sub DefinePopulations()
             For t = 1 To UBound(BURST_TYPES, 2)
                 bType = BURST_TYPES(1, t)
                 wbPath = Left(txtPath, InStrRev(txtPath, "\"))
-                wbPath = wbPath & lsRow.Index & "_" & Format(tv.Tissue.DatePrepared, "yyyy-mm-dd") & "_" & bType & ".xlsx"
+                wbPath = wbPath & lsRow.index & "_" & Format(tv.Tissue.DatePrepared, "yyyy-mm-dd") & "_" & bType & ".xlsx"
                 tv.WorkbookPaths.Add bType, wbPath
             Next t
         End If

@@ -270,7 +270,7 @@ Private Sub storeSttcValues(ByVal Duration As Double, ByVal numUnits As Long)
     For u1 = 1 To numUnits
         'For each unit, store the fraction of the recording's duration wherein its spikes are delta-t apart
         spikes1 = getSpikeTrain(u1)
-        tValues(u1) = CorrelatedTimeProportion(spikes1, Duration)
+        tValues(u1) = correlatedTimeProportion(spikes1, Duration)
     Next u1
     
     'Increment STTC values using the entire spike trains of every possible pair of units
@@ -280,7 +280,7 @@ Private Sub storeSttcValues(ByVal Duration As Double, ByVal numUnits As Long)
         spikes1 = getSpikeTrain(u1)
         For u2 = u1 + 1 To numUnits
             spikes2 = getSpikeTrain(u2)
-            sttc = SpikeTimeTilingCoefficient2(spikes1, spikes2, tValues(u1), tValues(u2))
+            sttc = spikeTimeTilingCoefficient2(spikes1, spikes2, tValues(u1), tValues(u2))
             sttcResults(row, 1) = sttcResults(row, 1) + sttc
             row = row + 1
         Next u2
@@ -341,7 +341,7 @@ Private Sub deleteBadBurstsFrom(ByVal u As Integer, ByVal numUnits As Integer, B
     startEndTimes(u, 2) = newEnd
 End Sub
 
-Private Sub deleteBadSpikesFrom(ByVal u As Integer, ByRef spikes As Variant, ByVal recStart As Double, ByVal recEnd As Double, ByRef unitStart As Double, ByRef unitEnd As Double)
+Private Sub deleteBadSpikesFrom(ByVal u As Integer, ByRef spikes As Variant, ByVal recStart As Double, ByVal recEnd As Double, ByVal unitStart As Double, ByVal unitEnd As Double)
     Dim s As Integer
     
     'If there are no spikes then just return
@@ -572,25 +572,25 @@ Private Sub burstAssociatedWithUnits(ByVal firstUnit As Integer, ByVal lastUnit 
     numAssocUnits = numAssocUnits + assocUnitsHere
 End Sub
 
-Private Sub storePreValues(ByVal cellIndex As Integer, ByRef spikes As Variant, ByRef bursts As Variant, ByVal recDuration As Double)
+Private Sub storePreValues(ByVal index As Integer, ByRef spikes As Variant, ByRef bursts As Variant, ByVal recDuration As Double)
     'Store background spiking properties (these deal w/ spikes outside ALL bursts, not just wave-bursts)
-    bkgrdResults(cellIndex, 1) = bkgrdResults(cellIndex, 1) + backgroundFiringInUnit(spikes, bursts, recDuration)
-    bkgrdResults(cellIndex, 2) = bkgrdResults(cellIndex, 2) + backgroundISIInUnit(spikes, bursts, recDuration)
-    bkgrdResults(cellIndex, 3) = bkgrdResults(cellIndex, 3) + PercentBurstSpikesInUnit(spikes, bursts)
-    bkgrdResults(cellIndex, 4) = bkgrdResults(cellIndex, 4) + burstFreqInUnit(bursts, recDuration)
-    bkgrdResults(cellIndex, 5) = bkgrdResults(cellIndex, 5) + IBIInUnit(bursts, recDuration)
+    bkgrdResults(index, 1) = bkgrdResults(index, 1) + backgroundFiringInUnit(spikes, bursts, recDuration)
+    bkgrdResults(index, 2) = bkgrdResults(index, 2) + backgroundISIInUnit(spikes, bursts, recDuration)
+    bkgrdResults(index, 3) = bkgrdResults(index, 3) + percentBurstSpikesInUnit(spikes, bursts)
+    bkgrdResults(index, 4) = bkgrdResults(index, 4) + burstFreqInUnit(bursts, recDuration)
+    bkgrdResults(index, 5) = bkgrdResults(index, 5) + ibiInUnit(bursts, recDuration)
 End Sub
 
-Private Sub storePostValues(ByVal cellIndex As Integer, ByRef spikes As Variant, ByRef bursts As Variant, ByVal recDuration As Double, ByVal wabRatio As Double)
+Private Sub storePostValues(ByVal index As Integer, ByRef spikes As Variant, ByRef bursts As Variant, ByVal recDuration As Double, ByVal wabRatio As Double)
     'Store burst-specific spiking properties (if this channel HAD bursts of the correct type)
-    burstResults(cellIndex, 1) = burstResults(cellIndex, 1) + BurstDurationInUnit(bursts)
-    burstResults(cellIndex, 2) = burstResults(cellIndex, 2) + BurstSpikeFreqInUnit(spikes, bursts)
-    burstResults(cellIndex, 3) = burstResults(cellIndex, 3) + BurstISIInUnit(spikes, bursts)
-    burstResults(cellIndex, 4) = burstResults(cellIndex, 4) + PercentBurstTimeAboveFreqInUnit(spikes, bursts, 10)
-    burstResults(cellIndex, 5) = burstResults(cellIndex, 5) + SpikesPerBurstInUnit(spikes, bursts)
+    burstResults(index, 1) = burstResults(index, 1) + burstDurationInUnit(bursts)
+    burstResults(index, 2) = burstResults(index, 2) + burstSpikeFreqInUnit(spikes, bursts)
+    burstResults(index, 3) = burstResults(index, 3) + 1 / burstResults(index, 2)    'Inverse of spike freq
+    burstResults(index, 4) = burstResults(index, 4) + percentBurstTimeAboveFreqInUnit(spikes, bursts, 10)
+    burstResults(index, 5) = burstResults(index, 5) + spikesPerBurstInUnit(spikes, bursts)
     
-    'Store other all-burst properties that had wait until after removing unneeded bursts
-    bkgrdResults(cellIndex, 6) = bkgrdResults(cellIndex, 6) + wabRatio * 100
+    'Store other all-burst properties that had to wait until after removing unneeded bursts
+    bkgrdResults(index, 6) = bkgrdResults(index, 6) + wabRatio * 100
 End Sub
 
 Private Function getSpikeTrain(ByVal spikeCol As Integer) As Variant
