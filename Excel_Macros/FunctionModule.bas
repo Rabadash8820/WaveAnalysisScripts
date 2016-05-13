@@ -386,6 +386,7 @@ Public Function burstSpikeFreqInUnit(ByRef spikes As Variant, ByRef bursts As Va
     End If
     
     'Otherwise, return the average of the spike frequencies of all bursts
+    Dim sumSpikeFreq As Double, b As Integer
     sumSpikeFreq = 0
     For b = 1 To UBound(bursts)
         sumSpikeFreq = sumSpikeFreq + spikeFreqInBurst(spikes, bursts, b)

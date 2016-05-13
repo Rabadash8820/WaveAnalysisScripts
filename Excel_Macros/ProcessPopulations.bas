@@ -19,7 +19,7 @@ Public Sub ProcessPopulations()
     If Not success Then _
         GoTo ExitSub
         
-    'Perform wave analyses on the provided data!
+    'Define the types of bursts to use
     Dim burstUseTypes As New Dictionary
     burstUseTypes.Add "WAB", BurstUseType.WABs
     burstUseTypes.Add "NonWAB", BurstUseType.NonWABs
@@ -93,15 +93,13 @@ Private Sub loadRecording(ByRef rv As RecordingView, ByVal rvIndex As Integer)
     For t = 1 To UBound(BURST_TYPES, 2)
         bType = BURST_TYPES(1, t)
         
-        'Open the summary workbook for this recording's tissue (creating it first if necessary)
+        'Open the summary workbook for this recording's tissue (replacing any old one)
         wbPath = tv.WorkbookPaths(bType)
-        If fs.FileExists(wbPath) Then
-            Set wb = Workbooks.Open(wbPath)
-        Else
-            Set wb = Workbooks.Add
-            Call addContentsSheet
-            wb.SaveAs (wbPath)
-        End If
+        If fs.FileExists(wbPath) Then _
+            fs.DeleteFile (wbPath)
+        Set wb = Workbooks.Add
+        Call addContentsSheet
+        wb.SaveAs (wbPath)
         
         'Add each text file to the Contents sheet and load them on a new sheet
         Dim txtFile As File

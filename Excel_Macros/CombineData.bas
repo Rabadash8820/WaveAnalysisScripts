@@ -632,10 +632,13 @@ Private Sub buildSttcFiguresSheet()
     headers(1, 1) = "Unit Distance"
     headers(1, 2) = "Real Distance"
     col = 2
+    Dim valStr As String, rangeStr As String
     For p = 0 To POPULATIONS.Count - 1
         Set pop = POPULATIONS.Items()(p)
-        headers(1, col + 1) = pop.Abbreviation & "_Avg"
-        headers(1, col + 2) = pop.Abbreviation & "_SEM"
+        valStr = IIf(REPORT_STATS_TYPE = ReportStatsType.MedianIQR, "Med", "Avg")
+        rangeStr = IIf(REPORT_STATS_TYPE = ReportStatsType.MedianIQR, "IQR", "SEM")
+        headers(1, col + 1) = pop.Abbreviation & "_" & valStr
+        headers(1, col + 2) = pop.Abbreviation & "_" & rangeStr
         col = col + 2
         For t = 0 To pop.TissueViews.Count - 1
             Set tv = pop.TissueViews.Item(t + 1)
@@ -668,17 +671,32 @@ Private Sub buildSttcFiguresSheet()
     End With
     
     'Add formulas to the remaining rows/columns
-    Dim popRngStr As String, popSttcTblStr As String
+    Dim popRngStr As String, popSttcTblStr As String, valFormula, rangeFormula As String
     numCols = 2
     tbl.ListColumns(2).DataBodyRange.Formula = "=IF(InterElectrodeDist*[@Unit Distance]<=IgnoreDist,InterElectrodeDist*[@[Unit Distance]],NA())"
     For p = 0 To POPULATIONS.Count - 1
         Set pop = POPULATIONS.Items()(p)
         popRngStr = STTC_NAME & "[@[" & pop.Abbreviation & "_1]:[" & pop.Abbreviation & "_" & pop.TissueViews.Count & "]]"
-        tbl.ListColumns(numCols + 1).DataBodyRange.Formula = "=AVERAGE(" & popRngStr & ")"
-        tbl.ListColumns(numCols + 2).DataBodyRange.Formula = "=STDEV.S(" & popRngStr & ")/SQRT(COUNT(" & popRngStr & "))"
+        If REPORT_STATS_TYPE = ReportStatsType.MedianIQR Then
+            valFormula = "=MEDIAN(" & popRngStr & ")"
+            rangeFormula = "= QUARTILE.EXC(" & popRngStr & ",3)-QUARTILE.EXC(" & popRngStr & ",1)"
+        Else
+            valFormula = "=AVERAGE(" & popRngStr & ")"
+            rangeFormula = "= STDEV.S(" & popRngStr & ")/SQRT(COUNT(" & popRngStr & "))"
+        End If
+        tbl.ListColumns(numCols + 1).DataBodyRange.Formula = valFormula
+        tbl.ListColumns(numCols + 2).DataBodyRange.Formula = rangeFormula
         For t = 1 To pop.TissueViews.Count
             popSttcTblStr = pop.Name & "_STTC"
-            tbl.ListColumns(numCols + 2 + t).DataBodyRange.Formula = "=AVERAGEIFS(" & popSttcTblStr & "[STTC]," & popSttcTblStr & "[Tissue],""" & t & """," & popSttcTblStr & "[Unit Distance],[@Unit Distance])"
+            If REPORT_STATS_TYPE = ReportStatsType.MedianIQR Then
+                valFormula = "=MEDIAN(IF(" & popSttcTblStr & "[Tissue]=""" & t & """,IF(" & popSttcTblStr & "[Unit Distance]=[@[Unit Distance]]," & popSttcTblStr & "[STTC])))"
+            Else
+                valFormula = "=AVERAGEIFS(" & popSttcTblStr & "[STTC]," & popSttcTblStr & "[Tissue],""" & t & """," & popSttcTblStr & "[Unit Distance],[@[Unit Distance]])"
+            End If
+            With tbl.ListColumns(numCols + 2 + t).DataBodyRange
+                .Formula = valFormula
+                .FormulaArray = .Formula
+            End With
         Next t
         numCols = numCols + 2 + pop.TissueViews.Count
     Next p
@@ -1034,8 +1052,8 @@ Private Sub copyTissueData(ByRef tissueWb As Workbook, ByVal fetchName As String
     Dim idRng As Range
     fetchRng.Copy Destination:=outputRng
     Set idRng = outputRng.offset(0, -1).Resize(fetchRng.Rows.Count, 1)
+    idRng.NumberFormat = "@" 'Text, use "0" for integers
     idRng.value = tissueID
-
 End Sub
 
 Private Sub cleanSheets(ByRef wb As Workbook, ByVal keyword As String)

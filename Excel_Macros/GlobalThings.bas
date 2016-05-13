@@ -8,6 +8,10 @@ Public Enum BurstUseType
     WABs
     NonWABs
 End Enum
+Public Enum ReportStatsType
+    MeanSEM
+    MedianIQR
+End Enum
 
 'CONFIG VARIABLES
 Public MEA_ROWS, MEA_COLS As Integer
@@ -53,6 +57,7 @@ Public MARK_BURST_DUR_UNITS As Boolean
 Public DELETE_UNITS_ALSO As Boolean
 Public KEEP_WB_OPEN As Boolean
 Public DATA_PAIRED As Boolean
+Public REPORT_STATS_TYPE As ReportStatsType
 
 'Arrays/collections and associated values
 Public NUM_PROPERTIES As Integer
@@ -122,6 +127,7 @@ Public Function DefineObjects(ByVal getInvalids As Boolean) As Boolean
     End If
     
     'Get Tissue/Recording and experimental Population info
+    Application.DisplayAlerts = False
     Workbooks.Open (summaryFile.Path)
     Call DefineRecordings
     Workbooks(summaryFile.Name).Close
@@ -131,6 +137,7 @@ Public Function DefineObjects(ByVal getInvalids As Boolean) As Boolean
     If getInvalids Then _
         Call getInvalidUnits
     Workbooks(popFile.Name).Close
+    Application.DisplayAlerts = True
     
     success = True
     
@@ -284,10 +291,6 @@ Private Sub DefinePopulations()
         POPULATIONS(popID).TissueViews.Add tv
         rv.TextPath = txtPath
     Next lsRow
-    
-    'Get some other config flags set by the user
-    DATA_PAIRED = (popsSht.Shapes("DataPairedChk").OLEFormat.Object.value = 1)
-
 End Sub
 
 Private Sub getInvalidUnits()
@@ -352,9 +355,12 @@ Public Sub GetConfigVars()
     PROPERTIES(11) = "SpikesPerBurst"
     
     'Get some other config flags set by the user
+    Dim useMedIQR As Boolean
+    DATA_PAIRED = (analyzeSht.Shapes("DataPairedChk").OLEFormat.Object.value = 1)
     ASSOC_SAME_CHANNEL_UNITS = (analyzeSht.Shapes("SameChannelAssocChk").OLEFormat.Object.value = 1)
     ASSOC_MULTIPLE_UNITS = (analyzeSht.Shapes("MultipleUnitsAssocChk").OLEFormat.Object.value = 1)
-    
+    useMedIQR = (analyzeSht.Shapes("SttcMedIQRChk").OLEFormat.Object.value = 1)
+    REPORT_STATS_TYPE = IIf(useMedIQR, ReportStatsType.MedianIQR, ReportStatsType.MeanSEM)
 End Sub
 
 Private Sub storeParam(ByVal Name As String, ByVal value As Variant)
