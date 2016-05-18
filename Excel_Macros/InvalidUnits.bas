@@ -1,144 +1,46 @@
 Attribute VB_Name = "InvalidUnits"
 Option Explicit
+Option Private Module
 
+Const DELETE_PREFIX = "XxxX_"
 Const NUM_NONPOP_SHEETS = 4
 Const BURST_DUR_COL = 3
-Const MARK_STYLE = "Bad"
-Const NORMAL_STYLE = "Normal"
 
-Dim MARK_BURST_DUR_UNITS As Boolean, DELETE_UNITS_ALSO As Boolean, KEEP_WB_OPEN As Boolean
-
-Public Sub markInvalidUnits()
-    Call setupOptimizations
-        
-    'Define the Tissue/Recording/Population objects, etc.
-    Dim success As Boolean
-    Call GetConfigVars
-    success = DefineObjects(True)
-    If Not success Then _
-        GoTo ExitSub
+Public Sub invalidateUnits(ByRef sht As Worksheet, ByVal tiss As Tissue, ByRef unitNames As Variant)
+    'For each invalid unit on this Tissue, mark the columns that contains its data
+    'These include the spike timestamp and burst start/end timestamp columns
+    Dim cornerCell As Range
+    Set cornerCell = Cells(1, 1)
+    Dim numInvalids As Long, numUnits As Integer, iu As Long, u As Integer
+    Dim ID As Integer, unitName As String, burstOffset As Integer
+    numInvalids = UBound(INVALIDS)
+    numUnits = UBound(unitNames)
+    For iu = 1 To numInvalids
+        ID = INVALIDS(iu, 2)
+        If ID = tiss.ID Then
+            unitName = INVALIDS(iu, 3)
+            For u = 1 To numUnits
+                If unitNames(u, 1) = unitName Then
+                    burstOffset = numUnits + 2 * (u - 1)
+                    cornerCell.offset(0, u - 1).value = DELETE_PREFIX & cornerCell.offset(0, u - 1).value
+                    cornerCell.offset(0, burstOffset).value = DELETE_PREFIX & cornerCell.offset(0, burstOffset).value
+                    cornerCell.offset(0, burstOffset + 1).value = DELETE_PREFIX & cornerCell.offset(0, burstOffset + 1).value
+                End If
+            Next u
+        End If
+    Next iu
     
-    'Let the user pick the workbook in which to mark invalid units
-    Dim wbName As String, sttcWbName As String, result As VbMsgBoxResult
-    wbName = PickWorkbook("Select the Results workbook in which to mark invalid units")
-    If wbName = "" Then
-        result = MsgBox("No workbook selected.", vbOKOnly)
-        GoTo ExitSub
-    End If
-    
-    'Open this workbook and mark any invalid units therein
-    Dim wb As Workbook, numMarkedUnits As Long
-    numMarkedUnits = 0
-    Set wb = Workbooks.Open(wbName)
-    Call resetRanges
-    Call markPropWbData(wb, numMarkedUnits)
-    If MARK_BURST_DUR_UNITS Then _
-        Call markZeroBurstDurUnits(wb)
-    Call markSttcWbData(wb, numMarkedUnits)
-
-    'Save/close the workbook if the user doesn't want to keep it open
-    If Not KEEP_WB_OPEN Then _
-        Call wb.Close(True)
-    
-    'Warn user to remove zero property values also
-    Dim markedStr As String, msg As String
-    markedStr = IIf(DELETE_UNITS_ALSO, "deleted", "marked")
-    Dim numInvalids As Integer
-    numInvalids = UBound(INVALIDS, 1)
-    msg = numInvalids & " invalid units provided." & vbCr & _
-          numMarkedUnits & " lines actually " & markedStr & "." & vbCr & _
-          "Time taken: " & Format(ProgramDuration(), "hh:mm:ss")
-    result = MsgBox(msg, vbOKOnly)
-
-ExitSub:
-    Call tearDownOptimizations
+    'Go back through the columns and delete the ones that were marked
+    Dim doDelete As Boolean, headerRng As Range
+    For u = 3 * numUnits - 1 To 0 Step -1
+        Set headerRng = cornerCell.offset(0, u)
+        doDelete = (Left(headerRng.value, Len(DELETE_PREFIX)) = DELETE_PREFIX)
+        If doDelete Then _
+            Columns(headerRng.Column).Delete
+    Next u
 End Sub
 
-Private Sub markPropWbData(ByRef wkbk As Workbook, ByRef numMarkedUnits As Long)
-    'For each invalid unit...
-    'Find the data sheets that match its population name,
-    'Find the table rows on those sheets that match its tissue and Unit IDs,
-    'And mark that row with a noticeable style, or delete them if requested
-    Dim numPops As Integer
-    numPops = Worksheets.Count - NUM_NONPOP_SHEETS
-    Dim i As Long, lr As Long, sh As Integer, sht As Worksheet
-    Dim marked As Boolean
-    Dim pop As Population, tissueID As String, unitID As String
-    Dim shtMatches As Boolean, rowMatches As Boolean
-    Dim lsRows As ListRows, lsRng As Range
-    Dim numInvalids As Integer
-    numInvalids = UBound(INVALIDS, 1)
-    For i = 1 To numInvalids
-        marked = False
-        Set pop = POPULATIONS(INVALIDS(i, 1))
-        tissueID = INVALIDS(i, 2)
-        unitID = INVALIDS(i, 3)
-        
-        For sh = 1 To numPops
-            Set sht = Worksheets(NUM_NONPOP_SHEETS + sh)
-            shtMatches = (InStr(1, sht.Name, pop.Name) <> 0) And (InStr(1, sht.Name, "STTC") = 0)
-            If shtMatches Then
-                Set lsRows = sht.ListObjects(sht.Name).ListRows
-                For lr = 1 To lsRows.Count
-                    Set lsRng = lsRows(lr).Range
-                    rowMatches = lsRng.Cells(1, 1).value = tissueID And lsRng.Cells(1, 2).value = unitID
-                    If rowMatches Then
-                        Call markUnit(lsRows(lr))
-                        marked = True
-                        Exit For
-                    End If
-                Next lr
-            End If
-        Next sh
-        
-        If marked Then _
-            numMarkedUnits = numMarkedUnits + 1
-    Next i
-End Sub
-
-Private Sub markSttcWbData(ByRef wkbk As Workbook, ByRef numMarkedUnits As Long)
-    'For each invalid unit...
-    'Find the STTC sheet that matches its population name,
-    'Find the table rows on those sheets that match its tissue and Unit IDs,
-    'And mark those rows with a noticeable style, or delete them if requested
-    Dim numPops As Integer
-    numPops = Worksheets.Count - NUM_NONPOP_SHEETS
-    Dim i As Long, lr As Long, currRow As Long, sht As Worksheet
-    Dim marked As Boolean
-    Dim pop As Population, tissueID As String, unitID As String
-    Dim rowMatches As Boolean, lsRows As ListRows, lsRng As Range
-    Dim numInvalids As Integer
-    numInvalids = UBound(INVALIDS, 1)
-    For i = 1 To numInvalids
-        marked = False
-        Set pop = POPULATIONS(INVALIDS(i, 1))
-        tissueID = INVALIDS(i, 2)
-        unitID = INVALIDS(i, 3)
-        
-        Set sht = Worksheets(pop.Name & "_STTC")
-        currRow = 1
-        Set lsRows = sht.ListObjects(sht.Name).ListRows
-        For lr = 1 To lsRows.Count
-            Set lsRng = lsRows(currRow).Range
-            rowMatches = (lsRng.Cells(1, 1).value = tissueID And _
-                         (lsRng.Cells(1, 2).value = unitID Or lsRng.Cells(1, 3).value = unitID))
-            If rowMatches Then
-                Call markUnit(lsRows(currRow))
-                marked = True
-                If Not DELETE_UNITS_ALSO Then _
-                    currRow = currRow + 1
-            Else
-                currRow = currRow + 1
-            End If
-        Next lr
-        
-        If marked Then _
-            numMarkedUnits = numMarkedUnits + 1
-    Next i
-
-End Sub
-
-Private Sub markZeroBurstDurUnits(propsWb As Workbook)
+Public Sub deleteZeroBurstDurUnits(ByRef wb As Workbook)
     'Sheets with the following keywords in their names will have units with burst durations of 0 marked
     Dim keywords(1 To 2) As String, keyword As Variant
     keywords(1) = "_WABs"
@@ -147,9 +49,8 @@ Private Sub markZeroBurstDurUnits(propsWb As Workbook)
     'Mark units with burst durations of 0 on all applicable sheets
     Dim sht As Worksheet, tbl As ListObject, lsRows As ListRows
     Dim lr As Long, currRow As Long
-    Dim marked As Boolean
     Dim shtMatches As Boolean, rowMatches As Boolean
-    For Each sht In propsWb.Worksheets
+    For Each sht In wb.Worksheets
         For Each keyword In keywords
             shtMatches = (InStr(1, sht.Name, keyword) > 0)
             If shtMatches Then
@@ -158,10 +59,7 @@ Private Sub markZeroBurstDurUnits(propsWb As Workbook)
                 For lr = 1 To lsRows.Count
                     rowMatches = (lsRows(currRow).Range(1, BURST_DUR_COL).value = 0)
                     If rowMatches Then
-                        Call markUnit(lsRows(currRow))
-                        marked = True
-                        If Not DELETE_UNITS_ALSO Then _
-                            currRow = currRow + 1
+                        lsRows(currRow).Delete
                     Else
                         currRow = currRow + 1
                     End If
@@ -169,27 +67,4 @@ Private Sub markZeroBurstDurUnits(propsWb As Workbook)
             End If
         Next keyword
     Next sht
-End Sub
-
-Private Sub resetRanges()
-    'Clear any old mark styles
-    Dim numPops As Integer, sh As Integer, sht As Worksheet, lsRng As Range
-    numPops = Worksheets.Count - NUM_NONPOP_SHEETS
-    For sh = 1 To numPops
-        Set sht = Worksheets(NUM_NONPOP_SHEETS + sh)
-        Set lsRng = sht.ListObjects(sht.Name).DataBodyRange
-        With lsRng
-            .Style = NORMAL_STYLE
-            .VerticalAlignment = xlCenter
-            .HorizontalAlignment = xlCenter
-        End With
-    Next sh
-End Sub
-
-Private Sub markUnit(ByRef lsRow As ListRow)
-    If DELETE_UNITS_ALSO Then
-        lsRow.Delete
-    Else
-        lsRow.Range.Style = MARK_STYLE
-    End If
 End Sub

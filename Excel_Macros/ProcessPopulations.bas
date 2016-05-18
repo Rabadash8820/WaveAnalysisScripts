@@ -15,7 +15,7 @@ Public Sub ProcessPopulations()
     'Define the Tissue/Recording/Population objects, etc.
     Dim success As Boolean
     Call GetConfigVars
-    success = DefineObjects(False)
+    success = DefineObjects()
     If Not success Then _
         GoTo ExitSub
         
@@ -41,13 +41,15 @@ Public Sub ProcessPopulations()
                 bType = BURST_TYPES(1, bt)
                 wbPath = tv.WorkbookPaths(bType)
                 If fs.FileExists(wbPath) Then _
-                    Call processTissueWorkbook(wbPath, burstUseTypes(bType))
+                    Call processTissueWorkbook(wbPath, tv.Tissue, burstUseTypes(bType))
             Next bt
         Next t
     Next p
     
     'Combine data into a single workbook
-    Call CombineDataIntoWorkbook
+    Dim combineWb As Workbook
+    Set combineWb = Workbooks.Add
+    Call CombineDataIntoWorkbook(combineWb)
     
     'Remove the no-longer-needed Tissue summary workbooks
     For p = 0 To POPULATIONS.Count - 1
@@ -65,7 +67,7 @@ Public Sub ProcessPopulations()
     Next p
     
     'Show a Log form
-    Call logFolderResults(ProgramDuration())
+    Call logResults(ProgramDuration())
 
 ExitSub:
     Call tearDownOptimizations
@@ -206,32 +208,38 @@ Private Sub openFile(ByRef rec As RecordingView, ByRef recFile As File)
     ActiveSheet.UsedRange   'Refresh used range by getting this property
 End Sub
 
-Public Sub logFolderResults(ByVal Duration As Double)
-
-    'Display log information (time taken and how many files were processed per folder)
+Public Sub logResults(ByVal Duration As Double)
+    'Add time taken to the MainListBox
     Dim log As New LogForm, numRecs As Integer, tempStr As String, fs As New FileSystemObject
     Dim p As Integer, t As Integer, bt As Integer, r As Integer, pop As Population, tv As TissueView, rv As RecordingView
     With log.MainListBox
         .AddItem TIME_TAKEN_STR & Format(Duration, "hh:mm:ss")
         .AddItem ""
+        
+        'For each Tissue of each Population...
         For p = 0 To POPULATIONS.Count - 1
             Set pop = POPULATIONS.Items()(p)
             .AddItem "Tissues loaded for population " & pop.Name & ":"
             For t = 1 To pop.TissueViews.Count
+                
+                'Add which of its Recordings were successfuly loaded
                 Set tv = pop.TissueViews.Item(t)
                 numRecs = tv.RecordingViews.Count
                 .AddItem "    Attempted to load " & numRecs & " recording" & IIf(numRecs = 1, "", "s") & " in Tissue " & tv.Tissue.ID
                 For r = 1 To tv.RecordingViews.Count
                     Set rv = tv.RecordingViews.Item(r)
                     If fs.FileExists(rv.TextPath) Then
-                        .AddItem "        Recording " & rv.Recording.ID & " successfully loaded"
+                        tempStr = "Recording " & rv.Recording.ID & " successfully loaded"
                     Else
-                        .AddItem "        Recording " & rv.Recording.ID & " could not be found.  Check that the text file's path was enterred correctly."
+                        tempStr = "Recording " & rv.Recording.ID & " could not be found.  Check that the text file's path was enterred correctly."
                     End If
+                    .AddItem "        " & tempStr
                 Next r
+                
             Next t
             .AddItem ""
         Next p
+    
     End With
     
     log.Show

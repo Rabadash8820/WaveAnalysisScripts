@@ -7,11 +7,10 @@ Private Const NUM_CONTENTS_COLS = 5
 Dim propNames() As String, wbTypePropNames() As String
 Dim combineWb As Workbook
 
-Public Sub CombineDataIntoWorkbook()
-    'Create the new combined Workbook
-    Set combineWb = Workbooks.Add
-    
+Public Sub CombineDataIntoWorkbook(ByRef wb As Workbook)
     'Build Contents and Stats sheets
+    Set combineWb = wb
+    combineWb.Activate
     Call buildContentsSheet
     Worksheets.Add After:=Worksheets(CONTENTS_NAME)
     Call buildStatsSheet

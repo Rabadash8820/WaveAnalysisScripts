@@ -6,7 +6,7 @@ Option Explicit
 Private maxBursts As Integer
 Private unitNames As Variant
 Private sttcResults() As Double, bkgrdResults() As Double, burstResults() As Double
-Public Sub processTissueWorkbook(ByVal wbName As String, ByVal burstsToUse As BurstUseType)
+Public Sub processTissueWorkbook(ByVal wbName As String, ByVal tiss As Tissue, ByVal burstsToUse As BurstUseType)
     Dim rec As Integer, u As Integer
     
     'If there are no recordings in this workbook then just return
@@ -19,25 +19,36 @@ Public Sub processTissueWorkbook(ByVal wbName As String, ByVal burstsToUse As Bu
         Exit Sub
             
     'Get the names of all units on the first sheet (assumed to be same on all other recording sheets)
-    Dim wksht As Worksheet
+    Dim wksht As Worksheet, numUnits As Long
     Set wksht = wb.Worksheets(contentsTbl.ListRows(1).Range(1, 2).value)
-    Dim numUnits As Long, numSttcRows As Long
     numUnits = wksht.Cells(1, 1).End(xlToRight).Column / 3    'Since every unit is mentioned once for spikes, burst_start, and burst_end
-    numSttcRows = numUnits * (numUnits - 1) / 2
     unitNames = Application.Transpose(wksht.Cells(1, 1).Resize(1, numUnits))
     
-    'Add output sheets
+    'If invalid units were provided, then delete their data columns and adjust the unitNames
+    Dim recRow As ListRow, recName As String
+    If INVALIDS(1, 1) <> -1 Then
+        For Each recRow In contentsTbl.ListRows
+            recName = recRow.Range(1, 2)
+            wb.Worksheets(recName).Activate
+            Call invalidateUnits(ActiveSheet, tiss, unitNames)
+        Next recRow
+        numUnits = wksht.Cells(1, 1).End(xlToRight).Column / 3
+        unitNames = Application.Transpose(wksht.Cells(1, 1).Resize(1, numUnits))
+    End If
+    
+    'Add output sheets (these lines must come after resetting unitNames)
     Call addAllAvgsSheet
     Call addBurstAvgsSheet
     Call addSttcSheet
     
     'Allocate the result arrays (will automatically be filled with zeroes...)
+    Dim numSttcRows As Long
+    numSttcRows = numUnits * (numUnits - 1) / 2
     ReDim bkgrdResults(1 To numUnits, 1 To NUM_BKGRD_PROPERTIES)
     ReDim burstResults(1 To numUnits, 1 To NUM_BURST_PROPERTIES)
     ReDim sttcResults(1 To numSttcRows, 1 To 1)
     
     'Process each recording for this tissue (represented as separate sheets)
-    Dim recRow As ListRow, recName As String
     Dim startT As Double, endT As Double
     For Each recRow In contentsTbl.ListRows
         recName = recRow.Range(1, 2)
@@ -49,7 +60,7 @@ Public Sub processTissueWorkbook(ByVal wbName As String, ByVal burstsToUse As Bu
 
     'Reduce result sums to averages and finalize
     Call storeAvgValues(numRecs, numUnits)
-    Call cleanSheets(numUnits)
+    Call cleanSheets
     wb.Close (True)
 End Sub
 
@@ -188,7 +199,6 @@ Private Sub addSttcSheet()
 End Sub
 
 Private Sub processRecording(ByRef unitNames As Variant, ByVal burstsToUse As BurstUseType, ByVal StartTime As Double, ByVal endtime As Double)
-    Dim u As Integer
     Dim spikes As Variant, preBursts As Variant, postBursts As Variant
         
     'Keep the below For loops separated so that
@@ -204,7 +214,7 @@ Private Sub processRecording(ByRef unitNames As Variant, ByVal burstsToUse As Bu
         
     'Remove bursts that start/end too late/early (lolwut?)
     'Adjust the start/end times of each unit, if necessary
-    Dim startEndTimes() As Double
+    Dim startEndTimes() As Double, u As Integer
     ReDim startEndTimes(1 To numUnits, 1 To 2)
     For u = 1 To numUnits
         spikes = getSpikeTrain(u)
@@ -585,7 +595,8 @@ Private Sub storePostValues(ByVal index As Integer, ByRef spikes As Variant, ByR
     'Store burst-specific spiking properties (if this channel HAD bursts of the correct type)
     burstResults(index, 1) = burstResults(index, 1) + burstDurationInUnit(bursts)
     burstResults(index, 2) = burstResults(index, 2) + burstSpikeFreqInUnit(spikes, bursts)
-    burstResults(index, 3) = burstResults(index, 3) + 1 / burstResults(index, 2)    'Inverse of spike freq
+    If burstResults(index, 2) > 0 Then _
+        burstResults(index, 3) = burstResults(index, 3) + 1 / burstResults(index, 2)    'Inverse of spike freq
     burstResults(index, 4) = burstResults(index, 4) + percentBurstTimeAboveFreqInUnit(spikes, bursts, 10)
     burstResults(index, 5) = burstResults(index, 5) + spikesPerBurstInUnit(spikes, bursts)
     
@@ -672,7 +683,7 @@ Private Sub storeAvgValues(ByVal numRecordings As Integer, ByVal numUnits As Int
     sttcTbl.DataBodyRange.offset(0, 3).Resize(, sttcTbl.ListColumns.Count - 3).value = sttcResults
 End Sub
 
-Public Sub cleanSheets(ByVal numUnits As Integer)
+Public Sub cleanSheets()
     'Finalize the Averages sheet
     With Worksheets(ALL_AVGS_NAME)
         .Cells.HorizontalAlignment = xlCenter

@@ -54,8 +54,6 @@ Public Const CHANNEL_PREFIX = "adch_"
 Public ASSOC_SAME_CHANNEL_UNITS As Boolean
 Public ASSOC_MULTIPLE_UNITS As Boolean
 Public MARK_BURST_DUR_UNITS As Boolean
-Public DELETE_UNITS_ALSO As Boolean
-Public KEEP_WB_OPEN As Boolean
 Public DATA_PAIRED As Boolean
 Public REPORT_STATS_TYPE As ReportStatsType
 
@@ -71,7 +69,6 @@ Public POPULATIONS As New Dictionary
 Public TISSUES As New Dictionary
 Public Recordings As New Dictionary
 Public INVALIDS As Variant
-
 'OTHER VALUES
 Public Const MAX_EXCEL_ROWS = 1048576
 
@@ -106,7 +103,7 @@ Public Function PickWorkbook(ByVal pickMsg As String) As File
     Set PickWorkbook = wbFile
 End Function
 
-Public Function DefineObjects(ByVal getInvalids As Boolean) As Boolean
+Public Function DefineObjects() As Boolean
     Dim success As Boolean
     success = False
     
@@ -134,8 +131,7 @@ Public Function DefineObjects(ByVal getInvalids As Boolean) As Boolean
     
     Workbooks.Open (popFile.Path)
     Call DefinePopulations
-    If getInvalids Then _
-        Call getInvalidUnits
+    Call getInvalidUnits
     Workbooks(popFile.Name).Close
     Application.DisplayAlerts = True
     
@@ -295,20 +291,15 @@ End Sub
 
 Private Sub getInvalidUnits()
     'Get all the provided invalid unit info
-    Dim invalidSht As Worksheet, invalidsTbl As ListObject, result As VbMsgBoxResult
-    Set invalidSht = Worksheets(INVALIDS_NAME)
-    Set invalidsTbl = invalidSht.ListObjects(INVALIDS_NAME)
-    If invalidsTbl.DataBodyRange Is Nothing Then
-        result = MsgBox("No invalid units provided.", vbOKOnly)
-        Exit Sub
+    Dim invalidsTbl As ListObject, invalidRng As Range
+    Set invalidsTbl = Worksheets(INVALIDS_NAME).ListObjects(INVALIDS_NAME)
+    Set invalidRng = invalidsTbl.DataBodyRange
+    If Not invalidRng Is Nothing Then
+        INVALIDS = invalidRng.value
     Else
-        INVALIDS = invalidsTbl.DataBodyRange.value
+        ReDim INVALIDS(1 To 1, 1 To 1)
+        INVALIDS(1, 1) = -1
     End If
-            
-    'Get some other config flags set by the user
-    MARK_BURST_DUR_UNITS = (invalidSht.Shapes("MarkBurstDurChk").OLEFormat.Object.value = 1)
-    DELETE_UNITS_ALSO = (invalidSht.Shapes("InvalidDeleteChk").OLEFormat.Object.value = 1)
-    KEEP_WB_OPEN = (invalidSht.Shapes("KeepOpenChk").OLEFormat.Object.value = 1)
 End Sub
 
 Public Sub GetConfigVars()
@@ -361,6 +352,7 @@ Public Sub GetConfigVars()
     ASSOC_MULTIPLE_UNITS = (analyzeSht.Shapes("MultipleUnitsAssocChk").OLEFormat.Object.value = 1)
     useMedIQR = (analyzeSht.Shapes("SttcMedIQRChk").OLEFormat.Object.value = 1)
     REPORT_STATS_TYPE = IIf(useMedIQR, ReportStatsType.MedianIQR, ReportStatsType.MeanSEM)
+    MARK_BURST_DUR_UNITS = (analyzeSht.Shapes("ExcludeBurstDurChk").OLEFormat.Object.value = 1)
 End Sub
 
 Private Sub storeParam(ByVal Name As String, ByVal value As Variant)
