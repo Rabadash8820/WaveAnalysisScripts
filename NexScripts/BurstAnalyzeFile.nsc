@@ -4,7 +4,7 @@
 % void SurpriseBurstAnalysis(string filePath, string algorithm)
 % Opens the PLX file represented by filePath (path + name + extension), runs a bust analysis on it using the given algorithm,
 % then saves the resulting burst timestamps to a new text file
-% Make sure that NeuroExplorer is set to export Interval data only for this to work optimally!
+% Make sure that NeuroExplorer is set to export Interval data only for this to export correctly!
 
 % Named constants
 TEMPLATE_NAME = "RennaBurstAnalysis"

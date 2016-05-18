@@ -68,8 +68,22 @@ Public Sub CombineDataIntoWorkbook(ByRef wb As Workbook)
         Next t
     Next p
     
-    'Pretty up the sheets now that data is present
+    'Pretty up the Contents sheetnow that data is present
+    With Worksheets(CONTENTS_NAME)
+        .Columns(5).Delete
+        .Columns(4).Delete
+        .Columns(3).Cut
+        .Columns(1).Insert Shift:=xlToRight
+        With .ListObjects("Contents")
+            .ShowTotals = True
+            .TotalsRowRange(1, 1).value = "Count"
+            .ListColumns(2).TotalsCalculation = xlTotalsCalculationCount
+            .ListColumns(NUM_CONTENTS_COLS - 2).TotalsCalculation = xlTotalsCalculationNone
+        End With
+    End With
     Call cleanSheets(combineWb, CONTENTS_NAME)
+    
+    'Pretty up the data sheets
     Call cleanSheets(combineWb, "_STTC")
     Call cleanSheets(combineWb, "_Bursts")
     Call cleanSheets(combineWb, "_WABs")
@@ -132,12 +146,6 @@ Private Sub buildContentsSheet()
         Next tv
     Next popV
     tbl.DataBodyRange.value = contents
-    
-    'Add the tissue count row
-    tbl.ShowTotals = True
-    tbl.TotalsRowRange(1, 1).value = "Count"
-    tbl.ListColumns(2).TotalsCalculation = xlTotalsCalculationCount
-    tbl.ListColumns(NUM_CONTENTS_COLS).TotalsCalculation = xlTotalsCalculationNone
     
     'Format sheet
     'Columns/rows will be autofitted after combining data

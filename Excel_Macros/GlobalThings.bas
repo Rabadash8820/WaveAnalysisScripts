@@ -155,8 +155,6 @@ Private Sub DefineTissues()
         Set tiss = New Tissue
         tiss.ID = lsRow.Range(1, tissueTbl.ListColumns("ID").index).value
         tiss.DatePrepared = lsRow.Range(1, tissueTbl.ListColumns("Date Prepared").index).value
-        tiss.Age = lsRow.Range(1, tissueTbl.ListColumns("Age").index).value
-        tiss.Genotype = lsRow.Range(1, tissueTbl.ListColumns("Genotype").index).value
         TISSUES.Add tiss.ID, tiss
     Next lsRow
 
@@ -178,8 +176,6 @@ Private Sub DefineRecordings()
     For Each lsRow In recTbl.ListRows
         Set rec = New Recording
         rec.ID = lsRow.Range(1, recTbl.ListColumns("ID").index).value
-        rec.MEA = lsRow.Range(1, recTbl.ListColumns("MEA").index).value
-        rec.Number = lsRow.Range(1, recTbl.ListColumns("Recording Number").index).value
         rec.StartTime = lsRow.Range(1, recTbl.ListColumns("StartStamp").index).value
         rec.Duration = lsRow.Range(1, recTbl.ListColumns("Duration").index).value
         tissueID = lsRow.Range(1, recTbl.ListColumns("Tissue ID").index).value

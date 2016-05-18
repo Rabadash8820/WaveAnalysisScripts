@@ -49,7 +49,7 @@ if (GetFileCount(rootPath + "\*.plx") == 0)
 end
 
 % Ask the user which burst analysis algorithm they wish to use
-algorithm = "Max Interval"
+algorithm = "Surprise"
 result = Dialog(GetActiveDocument(), algorithm, "Algorithm to use (Max Interval or Surprise)", "string")
 if (result <> 1)
 	MsgBox("")
@@ -64,7 +64,7 @@ end
 
 % Allow the user to set parameters based on the selected analysis algorithm
 MsgBox("Algorithm: " + algorithm)
-minSurprise = 0.0001
+minSurprise = 4
 maxISIToStart = 0.5
 minISIToEnd = 0.5
 minIBI = 1

@@ -11,7 +11,5 @@ Option Explicit
 
 Public ID As Integer
 Public Tissue As Tissue
-Public MEA As String
-Public Number As Integer
 Public StartTime As Double
 Public Duration As Double

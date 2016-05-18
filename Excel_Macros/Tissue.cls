@@ -11,6 +11,4 @@ Option Explicit
 
 Public ID As Integer
 Public DatePrepared As Date
-Public Age As String
-Public Genotype As String
 Public Recordings As New Collection

@@ -382,9 +382,9 @@ Private Sub deleteBadSpikesFrom(ByVal u As Integer, ByRef spikes As Variant, ByV
     spikeRng.Resize(UBound(spikes)).Clear
     spikeRng.Resize(UBound(newSpikes)).value = newSpikes
     If unitEnd <> recEnd Then _
-        spikeRng.offset(activeRow - 1, 0).Delete shift:=xlUp
+        spikeRng.offset(activeRow - 1, 0).Delete Shift:=xlUp
     If unitStart <> recStart Then _
-        spikeRng.Delete shift:=xlUp
+        spikeRng.Delete Shift:=xlUp
         
 End Sub
 

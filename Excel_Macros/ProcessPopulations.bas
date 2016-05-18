@@ -203,7 +203,7 @@ Private Sub openFile(ByRef rec As RecordingView, ByRef recFile As File)
     For col = 1 To numCols
         numValues = WorksheetFunction.Count(Columns(col)) + 1   '+1 is for the unit headers
         Set firstBadCell = Cells(1, col).offset((numValues + 1) - 1, 0)
-        Range(firstBadCell, firstBadCell.End(xlDown)).Delete shift:=xlUp
+        Range(firstBadCell, firstBadCell.End(xlDown)).Delete Shift:=xlUp
     Next col
     ActiveSheet.UsedRange   'Refresh used range by getting this property
 End Sub
