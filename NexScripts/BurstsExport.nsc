@@ -25,9 +25,10 @@ MsgBox("	The Scrips directory (under Script > Script Options) is set appropriate
 MsgBox("	The Templates directory (under View > Options > Templates) is set appropriately")
 
 % Let user choose data folder by selecting one of its files in a File Open dialog
+MsgBox("")
+MsgBox("Choose a data folder by selecting one of its files")
 rootPath = SelectFile()
 if (rootPath == "")
-	MsgBox("")
 	MsgBox("No folder selected.")
 	return
 end
