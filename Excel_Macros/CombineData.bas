@@ -63,7 +63,7 @@ Public Sub CombineDataIntoWorkbook(ByRef wb As Workbook)
     For p = 0 To POPULATIONS.Count - 1
         Set pop = POPULATIONS.Items()(p)
         For t = 1 To pop.TissueViews.Count
-            Set tv = pop.TissueViews.Item(t)
+            Set tv = pop.TissueViews.item(t)
             Call fetchTissue(tv, t)
         Next t
     Next p
@@ -648,7 +648,7 @@ Private Sub buildSttcFiguresSheet()
         headers(1, col + 2) = pop.Abbreviation & "_" & rangeStr
         col = col + 2
         For t = 0 To pop.TissueViews.Count - 1
-            Set tv = pop.TissueViews.Item(t + 1)
+            Set tv = pop.TissueViews.item(t + 1)
             headers(1, col + 1) = pop.Abbreviation & "_" & CStr(t + 1)
             col = col + 1
         Next t

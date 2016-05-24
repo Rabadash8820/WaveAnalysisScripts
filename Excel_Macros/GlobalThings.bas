@@ -104,8 +104,8 @@ Public Function PickWorkbook(ByVal pickMsg As String) As File
 End Function
 
 Public Function DefineObjects() As Boolean
-    Dim success As Boolean
-    success = False
+    Dim Success As Boolean
+    Success = False
     
     'Open the Data Summary workbook
     Dim summaryFile As File, result As VbMsgBoxResult
@@ -135,10 +135,10 @@ Public Function DefineObjects() As Boolean
     Workbooks(popFile.Name).Close
     Application.DisplayAlerts = True
     
-    success = True
+    Success = True
     
 ExitFunc:
-    DefineObjects = success
+    DefineObjects = Success
 End Function
 
 Private Sub DefineTissues()

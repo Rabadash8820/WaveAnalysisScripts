@@ -13,10 +13,10 @@ Public Sub ProcessPopulations()
     Call setupOptimizations
     
     'Define the Tissue/Recording/Population objects, etc.
-    Dim success As Boolean
+    Dim Success As Boolean
     Call GetConfigVars
-    success = DefineObjects()
-    If Not success Then _
+    Success = DefineObjects()
+    If Not Success Then _
         GoTo ExitSub
         
     'Define the types of bursts to use
@@ -32,9 +32,9 @@ Public Sub ProcessPopulations()
     For p = 0 To POPULATIONS.Count - 1
         Set pop = POPULATIONS.Items()(p)
         For t = 1 To pop.TissueViews.Count
-            Set tv = pop.TissueViews.Item(t)
+            Set tv = pop.TissueViews.item(t)
             For r = 1 To tv.RecordingViews.Count
-                Set rv = tv.RecordingViews.Item(r)
+                Set rv = tv.RecordingViews.item(r)
                 Call loadRecording(rv, r)
             Next r
             For bt = 1 To UBound(BURST_TYPES, 2)
@@ -55,7 +55,7 @@ Public Sub ProcessPopulations()
     For p = 0 To POPULATIONS.Count - 1
         Set pop = POPULATIONS.Items()(p)
         For t = 1 To pop.TissueViews.Count
-            Set tv = pop.TissueViews.Item(t)
+            Set tv = pop.TissueViews.item(t)
             For bt = 1 To UBound(BURST_TYPES, 2)
                 bType = BURST_TYPES(1, bt)
                 wbPath = tv.WorkbookPaths(bType)
@@ -223,11 +223,11 @@ Public Sub logResults(ByVal Duration As Double)
             For t = 1 To pop.TissueViews.Count
                 
                 'Add which of its Recordings were successfuly loaded
-                Set tv = pop.TissueViews.Item(t)
+                Set tv = pop.TissueViews.item(t)
                 numRecs = tv.RecordingViews.Count
                 .AddItem "    Attempted to load " & numRecs & " recording" & IIf(numRecs = 1, "", "s") & " in Tissue " & tv.Tissue.ID
                 For r = 1 To tv.RecordingViews.Count
-                    Set rv = tv.RecordingViews.Item(r)
+                    Set rv = tv.RecordingViews.item(r)
                     If fs.FileExists(rv.TextPath) Then
                         tempStr = "Recording " & rv.Recording.ID & " successfully loaded"
                     Else
