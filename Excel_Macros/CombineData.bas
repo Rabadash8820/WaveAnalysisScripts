@@ -339,19 +339,20 @@ Private Sub buildPropFiguresSheet()
     'Store column headers
     Dim rOffset As Integer, cOffset As Integer
     numRows = 1 + NUM_BKGRD_PROPERTIES + numBurstTypes * NUM_BURST_PROPERTIES
-    numCols = 1 + 4 * POPULATIONS.Count
+    numCols = 1 + 6 * POPULATIONS.Count
     ReDim data(1 To numRows, 1 To numCols)
     data(1, 1) = "Property"
-    Dim pop As Population
+    Dim pop As Population, valStr As String, rangeStr As String
+    valStr = IIf(REPORT_PROPS_TYPE = ReportStatsType.MedianIQR, "Med", "Mean")
+    rangeStr = IIf(REPORT_PROPS_TYPE = ReportStatsType.MedianIQR, "IQR/2", "SEM")
     For p = 0 To POPULATIONS.Count - 1
         Set pop = POPULATIONS.Items()(p)
-        cOffset = 1 + 4 * p + 1
-        data(1, cOffset + 0) = pop.Abbreviation & "_Avg"
-        data(1, cOffset + 1) = pop.Abbreviation & "_SEM"
-        data(1, cOffset + 2) = pop.Abbreviation & "_%Change"
-        data(1, cOffset + 3) = pop.Abbreviation & "_%Change_SEM"
+        cOffset = 1 + 6 * p + 1
+        data(1, cOffset + 0) = pop.Abbreviation & " " & valStr
+        data(1, cOffset + 2) = pop.Abbreviation & " " & rangeStr
+        data(1, cOffset + 3) = pop.Abbreviation & " %Change"
+        data(1, cOffset + 5) = pop.Abbreviation & " %Change SEM"
     Next p
-    cOffset = 1 + 5 * POPULATIONS.Count + 1
 
     'Store row headers
     For row = 1 To NUM_BKGRD_PROPERTIES
@@ -365,6 +366,13 @@ Private Sub buildPropFiguresSheet()
             data(rOffset + row, 1) = wbTypePropNames(row, 1) & bType & wbTypePropNames(row, 2)
         Next row
     Next t
+    For row = 2 To numRows
+        For p = 0 To POPULATIONS.Count - 1
+            cOffset = 1 + 6 * p + 1
+            data(row, cOffset + 1) = "±"
+            data(row, cOffset + 4) = "±"
+        Next p
+    Next row
 
     cornerCell.Resize(numRows, numCols).value = data
 
@@ -374,6 +382,7 @@ Private Sub buildPropFiguresSheet()
     For col = 1 To NUM_BKGRD_PROPERTIES
         chartTitles(1, col) = "=" & cornerCell.offset(col, 0).Address & " & "" vs. Experimental Population"""
     Next col
+    cOffset = 1 + 5 * POPULATIONS.Count + 1
     For t = 0 To numBurstTypes - 1
         bType = BURST_TYPES(1, t + 1)
         cOffset = NUM_BKGRD_PROPERTIES + t * NUM_BURST_PROPERTIES
@@ -392,22 +401,19 @@ Private Sub buildPropFiguresSheet()
         rOffset = NUM_BKGRD_PROPERTIES + (t - 1) * NUM_BURST_PROPERTIES + 1
         cornerCell.offset(rOffset, 0).Resize(NUM_BURST_PROPERTIES, numCols).Style = wbTypeStyles(t)
     Next t
-    cornerCell.Resize(numRows, numCols).BorderAround Weight:=xlMedium
     cornerCell.Resize(1, numCols).Borders(xlEdgeBottom).Weight = xlMedium
     cornerCell.Resize(numRows, 1).Borders(xlEdgeRight).Weight = xlMedium
-    cornerCell.offset(0, 1 + 4 * POPULATIONS.Count).Resize(numRows, POPULATIONS.Count + 2).Borders(xlEdgeLeft).Weight = xlMedium
-    cornerCell.offset(NUM_BKGRD_PROPERTIES, 0).Resize(1, numCols).Borders(xlEdgeBottom).Weight = xlThin
-    For t = 1 To numBurstTypes - 1
-        rOffset = NUM_BKGRD_PROPERTIES + t * NUM_BURST_PROPERTIES
-        cornerCell.offset(rOffset, 0).Resize(1, numCols).Borders(xlEdgeBottom).Weight = xlThin
+    cornerCell.offset(0, 1 + 6 * POPULATIONS.Count).Resize(numRows, POPULATIONS.Count + 2).Borders(xlEdgeLeft).Weight = xlMedium
+    For t = 1 To numBurstTypes
+        rOffset = NUM_BKGRD_PROPERTIES + (t - 1) * NUM_BURST_PROPERTIES + 1
+        cornerCell.offset(rOffset, 0).Resize(1, numCols).Borders(xlEdgeTop).Weight = xlThin
     Next t
-    cornerCell.offset(0, 1).Resize(1, 4).Interior.Color = POPULATIONS.Items()(0).BackColor
-    cornerCell.offset(0, 1).Resize(1, 4).Font.Color = POPULATIONS.Items()(0).ForeColor
-    For p = 1 To POPULATIONS.Count - 1
-        cornerCell.offset(0, 4 * p + 1).Resize(1, 4).Interior.Color = POPULATIONS.Items()(p).BackColor
-        cornerCell.offset(0, 4 * p + 1).Resize(1, 4).Font.Color = POPULATIONS.Items()(p).ForeColor
-        cornerCell.offset(0, 4 * p).Resize(numRows, 1).Borders(xlEdgeRight).Weight = xlThin
+    For p = 0 To POPULATIONS.Count - 1
+        cornerCell.offset(0, 6 * p + 1).Resize(1, 6).Interior.Color = POPULATIONS.Items()(p).BackColor
+        cornerCell.offset(0, 6 * p + 1).Resize(1, 6).Font.Color = POPULATIONS.Items()(p).ForeColor
+        cornerCell.offset(0, 6 * p + 1).Resize(numRows, 6).Borders(xlEdgeRight).Weight = xlThin
     Next p
+    cornerCell.Resize(numRows, numCols).BorderAround Weight:=xlMedium
     cornerCell.Resize(1, numCols).Font.Bold = True
     cornerCell.Resize(numRows, 1).Font.Bold = True
     Cells.HorizontalAlignment = xlCenter
@@ -534,6 +540,7 @@ Private Sub buildPropFiguresSheet()
         Else
             .HasLegend = False
         End If
+        .ChartGroups(1).GapWidth = 50
 
         'Formats the Chart's Series
         numSeries = 0
@@ -544,14 +551,13 @@ Private Sub buildPropFiguresSheet()
                 With .FullSeriesCollection(numSeries)
                     .Format.Fill.ForeColor.RGB = pop.BackColor
                     .Format.Line.ForeColor.RGB = vbBlack
-                    .Format.Line.Weight = 2
+                    .Format.Line.Weight = 1.5
                     .ErrorBars.Format.Line.ForeColor.RGB = vbBlack
-                    .ErrorBars.Format.Line.Weight = 2
+                    .ErrorBars.Format.Line.Weight = 1.5
                     .HasLeaderLines = False
                     .DataLabels.NumberFormat = "0.0%"
                     .DataLabels.Position = xlLabelPositionOutsideEnd
                     .DataLabels.Font.Size = 10
-                    .DataLabels.Font.Bold = True
                     .DataLabels.Font.Color = vbBlack
                 End With
             End If
@@ -627,8 +633,8 @@ Private Sub buildSttcFiguresSheet()
     tbl.ListColumns.Add
     For p = 0 To POPULATIONS.Count - 1
         Set pop = POPULATIONS.Items()(p)
-        tbl.ListColumns.Add     'For mean
-        tbl.ListColumns.Add     'For SEM
+        tbl.ListColumns.Add     'For value (mean or median)
+        tbl.ListColumns.Add     'For range (SEM or IQR)
         numCols = numCols + 2
         For t = 0 To pop.TissueViews.Count - 1
             tbl.ListColumns.Add
@@ -642,14 +648,14 @@ Private Sub buildSttcFiguresSheet()
     Dim valStr As String, rangeStr As String
     For p = 0 To POPULATIONS.Count - 1
         Set pop = POPULATIONS.Items()(p)
-        valStr = IIf(REPORT_STATS_TYPE = ReportStatsType.MedianIQR, "Med", "Avg")
-        rangeStr = IIf(REPORT_STATS_TYPE = ReportStatsType.MedianIQR, "IQR", "SEM")
-        headers(1, col + 1) = pop.Abbreviation & "_" & valStr
-        headers(1, col + 2) = pop.Abbreviation & "_" & rangeStr
+        valStr = IIf(REPORT_STTC_TYPE = ReportStatsType.MedianIQR, "Med", "Mean")
+        rangeStr = IIf(REPORT_STTC_TYPE = ReportStatsType.MedianIQR, "IQR/2", "SEM")
+        headers(1, col + 1) = pop.Abbreviation & " " & valStr
+        headers(1, col + 2) = pop.Abbreviation & " " & rangeStr
         col = col + 2
         For t = 0 To pop.TissueViews.Count - 1
             Set tv = pop.TissueViews.item(t + 1)
-            headers(1, col + 1) = pop.Abbreviation & "_" & CStr(t + 1)
+            headers(1, col + 1) = pop.Abbreviation & " " & CStr(t + 1)
             col = col + 1
         Next t
     Next p
@@ -660,7 +666,7 @@ Private Sub buildSttcFiguresSheet()
     row = 0
     Dim ch1 As Integer, ch2 As Integer
     For ch1 = 0 To NUM_CHANNELS - 1
-        For ch2 = ch1 + 1 To NUM_CHANNELS - 1
+        For ch2 = ch1 To NUM_CHANNELS - 1
             tbl.ListRows.Add
             row = row + 1
             tbl.ListRows(row).Range(1, 1).value = interElectrodeDistance(ch1, ch2)
@@ -683,27 +689,25 @@ Private Sub buildSttcFiguresSheet()
     tbl.ListColumns(2).DataBodyRange.Formula = "=IF(InterElectrodeDist*[@Unit Distance]<=IgnoreDist,InterElectrodeDist*[@[Unit Distance]],NA())"
     For p = 0 To POPULATIONS.Count - 1
         Set pop = POPULATIONS.Items()(p)
-        popRngStr = STTC_NAME & "[@[" & pop.Abbreviation & "_1]:[" & pop.Abbreviation & "_" & pop.TissueViews.Count & "]]"
-        If REPORT_STATS_TYPE = ReportStatsType.MedianIQR Then
+        popSttcTblStr = pop.Name & "_" & STTC_NAME
+        popRngStr = "IF(" & popSttcTblStr & "[Unit Distance]=[@[Unit Distance]]," & popSttcTblStr & "[STTC])"
+        If REPORT_STTC_TYPE = ReportStatsType.MedianIQR Then
             valFormula = "=MEDIAN(" & popRngStr & ")"
-            rangeFormula = "= QUARTILE.EXC(" & popRngStr & ",3)-QUARTILE.EXC(" & popRngStr & ",1)"
+            rangeFormula = "=0.5*(QUARTILE.EXC(" & popRngStr & ",3)-QUARTILE.EXC(" & popRngStr & ",1))"
         Else
             valFormula = "=AVERAGE(" & popRngStr & ")"
-            rangeFormula = "= STDEV.S(" & popRngStr & ")/SQRT(COUNT(" & popRngStr & "))"
+            rangeFormula = "=STDEV.S(" & popRngStr & ")/SQRT(COUNT(" & popRngStr & "))"
         End If
-        tbl.ListColumns(numCols + 1).DataBodyRange.Formula = valFormula
-        tbl.ListColumns(numCols + 2).DataBodyRange.Formula = rangeFormula
+        tbl.ListColumns(numCols + 1).DataBodyRange(1).FormulaArray = valFormula
+        tbl.ListColumns(numCols + 2).DataBodyRange(1).FormulaArray = rangeFormula
         For t = 1 To pop.TissueViews.Count
-            popSttcTblStr = pop.Name & "_STTC"
-            If REPORT_STATS_TYPE = ReportStatsType.MedianIQR Then
-                valFormula = "=MEDIAN(IF(" & popSttcTblStr & "[Tissue]=""" & t & """,IF(" & popSttcTblStr & "[Unit Distance]=[@[Unit Distance]]," & popSttcTblStr & "[STTC])))"
+            popRngStr = "IF(" & popSttcTblStr & "[Tissue]=""" & t & """,IF(" & popSttcTblStr & "[Unit Distance]=[@[Unit Distance]]," & popSttcTblStr & "[STTC]))"
+            If REPORT_STTC_TYPE = ReportStatsType.MedianIQR Then
+                valFormula = "=MEDIAN(" & popRngStr & ")"
             Else
-                valFormula = "=AVERAGEIFS(" & popSttcTblStr & "[STTC]," & popSttcTblStr & "[Tissue],""" & t & """," & popSttcTblStr & "[Unit Distance],[@[Unit Distance]])"
+                valFormula = "=AVERAGE(" & popRngStr & ")"
             End If
-            With tbl.ListColumns(numCols + 2 + t).DataBodyRange
-                .Formula = valFormula
-                .FormulaArray = .Formula
-            End With
+            tbl.ListColumns(numCols + 2 + t).DataBodyRange(1).FormulaArray = valFormula
         Next t
         numCols = numCols + 2 + pop.TissueViews.Count
     Next p
@@ -728,7 +732,7 @@ Private Sub buildSttcFiguresSheet()
         numCols = numCols + pop.TissueViews.Count + 2
     Next p
 
-    'Add the new column chart object for percent changes
+    'Add the new line chart object for STTCs
     Dim numPropRows As Integer, numPropCols
     numPropRows = 10
     Dim chartShp As Shape, chartRng As Range
@@ -860,53 +864,72 @@ Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, 
     
     'Write data summary headers
     headers(1, 1) = "Tissue"
-    Dim numPopCols As Integer
+    Dim numPopCols As Integer, valStr As String, rangeStr As String
     numPopCols = 2
+    valStr = IIf(REPORT_PROPS_TYPE = ReportStatsType.MedianIQR, "Med", "Mean")
     For p = 0 To POPULATIONS.Count - 1
         Set pop = POPULATIONS.Items()(p)
         cOffset = 1 + p * numPopCols
-        headers(1, cOffset + 1) = pop.Abbreviation & "_Avg"
-        headers(1, cOffset + 2) = pop.Abbreviation & "_%Change"
+        headers(1, cOffset + 1) = pop.Abbreviation & " " & valStr
+        headers(1, cOffset + 2) = pop.Abbreviation & " %Change"
         cornerCell.offset(2, 2 * p + 1).Resize(1, 2).Interior.Color = pop.BackColor
         cornerCell.offset(2, 2 * p + 1).Resize(1, 2).Font.Color = pop.ForeColor
     Next p
     cornerCell.offset(2, 0).Resize(1, numHeaders).value = headers
     cornerCell.offset(2, 0).Resize(1, numHeaders).Font.Bold = True
     
-    'Identify the control population's data range
-    Dim ctrlRng As Range
+    'Identify the control population's data ranges
+    Dim ctrlRng As Range, mainCtrlRng As Range, propCtrlRng As Range
     For p = 0 To POPULATIONS.Count - 1
         Set pop = POPULATIONS.Items()(p)
         If pop.ID = CTRL_POP.ID Then
-            cOffset = numPopCols * p
-            Set ctrlRng = cornerCell.offset(3, cOffset + 1).Resize(maxTissues, 1)
+            Set propCtrlRng = cornerCell.offset(2, p * numPopCols + 1)
+            Set mainCtrlRng = tblRowCell.offset(0, 6 * p + 1)
             Exit For
         End If
     Next p
+    Set ctrlRng = IIf(DATA_PAIRED, propCtrlRng, mainCtrlRng)
     
-    'Write tissue data (formula for percent change depends on whether data is paired)
-    Dim tissueCell As Range, ctrlValueStr As String
+    'Write tissue results (formulas depends on whether data is paired and how we're reporting results)
+    Dim tissueCell As Range, pctChangeStr As String, ctrlValueStr As String, tblName As String
     For t = 1 To maxTissues
         cornerCell.offset(2 + t, 0).value = t
         For p = 0 To POPULATIONS.Count - 1
             Set pop = POPULATIONS.Items()(p)
+            tblName = pop.Name & "_" & bType & "s"
             Set tissueCell = cornerCell.offset(2 + t, p * numPopCols + 1)
-            ctrlValueStr = IIf(DATA_PAIRED, ctrlRng.Cells(t, 1).Address, "AVERAGE(" & ctrlRng.Address & ")")
-            tissueCell.Formula = "=IFERROR(AVERAGEIF(" & pop.Name & "_" & bType & "s[Tissue]," & cornerCell.offset(2 + t, 0).Address & "," & pop.Name & "_" & bType & "s[" & tblRowCell.value & "]), """")"
-            tissueCell.offset(0, 1).Formula = "=IFERROR((" & tissueCell.Address & "-" & ctrlValueStr & ")/" & ctrlValueStr & ", """")"
+            If REPORT_PROPS_TYPE = MeanSEM Then
+                valStr = "=AVERAGEIF(" & tblName & "[Tissue],""" & t & """," & tblName & "[" & tblRowCell.value & "])"
+                tissueCell.offset(0, 0).Formula = valStr
+            Else
+                valStr = "=MEDIAN(IF(" & tblName & "[Tissue]=""" & t & """," & tblName & "[" & tblRowCell.value & "] " & "))"
+                tissueCell.offset(0, 0).FormulaArray = valStr
+            End If
+            ctrlValueStr = IIf(DATA_PAIRED, ctrlRng.offset(t, 0).Address, ctrlRng.Address)
+            pctChangeStr = "=(" & tissueCell.Address & "-" & ctrlValueStr & ")/" & ctrlValueStr & ""
+            tissueCell.offset(0, 1).Formula = pctChangeStr
         Next p
     Next t
     cornerCell.offset(3, 0).Resize(maxTissues, 1).Font.Bold = True
     
-    'Add formulas to the main table
-    Dim formulaRng As Range, propRng As Range
+    'Write results to the main table (formulas depend on how we're reporting results)
+    Dim formulaRng As Range, dataStr As String
     For p = 0 To POPULATIONS.Count - 1
-        Set formulaRng = tblRowCell.offset(0, 4 * p)
-        Set propRng = cornerCell.offset(3, 2 * p).Resize(maxTissues, 1)
-        formulaRng.offset(0, 1).Formula = "=IFERROR(AVERAGE(" & propRng.offset(0, 1).Address & "), """")"
-        formulaRng.offset(0, 2).Formula = "=IFERROR(STDEV.S(" & propRng.offset(0, 1).Address & ")/SQRT(COUNT(" & propRng.offset(0, 1).Address & ")), """")"
-        formulaRng.offset(0, 3).Formula = "=IFERROR(AVERAGE(" & propRng.offset(0, 2).Address & "), """")"
-        formulaRng.offset(0, 4).Formula = "=IFERROR(STDEV.S(" & propRng.offset(0, 2).Address & ")/SQRT(COUNT(" & propRng.offset(0, 2).Address & ")), """")"
+        Set pop = POPULATIONS.Items()(p)
+        Set formulaRng = tblRowCell.offset(0, 6 * p + 1)
+        dataStr = pop.Name & "_" & bType & "s[" & tblRowCell.value & "]"
+        pctChangeStr = "(" & dataStr & "-" & mainCtrlRng.Address & ")/" & mainCtrlRng.Address
+        If REPORT_PROPS_TYPE = MeanSEM Then
+            valStr = "=AVERAGE(" & dataStr & ")"
+            rangeStr = "=STDEV.S(" & dataStr & ")/SQRT(COUNT(" & dataStr & "))"
+        Else
+            valStr = "=MEDIAN(" & dataStr & ")"
+            rangeStr = "=0.5*(QUARTILE.EXC(" & dataStr & ", 3)-QUARTILE.EXC(" & dataStr & ",1))"
+        End If
+        formulaRng.offset(0, 0).Formula = valStr
+        formulaRng.offset(0, 2).Formula = rangeStr
+        formulaRng.offset(0, 3).FormulaArray = "=AVERAGE(" & pctChangeStr & ")"
+        formulaRng.offset(0, 5).FormulaArray = "=STDEV.S(" & pctChangeStr & ")/SQRT(COUNT(" & pctChangeStr & "))"
     Next p
     
     'Add the new bar chart object

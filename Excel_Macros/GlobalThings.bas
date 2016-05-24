@@ -22,8 +22,8 @@ Public MAX_POSSIBLE_UNITS As Integer
 Public CORRELATION_DT As Double              'seconds
 Public NUM_BINS, MIN_BINS As Double
 Public MIN_ASSOC_UNITS As Integer
-Public MIN_DURATION, MAX_DURATION As Double
-Public Const MEAN_FREQ_DIFF = 3, PEAK_FREQ_DIFF = 10     'I.e., 300% and 1000%
+Public MIN_DURATION As Double
+Public MAX_DURATION As Double
 
 'SHEET/TABLE NAMES
 'Since these could be table names, they should use only alphanumeric characters and NO spaces
@@ -43,6 +43,7 @@ Public Const RECORDINGS_NAME = "Recordings"
 Public Const RECORDING_VIEWS_NAME = "Recordings"
 
 'STRINGS
+Public Const TIME_GENERATED_STR = "Time Generated"
 Public Const CELL_STR = "Cell"
 Public Const RECORDING_STR = "Recording_"
 Public Const STTC_HEADER_STR = "Spike Time Tiling Coefficient Values for Every Cell Pair"
@@ -55,7 +56,8 @@ Public ASSOC_SAME_CHANNEL_UNITS As Boolean
 Public ASSOC_MULTIPLE_UNITS As Boolean
 Public MARK_BURST_DUR_UNITS As Boolean
 Public DATA_PAIRED As Boolean
-Public REPORT_STATS_TYPE As ReportStatsType
+Public REPORT_PROPS_TYPE As ReportStatsType
+Public REPORT_STTC_TYPE As ReportStatsType
 
 'Arrays/collections and associated values
 Public NUM_PROPERTIES As Integer
@@ -71,37 +73,6 @@ Public Recordings As New Dictionary
 Public INVALIDS As Variant
 'OTHER VALUES
 Public Const MAX_EXCEL_ROWS = 1048576
-
-Public Function PickWorkbook(ByVal pickMsg As String) As File
-    Dim wbName As Workbook
-    
-    'Create the file-selection dialog box
-    Dim dialog As FileDialog
-    Set dialog = Application.FileDialog(msoFileDialogFilePicker)
-    dialog.Title = pickMsg
-    dialog.AllowMultiSelect = False
-    
-    'If the user didn't select anything, then return an empty string
-    If dialog.Show = False Then
-        Set PickWorkbook = Nothing
-        Exit Function
-    End If
-    
-    'Make sure that the selected file was actually an Excel workbook
-    Dim fileSystem As New FileSystemObject
-    Dim wbFile As File
-    Set wbFile = fileSystem.GetFile(dialog.SelectedItems(1))
-    Dim correctType As Boolean
-    correctType = wbFile.Type = "Microsoft Excel Worksheet" Or wbFile.Type = "Microsoft Excel Macro-Enabled Worksheet"
-    If Not correctType Then
-        Dim result As VbMsgBoxResult
-        result = MsgBox("Selected file is not an Excel workbook.", vbOKOnly, "Routine complete")
-        Exit Function
-    End If
-    
-    'If it was then return the File
-    Set PickWorkbook = wbFile
-End Function
 
 Public Function DefineObjects() As Boolean
     Dim Success As Boolean
@@ -342,13 +313,16 @@ Public Sub GetConfigVars()
     PROPERTIES(11) = "SpikesPerBurst"
     
     'Get some other config flags set by the user
-    Dim useMedIQR As Boolean
+    Dim propMedIQR As Boolean, sttcMedIQR As Boolean
     DATA_PAIRED = (analyzeSht.Shapes("DataPairedChk").OLEFormat.Object.value = 1)
     ASSOC_SAME_CHANNEL_UNITS = (analyzeSht.Shapes("SameChannelAssocChk").OLEFormat.Object.value = 1)
     ASSOC_MULTIPLE_UNITS = (analyzeSht.Shapes("MultipleUnitsAssocChk").OLEFormat.Object.value = 1)
-    useMedIQR = (analyzeSht.Shapes("SttcMedIQRChk").OLEFormat.Object.value = 1)
-    REPORT_STATS_TYPE = IIf(useMedIQR, ReportStatsType.MedianIQR, ReportStatsType.MeanSEM)
     MARK_BURST_DUR_UNITS = (analyzeSht.Shapes("ExcludeBurstDurChk").OLEFormat.Object.value = 1)
+    
+    propMedIQR = (analyzeSht.Shapes("PropMedIQRChk").OLEFormat.Object.value = 1)
+    sttcMedIQR = (analyzeSht.Shapes("SttcMedIQRChk").OLEFormat.Object.value = 1)
+    REPORT_PROPS_TYPE = IIf(propMedIQR, ReportStatsType.MedianIQR, ReportStatsType.MeanSEM)
+    REPORT_STTC_TYPE = IIf(sttcMedIQR, ReportStatsType.MedianIQR, ReportStatsType.MeanSEM)
 End Sub
 
 Private Sub storeParam(ByVal Name As String, ByVal value As Variant)

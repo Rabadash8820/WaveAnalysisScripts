@@ -1,16 +1,13 @@
 Attribute VB_Name = "ProcessPopulations"
 Option Explicit
 
-Private Const TIME_GENERATED_STR = "Time Generated"
-Private Const TIME_TAKEN_STR = "Time taken (hh:mm:ss)> "
-Private Const COMPLETED_MESSAGE = "Don't forget to add start/end times to each of the generated workbooks!"
-
 Private Const TIME_COL = 5
 
 Dim tissueWbs As New Dictionary
 
 Public Sub ProcessPopulations()
     Call setupOptimizations
+    Dim outputStrs As New Collection
     
     'Define the Tissue/Recording/Population objects, etc.
     Dim Success As Boolean
@@ -18,13 +15,19 @@ Public Sub ProcessPopulations()
     Success = DefineObjects()
     If Not Success Then _
         GoTo ExitSub
+    
+    'Load each provided RecordingView's text files
+    'If any errors occur, log their messages and exit
+    Set outputStrs = checkTextFiles
+    If outputStrs.Count > 0 Then _
+        GoTo ExitSub
         
     'Define the types of bursts to use
     Dim burstUseTypes As New Dictionary
     burstUseTypes.Add "WAB", BurstUseType.WABs
     burstUseTypes.Add "NonWAB", BurstUseType.NonWABs
     
-    'Load each provided RecordingView's text files (if they exist)
+    'Load each provided RecordingView's text files,
     'then perform wave analyses on each TissueView!
     Dim fs As New FileSystemObject
     Dim p As Integer, r As Integer, t As Integer, bt As Integer, bType As String, wbPath As String
@@ -66,28 +69,17 @@ Public Sub ProcessPopulations()
         Next t
     Next p
     
-    'Show a Log form
-    Call logResults(ProgramDuration())
+    'Store the success strings to be logged
+    Set outputStrs = successStrings
 
 ExitSub:
+    'Log results (errors or success) and tear things down
+    Call showLog(outputStrs)
     Call tearDownOptimizations
 End Sub
 
 Private Sub loadRecording(ByRef rv As RecordingView, ByVal rvIndex As Integer)
     Dim pop As Population, tv As TissueView
-
-    'Check that a text file was provided and exists (display error dialogs if not)
-    Dim txtFound As Boolean, fs As New FileSystemObject, result As VbMsgBoxResult
-    txtFound = False
-    If fs.FileExists(rv.TextPath) Then
-        txtFound = True
-    ElseIf rv.TextPath = "" Then
-        result = MsgBox("No text file with burst timestamps provided for Recording " & rv.Recording.ID & " in population " & rv.TissueView.Population.Name & ".", vbOKOnly)
-    End If
-    
-    'If not then just return
-    If Not txtFound Then _
-        Exit Sub
     
     'For each burst type...
     Dim t As Integer, bType As String, wbPath As String, wb As Workbook
@@ -97,6 +89,7 @@ Private Sub loadRecording(ByRef rv As RecordingView, ByVal rvIndex As Integer)
         
         'Open the summary workbook for this recording's tissue (replacing any old one)
         wbPath = tv.WorkbookPaths(bType)
+        Dim fs As New FileSystemObject
         If fs.FileExists(wbPath) Then _
             fs.DeleteFile (wbPath)
         Set wb = Workbooks.Add
@@ -208,40 +201,77 @@ Private Sub openFile(ByRef rec As RecordingView, ByRef recFile As File)
     ActiveSheet.UsedRange   'Refresh used range by getting this property
 End Sub
 
-Public Sub logResults(ByVal Duration As Double)
-    'Add time taken to the MainListBox
-    Dim log As New LogForm, numRecs As Integer, tempStr As String, fs As New FileSystemObject
-    Dim p As Integer, t As Integer, bt As Integer, r As Integer, pop As Population, tv As TissueView, rv As RecordingView
-    With log.MainListBox
-        .AddItem TIME_TAKEN_STR & Format(Duration, "hh:mm:ss")
-        .AddItem ""
+Private Function checkTextFiles() As Collection
+    
+    'Load each provided RecordingView's text files (if they exist)
+    'then perform wave analyses on each TissueView!
+    Dim fs As New FileSystemObject, unfound As New Collection, notGiven As New Collection
+    Dim p As Integer, r As Integer, t As Integer, bt As Integer, bType As String, wbPath As String
+    Dim pop As Population, rv As RecordingView, tv As TissueView
+    For p = 0 To POPULATIONS.Count - 1
+        Set pop = POPULATIONS.Items()(p)
+        For t = 1 To pop.TissueViews.Count
+            Set tv = pop.TissueViews.item(t)
+            For r = 1 To tv.RecordingViews.Count
+                Set rv = tv.RecordingViews.item(r)
+                If rv.TextPath = "" Then
+                    notGiven.Add "Recording " & rv.Recording.ID & " in Population """ & rv.TissueView.Population.Name & """"
+                ElseIf Not fs.FileExists(rv.TextPath) Then
+                    unfound.Add "Recording " & rv.Recording.ID & " in Population """ & rv.TissueView.Population.Name & """  (" & rv.TextPath & ")"
+                End If
+            Next r
+        Next t
+    Next p
+    
+    'If there was an error opening any of the text files then store error messages
+    Dim errorOccurred As Boolean, item As Variant, errorStrs As New Collection
+    errorOccurred = (unfound.Count > 0 Or notGiven.Count > 0)
+    If errorOccurred Then
+        errorStrs.Add "Please correct the following errors before running again."
+        If unfound.Count > 0 Then
+            errorStrs.Add ""
+            errorStrs.Add "The provided text files could not be found for the following Recordings:"
+            For Each item In unfound
+                errorStrs.Add "     " & item
+            Next item
+        End If
+        If notGiven.Count > 0 Then
+            errorStrs.Add ""
+            errorStrs.Add "No text file was provided for the following Recordings:"
+            For Each item In notGiven
+                errorStrs.Add "     " & item
+            Next item
+        End If
+    End If
+
+    'Return these error messages
+    Set checkTextFiles = errorStrs
+End Function
+
+Private Function successStrings() As Collection
+    Dim outputStrs As New Collection, numRecs As Integer
+    Dim p As Integer, t As Integer, r As Integer
+    Dim pop As Population, tv As TissueView, rv As RecordingView
         
-        'For each Tissue of each Population...
-        For p = 0 To POPULATIONS.Count - 1
-            Set pop = POPULATIONS.Items()(p)
-            .AddItem "Tissues loaded for population " & pop.Name & ":"
-            For t = 1 To pop.TissueViews.Count
-                
-                'Add which of its Recordings were successfuly loaded
-                Set tv = pop.TissueViews.item(t)
-                numRecs = tv.RecordingViews.Count
-                .AddItem "    Attempted to load " & numRecs & " recording" & IIf(numRecs = 1, "", "s") & " in Tissue " & tv.Tissue.ID
-                For r = 1 To tv.RecordingViews.Count
-                    Set rv = tv.RecordingViews.item(r)
-                    If fs.FileExists(rv.TextPath) Then
-                        tempStr = "Recording " & rv.Recording.ID & " successfully loaded"
-                    Else
-                        tempStr = "Recording " & rv.Recording.ID & " could not be found.  Check that the text file's path was enterred correctly."
-                    End If
-                    .AddItem "        " & tempStr
-                Next r
-                
-            Next t
-            .AddItem ""
-        Next p
-    
-    End With
-    
-    log.Show
-    
-End Sub
+    'For each Tissue of each Population...
+    For p = 0 To POPULATIONS.Count - 1
+        Set pop = POPULATIONS.Items()(p)
+        outputStrs.Add "Tissues loaded for population " & pop.Name & ":"
+        For t = 1 To pop.TissueViews.Count
+            
+            'Add which of its Recordings were successfuly loaded
+            Set tv = pop.TissueViews.item(t)
+            numRecs = tv.RecordingViews.Count
+            outputStrs.Add "    Attempted to load " & numRecs & " recording" & IIf(numRecs = 1, "", "s") & " in Tissue " & tv.Tissue.ID
+            For r = 1 To tv.RecordingViews.Count
+                Set rv = tv.RecordingViews.item(r)
+                outputStrs.Add "        " & "Recording " & rv.Recording.ID & " successfully loaded"
+            Next r
+            
+        Next t
+        outputStrs.Add ""
+    Next p
+
+    'Return these error messages
+    Set successStrings = outputStrs
+End Function
