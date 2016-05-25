@@ -271,7 +271,7 @@ End Sub
 
 Public Sub GetConfigVars()
     'Prepare the property units array
-    NUM_PROPERTIES = 11
+    NUM_PROPERTIES = 12
     NUM_BKGRD_PROPERTIES = 6
     ReDim PROP_UNITS(1 To NUM_PROPERTIES)
     
@@ -309,8 +309,9 @@ Public Sub GetConfigVars()
     PROPERTIES(7) = "BurstDuration"
     PROPERTIES(8) = "BurstFiringRate"
     PROPERTIES(9) = "BurstISI"
-    PROPERTIES(10) = "PercentBurstTimeAbove10Hz"
-    PROPERTIES(11) = "SpikesPerBurst"
+    PROPERTIES(10) = "PercentBurstTimeAbove1Hz"
+    PROPERTIES(11) = "PercentBurstTimeAbove10Hz"
+    PROPERTIES(12) = "SpikesPerBurst"
     
     'Get some other config flags set by the user
     Dim propMedIQR As Boolean, sttcMedIQR As Boolean
@@ -360,9 +361,11 @@ Private Sub storeParam(ByVal Name As String, ByVal value As Variant)
         PROP_UNITS(8) = CStr(value)
     ElseIf Name = "BurstISI Units" Then
         PROP_UNITS(9) = CStr(value)
-    ElseIf Name = "PercentBurstTimeAbove10Hz Units" Then
+    ElseIf Name = "PercentBurstTimeAbove1Hz Units" Then
         PROP_UNITS(10) = CStr(value)
-    ElseIf Name = "SpikesPerBurst Units" Then
+    ElseIf Name = "PercentBurstTimeAbove10Hz Units" Then
         PROP_UNITS(11) = CStr(value)
+    ElseIf Name = "SpikesPerBurst Units" Then
+        PROP_UNITS(12) = CStr(value)
     End If
 End Sub

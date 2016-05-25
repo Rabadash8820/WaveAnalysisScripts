@@ -16,20 +16,22 @@ Public Sub CombineDataIntoWorkbook(ByRef wb As Workbook)
     Call buildStatsSheet
     
     'Store base property names
-    ReDim propNames(1 To 6) As String
+    ReDim propNames(1 To NUM_BKGRD_PROPERTIES) As String
     propNames(1) = "Background Firing Rate"
     propNames(2) = "Background Interspike Interval"
     propNames(3) = "Percent of Spikes Occurring in Bursts"
     propNames(4) = "Burst Frequency"
     propNames(5) = "Interburst Interval"
     propNames(6) = "Percent of Bursts Occurring In Waves"
-    ReDim wbTypePropNames(1 To 5, 1 To 2) As String
-    wbTypePropNames(1, 2) = " Burst Duration"
+    ReDim wbTypePropNames(1 To NUM_BURST_PROPERTIES, 1 To 2) As String
+    wbTypePropNames(1, 2) = " Duration"
     wbTypePropNames(2, 2) = " Firing Rate"
     wbTypePropNames(3, 2) = " Interspike Interval"
     wbTypePropNames(4, 1) = "Percent "
-    wbTypePropNames(4, 2) = " Time >10 Hz"
-    wbTypePropNames(5, 1) = "Spikes Per "
+    wbTypePropNames(4, 2) = " Time >1 Hz"
+    wbTypePropNames(5, 1) = "Percent "
+    wbTypePropNames(5, 2) = " Time >10 Hz"
+    wbTypePropNames(6, 1) = "Spikes Per "
     Dim sttcHeaders() As String
     ReDim sttcHeaders(1 To 5)
     sttcHeaders(1) = "Tissue"
@@ -45,10 +47,10 @@ Public Sub CombineDataIntoWorkbook(ByRef wb As Workbook)
         Worksheets.Add After:=Worksheets(Worksheets.Count)
         Call buildSttcDataSheet(pop, sttcHeaders)
         Worksheets.Add After:=Worksheets(Worksheets.Count)
-        Call buildDataSheet(pop, "Burst", propNames)
+        Call buildPropDataSheet(pop, "Burst", propNames)
         For bType = 1 To UBound(BURST_TYPES, 2)
             Worksheets.Add After:=Worksheets(Worksheets.Count)
-            Call buildDataSheet(pop, BURST_TYPES(1, bType), wbTypePropNames)
+            Call buildPropDataSheet(pop, BURST_TYPES(1, bType), wbTypePropNames)
         Next bType
     Next p
 
@@ -203,7 +205,7 @@ Private Sub buildStatsSheet()
     'Name the value cells
     Dim valueCol As ListColumn
     Set valueCol = tbl.ListColumns(2)
-    valueCol.DataBodyRange(1, 1).Name = "PValue"
+    valueCol.DataBodyRange(1, 1).Name = "Alpha"
     valueCol.DataBodyRange(2, 1).Name = "TTTails"
     valueCol.DataBodyRange(3, 1).Name = "TTType"
     
@@ -217,7 +219,7 @@ Private Sub buildStatsSheet()
 
 End Sub
 
-Private Sub buildDataSheet(ByRef pop As Population, ByVal wbTypeName As String, ByRef headers() As String)
+Private Sub buildPropDataSheet(ByRef pop As Population, ByVal wbTypeName As String, ByRef headers() As String)
     'Build the Data sheet
     Dim Name As String
     Name = pop.Name & "_" & wbTypeName & "s"
@@ -489,11 +491,11 @@ Private Sub buildPropFiguresSheet()
             Set pop = POPULATIONS.Items()(p)
             If pop.ID <> CTRL_POP.ID Then
                 numSeries = numSeries + 1
-                .SeriesCollection.Add Source:=cornerCell.offset(0, 4 * p + 3).Resize(numRows, 1)
+                .SeriesCollection.Add Source:=cornerCell.offset(0, 6 * p + 4).Resize(numRows, 1)
                 .SeriesCollection(numSeries).Name = pop.Name
                 .SeriesCollection(numSeries).XValues = cornerCell.offset(1, 0).Resize(numRows - 1, 1)
                 .ApplyDataLabels Type:=xlDataLabelsShowValue
-                Set errorRng = cornerCell.offset(1, 4 * p + 4).Resize(numRows - 1, 1)
+                Set errorRng = cornerCell.offset(1, 6 * p + 6).Resize(numRows - 1, 1)
                 .SeriesCollection(numSeries).ErrorBar Direction:=xlX, include:=xlErrorBarIncludeBoth, Type:=xlErrorBarTypeCustom, _
                     Amount:="='" & cornerCell.Worksheet.Name & "'!" & errorRng.Address, _
                     minusvalues:="='" & cornerCell.Worksheet.Name & "'!" & errorRng.Address
@@ -953,9 +955,9 @@ Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, 
         Dim errorRng As Range
         For p = 0 To POPULATIONS.Count - 1
             Set pop = POPULATIONS.Items()(p)
-            .SeriesCollection.Add Source:=tblRowCell.offset(0, 4 * p + 1)
+            .SeriesCollection.Add Source:=tblRowCell.offset(0, 6 * p + 1)
             .SeriesCollection(p + 1).Name = pop.Name
-            Set errorRng = tblRowCell.offset(0, 4 * p + 2)
+            Set errorRng = tblRowCell.offset(0, 6 * p + 3)
             .SeriesCollection(p + 1).ErrorBar Direction:=xlY, include:=xlErrorBarIncludeBoth, Type:=xlErrorBarTypeCustom, _
                 Amount:="='" & tblRowCell.Worksheet.Name & "'!" & errorRng.Address, _
                 minusvalues:="='" & tblRowCell.Worksheet.Name & "'!" & errorRng.Address

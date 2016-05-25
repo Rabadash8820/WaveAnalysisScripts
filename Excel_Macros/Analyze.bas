@@ -597,11 +597,12 @@ Private Sub storePostValues(ByVal index As Integer, ByRef spikes As Variant, ByR
     burstResults(index, 2) = burstResults(index, 2) + burstSpikeFreqInUnit(spikes, bursts)
     If burstResults(index, 2) > 0 Then _
         burstResults(index, 3) = burstResults(index, 3) + 1 / burstResults(index, 2)    'Inverse of spike freq
-    burstResults(index, 4) = burstResults(index, 4) + percentBurstTimeAboveFreqInUnit(spikes, bursts, 10)
-    burstResults(index, 5) = burstResults(index, 5) + spikesPerBurstInUnit(spikes, bursts)
+    burstResults(index, 4) = burstResults(index, 4) + percentBurstTimeAboveFreqInUnit(spikes, bursts, 1)
+    burstResults(index, 5) = burstResults(index, 5) + percentBurstTimeAboveFreqInUnit(spikes, bursts, 10)
+    burstResults(index, 6) = burstResults(index, 6) + spikesPerBurstInUnit(spikes, bursts)
     
     'Store other all-burst properties that had to wait until after removing unneeded bursts
-    bkgrdResults(index, 6) = bkgrdResults(index, 6) + wabRatio * 100
+    bkgrdResults(index, 6) = bkgrdResults(index, 6) + wabRatio * 100    'Note which array this is!!!!
 End Sub
 
 Private Function getSpikeTrain(ByVal spikeCol As Integer) As Variant
