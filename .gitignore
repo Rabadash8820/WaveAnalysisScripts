@@ -188,7 +188,10 @@ GeneratedArtifacts/
 _Pvt_Extensions/
 ModelManifest.xml
 
+###########################
+#####  ADDED BY DAN  ######
+###########################
+
 # Default templates and scripts added by NeuroExplorer
-Old_Scripts/Nex_Analysis_Templates/3D Templates/
-Old_Scripts/Nex_Analysis_Templates/Default/
-/MEACruncher/packages
+Nex_Analysis_Templates/3D Templates/
+Nex_Analysis_Templates/Default/
