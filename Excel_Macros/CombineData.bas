@@ -638,31 +638,35 @@ Private Sub buildSttcFiguresSheet()
     tbl.Name = STTC_NAME
     
     'Add its columns
-    Dim pop As Population, tv As TissueView
+    Dim pop As Population, tv As TissueView, colIncrement As Integer
     numCols = 2
+    colIncrement = IIf(REPORT_STTC_TYPE = ReportStatsType.MedianIQR, 3, 2)
     tbl.ListColumns.Add
     For p = 0 To POPULATIONS.Count - 1
         Set pop = POPULATIONS.Items()(p)
-        tbl.ListColumns.Add     'For value (mean or median)
-        tbl.ListColumns.Add     'For range (SEM or IQR)
-        numCols = numCols + 2
+        For col = 1 To colIncrement
+            tbl.ListColumns.Add
+        Next col
         For t = 0 To pop.TissueViews.Count - 1
             tbl.ListColumns.Add
-            numCols = numCols + 1
         Next t
+        numCols = numCols + colIncrement + pop.TissueViews.Count
     Next p
     ReDim headers(1 To 1, 1 To numCols)
     headers(1, 1) = "Unit Distance"
     headers(1, 2) = "Real Distance"
     col = 2
-    Dim valStr As String, rangeStr As String
     For p = 0 To POPULATIONS.Count - 1
         Set pop = POPULATIONS.Items()(p)
-        valStr = IIf(REPORT_STTC_TYPE = ReportStatsType.MedianIQR, "Med", "Mean")
-        rangeStr = IIf(REPORT_STTC_TYPE = ReportStatsType.MedianIQR, "IQR/2", "SEM")
-        headers(1, col + 1) = pop.Abbreviation & " " & valStr
-        headers(1, col + 2) = pop.Abbreviation & " " & rangeStr
-        col = col + 2
+        If REPORT_STTC_TYPE = ReportStatsType.MedianIQR Then
+            headers(1, col + 1) = pop.Abbreviation & " Med"
+            headers(1, col + 2) = pop.Abbreviation & " Q1"
+            headers(1, col + 3) = pop.Abbreviation & " Q3"
+        Else
+            headers(1, col + 1) = pop.Abbreviation & " Mean"
+            headers(1, col + 2) = pop.Abbreviation & " SEM"
+        End If
+        col = col + colIncrement
         For t = 0 To pop.TissueViews.Count - 1
             Set tv = pop.TissueViews.item(t + 1)
             headers(1, col + 1) = pop.Abbreviation & " " & CStr(t + 1)
@@ -694,7 +698,7 @@ Private Sub buildSttcFiguresSheet()
     End With
     
     'Add formulas to the remaining rows/columns
-    Dim popRngStr As String, popSttcTblStr As String, valFormula, rangeFormula As String
+    Dim popRngStr As String, popSttcTblStr As String, valFormula As String
     numCols = 2
     tbl.ListColumns(2).DataBodyRange.Formula = "=IF(InterElectrodeDist*[@Unit Distance]<=IgnoreDist,InterElectrodeDist*[@[Unit Distance]],NA())"
     For p = 0 To POPULATIONS.Count - 1
@@ -702,24 +706,21 @@ Private Sub buildSttcFiguresSheet()
         popSttcTblStr = pop.Name & "_" & STTC_NAME
         popRngStr = "IF(" & popSttcTblStr & "[Unit Distance]=[@[Unit Distance]]," & popSttcTblStr & "[STTC])"
         If REPORT_STTC_TYPE = ReportStatsType.MedianIQR Then
-            valFormula = "=MEDIAN(" & popRngStr & ")"
-            rangeFormula = "=0.5*(QUARTILE.EXC(" & popRngStr & ",3)-QUARTILE.EXC(" & popRngStr & ",1))"
+            tbl.ListColumns(numCols + 1).DataBodyRange(1).FormulaArray = "=MEDIAN(" & popRngStr & ")"
+            tbl.ListColumns(numCols + 2).DataBodyRange(1).FormulaArray = "=[@[" & pop.Abbreviation & " Med]]-QUARTILE.EXC(" & popRngStr & ",1)"
+            tbl.ListColumns(numCols + 3).DataBodyRange(1).FormulaArray = "=QUARTILE.EXC(" & popRngStr & ",3)-[@[" & pop.Abbreviation & " Med]]"
         Else
-            valFormula = "=AVERAGE(" & popRngStr & ")"
-            rangeFormula = "=STDEV.S(" & popRngStr & ")/SQRT(COUNT(" & popRngStr & "))"
+            tbl.ListColumns(numCols + 1).DataBodyRange(1).FormulaArray = "=AVERAGE(" & popRngStr & ")"
+            tbl.ListColumns(numCols + 2).DataBodyRange(1).FormulaArray = "=STDEV.S(" & popRngStr & ")/SQRT(COUNT(" & popRngStr & "))"
         End If
-        tbl.ListColumns(numCols + 1).DataBodyRange(1).FormulaArray = valFormula
-        tbl.ListColumns(numCols + 2).DataBodyRange(1).FormulaArray = rangeFormula
+        numCols = numCols + colIncrement
         For t = 1 To pop.TissueViews.Count
             popRngStr = "IF(" & popSttcTblStr & "[Tissue]=""" & t & """,IF(" & popSttcTblStr & "[Unit Distance]=[@[Unit Distance]]," & popSttcTblStr & "[STTC]))"
-            If REPORT_STTC_TYPE = ReportStatsType.MedianIQR Then
-                valFormula = "=MEDIAN(" & popRngStr & ")"
-            Else
-                valFormula = "=AVERAGE(" & popRngStr & ")"
-            End If
-            tbl.ListColumns(numCols + 2 + t).DataBodyRange(1).FormulaArray = valFormula
+            valFormula = IIf(REPORT_STTC_TYPE = ReportStatsType.MedianIQR, "MEDIAN", "AVERAGE")
+            valFormula = "=" & valFormula & "(" & popRngStr & ")"
+            tbl.ListColumns(numCols + t).DataBodyRange(1).FormulaArray = valFormula
         Next t
-        numCols = numCols + 2 + pop.TissueViews.Count
+        numCols = numCols + pop.TissueViews.Count
     Next p
     
     'Format cells
@@ -738,8 +739,8 @@ Private Sub buildSttcFiguresSheet()
     For p = 0 To POPULATIONS.Count - 1
         Set pop = POPULATIONS.Items(p)
         tbl.ListColumns(numCols).Range.Borders(xlEdgeLeft).Weight = xlMedium
-        tbl.ListColumns(numCols + 2).Range.Borders(xlEdgeLeft).Weight = xlThin
-        numCols = numCols + pop.TissueViews.Count + 2
+        tbl.ListColumns(numCols + colIncrement).Range.Borders(xlEdgeLeft).Weight = xlThin
+        numCols = numCols + pop.TissueViews.Count + colIncrement
     Next p
 
     'Add the new line chart object for STTCs
@@ -762,7 +763,7 @@ Private Sub buildSttcFiguresSheet()
         Next s
 
         'Set the new population Series (showing future hidden cells too)
-        Dim errorRng As Range, numSeries As Integer
+        Dim negErrorRng As Range, posErrorRng As Range, numSeries As Integer
         numSeries = 0
         numCols = 2
         For p = 0 To POPULATIONS.Count - 1
@@ -771,11 +772,12 @@ Private Sub buildSttcFiguresSheet()
             .SeriesCollection.Add Source:=tbl.ListColumns(numCols + 1).DataBodyRange
             .SeriesCollection(numSeries).Name = pop.Name
             .SeriesCollection(numSeries).XValues = tbl.ListColumns(2).DataBodyRange
-            Set errorRng = tbl.ListColumns(numCols + 2).DataBodyRange
+            Set negErrorRng = tbl.ListColumns(numCols + 2).DataBodyRange
+            Set posErrorRng = IIf(REPORT_STTC_TYPE = ReportStatsType.MedianIQR, negErrorRng.offset(0, 1), negErrorRng)
             .SeriesCollection(numSeries).ErrorBar Direction:=xlY, include:=xlErrorBarIncludeBoth, Type:=xlErrorBarTypeCustom, _
-                Amount:="='" & cornerCell.Worksheet.Name & "'!" & errorRng.Address, _
-                minusvalues:="='" & cornerCell.Worksheet.Name & "'!" & errorRng.Address
-            numCols = numCols + 2 + pop.TissueViews.Count
+                Amount:="='" & cornerCell.Worksheet.Name & "'!" & posErrorRng.Address, _
+                minusvalues:="='" & cornerCell.Worksheet.Name & "'!" & negErrorRng.Address
+            numCols = numCols + colIncrement + pop.TissueViews.Count
         Next p
 
         'Format the Chart
