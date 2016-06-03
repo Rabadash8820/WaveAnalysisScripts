@@ -1,4 +1,4 @@
-Attribute VB_Name = "FunctionModule"
+Attribute VB_Name = "Functions"
 Option Explicit
 Option Private Module
 
@@ -17,46 +17,17 @@ Public Function channelIndex(ByVal unitName As String) As Integer
     'Return the 0-based channel index
     channelIndex = MEA_COLS * r + c
 End Function
-Public Function meanSpikeFreqInUnit(ByRef spikes As Variant, ByVal recDuration As Double) As Double
-    'If there are no spikes then return 0
-    If spikes(1, 1) = -1 Then
-        meanSpikeFreqInUnit = 0
-        Exit Function
-    End If
-    
-    'Otherwise, return the number of spikes over the recording duration
-    meanSpikeFreqInUnit = UBound(spikes) / recDuration
-End Function
 Public Function burstSpikesInUnit(ByRef spikes As Variant, ByRef bursts As Variant) As Long
     Dim b As Integer
     
-    'If there are no spikes then return 0
-    If spikes(1, 1) = -1 Then
-        burstSpikesInUnit = 0
-        Exit Function
-    End If
-    
-    'If there are no bursts then return 0
-    If bursts(1, 1) = -1 Then
-        burstSpikesInUnit = 0
-        Exit Function
-    End If
-    
-    'Otherwise, return the number of spikes outside all bursts
+    'Return the number of spikes outside all bursts
     burstSpikesInUnit = 0
     For b = 1 To UBound(bursts)
         burstSpikesInUnit = burstSpikesInUnit + spikesInBurst(spikes, bursts, b)
     Next b
 End Function
 Public Function burstTimeInUnit(ByRef bursts As Variant) As Double
-    Dim b As Integer
-    Dim totalTime As Double
-        
-    'If there are no bursts then return 0
-    If bursts(1, 1) = -1 Then
-        burstTimeInUnit = 0
-        Exit Function
-    End If
+    Dim b As Integer, totalTime As Double
     
     'Otherwise, return the total amount of time spent bursting
     totalTime = 0
@@ -238,31 +209,13 @@ Public Function spikesInBurst(ByRef spikes As Variant, ByRef bursts As Variant, 
     endIndex = binarySearch(spikes, bursts(bIndex, 2))
     spikesInBurst = endIndex - startIndex + 1
 End Function
-Public Function spikeFreqInBurst(ByRef spikes As Variant, ByRef bursts As Variant, ByVal bIndex As Long) As Double
-    Dim Duration As Double
+Public Function firingRateInBurst(ByRef spikes As Variant, ByRef bursts As Variant, ByVal bIndex As Long) As Double
+    Dim Duration As Double, numSpikes As Long
     
     'Burst index is 1-based
     Duration = bursts(bIndex, 2) - bursts(bIndex, 1)
-    spikeFreqInBurst = spikesInBurst(spikes, bursts, bIndex) / Duration
-End Function
-Public Function peakFreqInBurst(ByRef spikes As Variant, ByRef bursts As Variant, ByVal bIndex As Long) As Double
-    Dim first, last, s As Integer
-    Dim minISI, isi As Double
-    
-    'Burst index is 1-based
-    first = binarySearch(spikes, bursts(bIndex, 1))
-    last = binarySearch(spikes, bursts(bIndex, 2))
-    minISI = (bursts(bIndex, 2) - bursts(bIndex, 1))
-    s = first
-    Do While s < last
-        isi = spikes(s + 1, 1) - spikes(s, 1)
-        minISI = WorksheetFunction.Min(isi, minISI)
-        s = s + 1
-    Loop
-    peakFreqInBurst = 1 / minISI
-End Function
-Public Function isiInBurst(ByRef spikes As Variant, ByRef bursts As Variant, ByVal bIndex As Long) As Double
-    isiInBurst = 1 / spikeFreqInBurst(spikes, bursts, bIndex)
+    numSpikes = spikesInBurst(spikes, bursts, bIndex)
+    firingRateInBurst = numSpikes / Duration
 End Function
 Public Function burstsAssociated(ByVal start As Double, ByVal binDuration As Double, ByVal nStart As Double, ByVal nBinDuration As Double) As Boolean
     Dim bin, nBin As Integer
@@ -297,129 +250,30 @@ End Function
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 'ANALYSIS FUNCTIONS
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-Public Function backgroundFiringInUnit(ByRef spikes As Variant, ByRef bursts As Variant, ByVal recDuration As Double) As Double 'Spikes per min
-    Dim nonWaveSpikes As Integer
-    Dim nonWaveTime As Double
-    
-    'If there are no spikes then return 0
-    If spikes(1, 1) = -1 Then
-        backgroundFiringInUnit = 0
-        Exit Function
-    End If
-    
-    nonWaveSpikes = UBound(spikes) - burstSpikesInUnit(spikes, bursts)
-    nonWaveTime = recDuration - burstTimeInUnit(bursts)
-    backgroundFiringInUnit = nonWaveSpikes / nonWaveTime * 60
-End Function
-Public Function backgroundISIInUnit(ByRef spikes As Variant, ByRef bursts As Variant, ByVal recDuration As Double) As Double    'Seconds
-    Dim bkgrdFiring As Double
-    
-    'If there are no background spikes then return 0
-    bkgrdFiring = backgroundFiringInUnit(spikes, bursts, recDuration)
-    If bkgrdFiring = 0 Then
-        backgroundISIInUnit = 0
-        Exit Function
-    End If
-    
-    'Otherwise, return the reciprocal of the background firing rate
-    backgroundISIInUnit = 1 / bkgrdFiring * 60
-End Function
-Public Function burstFreqInUnit(ByRef bursts As Variant, ByVal recDuration As Double) As Double   'Bursts per min
-    'If there are no bursts then return 0
-    If bursts(1, 1) = -1 Then
-        burstFreqInUnit = 0
-        Exit Function
-    End If
-    
-    'Otherwise return the total number of bursts over the recording duration
-    burstFreqInUnit = UBound(bursts) / recDuration * 60
-End Function
-Public Function ibiInUnit(ByRef bursts As Variant, ByVal recDuration As Double) As Double 'Seconds
-    Dim nonWaveTime As Double
-    
-    'If there is only one burst, then we can't compute IBI so return 0
-    Dim numBursts As Integer
-    numBursts = UBound(bursts)
-    If numBursts = 1 Then
-        ibiInUnit = 0
-        Exit Function
-    End If
-    
-    'Otherwise return the total time outside bursts (excluding time before first burst and after last burst)
-    'Divided by number of inter-burst intervals
-    Dim croppedDur As Double
-    croppedDur = bursts(numBursts, 2) - bursts(1, 1)
-    nonWaveTime = croppedDur - burstTimeInUnit(bursts)
-    ibiInUnit = nonWaveTime / (numBursts - 1)
-End Function
 Public Function burstDurationInUnit(ByRef bursts As Variant) As Double  'Seconds
-    'If there are no bursts then return 0
-    If bursts(1, 1) = -1 Then
-        burstDurationInUnit = 0
-        Exit Function
-    End If
+    Dim sumDuration As Double, b As Integer
     
-    'Otherwise, return the total time spent bursting over the number of bursts
-    burstDurationInUnit = burstTimeInUnit(bursts) / UBound(bursts)
+    'Average burst duration
+    sumDuration = 0
+    For b = 1 To UBound(bursts)
+        sumDuration = sumDuration + bursts(b, 2) - bursts(b, 1)
+    Next b
+    burstDurationInUnit = sumDuration / UBound(bursts)
 End Function
-Public Function percentBurstSpikesInUnit(ByRef spikes As Variant, ByRef bursts As Variant) As Double     'Returns percent like 90.57% not 0.9057
-    'If there are no bursts then return 0
-    If bursts(1, 1) = -1 Then
-        percentBurstSpikesInUnit = 0
-        Exit Function
-    End If
-    
-    'If there are no spikes then return 0
-    If spikes(1, 1) = -1 Then
-        percentBurstSpikesInUnit = 0
-        Exit Function
-    End If
-    
-    'Otherwise, return the number of burst-spikes over the total number of spikes
-    percentBurstSpikesInUnit = burstSpikesInUnit(spikes, bursts) / UBound(spikes) * 100
-End Function
-Public Function burstSpikeFreqInUnit(ByRef spikes As Variant, ByRef bursts As Variant) As Double    'Spikes per second
-    'If there are no bursts then return 0
-    If bursts(1, 1) = -1 Then
-        burstSpikeFreqInUnit = 0
-        Exit Function
-    End If
-    
+Public Function burstFiringRateInUnit(ByRef spikes As Variant, ByRef bursts As Variant) As Double    'Spikes per second
     'Otherwise, return the average of the spike frequencies of all bursts
     Dim sumSpikeFreq As Double, b As Integer
     sumSpikeFreq = 0
     For b = 1 To UBound(bursts)
-        sumSpikeFreq = sumSpikeFreq + spikeFreqInBurst(spikes, bursts, b)
+        sumSpikeFreq = sumSpikeFreq + firingRateInBurst(spikes, bursts, b)
     Next b
-    burstSpikeFreqInUnit = sumSpikeFreq / UBound(bursts)
-End Function
-Public Function burstISIInUnit(ByRef spikes As Variant, ByRef bursts As Variant) As Double   'Seconds
-    'If there are no bursts then return 0
-    If bursts(1, 1) = -1 Then
-        burstISIInUnit = 0
-        Exit Function
-    End If
-    
-    'Otherwise, return the reciprocal of the mean in-burst spike frequency
-    burstISIInUnit = 1 / burstSpikeFreqInUnit(spikes, bursts)
+    burstFiringRateInUnit = sumSpikeFreq / UBound(bursts)
 End Function
 Public Function percentBurstTimeAboveFreqInUnit(ByRef spikes As Variant, ByRef bursts As Variant, ByVal freq As Double) As Double
     Dim b, s As Integer
     Dim start, finish As Double
     Dim maxISI, isi As Double
     Dim time As Double
-    
-    'If there are no spikes then return 0
-    If spikes(1, 1) = -1 Then
-        percentBurstTimeAboveFreqInUnit = 0
-        Exit Function
-    End If
-    
-    'If there are no bursts then return 0
-    If bursts(1, 1) = -1 Then
-        percentBurstTimeAboveFreqInUnit = 0
-        Exit Function
-    End If
     
     'Otherwise, for each burst, find the percent time spent firing above the given frequency
     'Return the average of this value for all bursts
@@ -438,34 +292,7 @@ Public Function percentBurstTimeAboveFreqInUnit(ByRef spikes As Variant, ByRef b
         Next s
         avgTime = avgTime + time / (bursts(b, 2) - bursts(b, 1))
     Next b
-    percentBurstTimeAboveFreqInUnit = avgTime / UBound(bursts) * 100
-End Function
-Public Function peakBurstSpikeFreqInUnit(ByRef spikes As Variant, ByRef bursts As Variant) As Double
-    Dim b As Integer
-    Dim sumPeakSpikeFreq As Double
-    
-    'If there are no bursts then return 0
-    If bursts(1, 1) = -1 Then
-        peakBurstSpikeFreqInUnit = 0
-        Exit Function
-    End If
-    
-    'Otherwise, return the average of the peak frequencies of all bursts
-    sumPeakSpikeFreq = 0
-    For b = 1 To UBound(bursts)
-        sumPeakSpikeFreq = sumPeakSpikeFreq + peakFreqInBurst(spikes, bursts, b)
-    Next b
-    peakBurstSpikeFreqInUnit = sumPeakSpikeFreq / UBound(bursts)
-End Function
-Public Function spikesPerBurstInUnit(ByRef spikes As Variant, ByRef bursts As Variant) As Double
-    'If there are no bursts then return 0
-    If bursts(1, 1) = -1 Then
-        spikesPerBurstInUnit = 0
-        Exit Function
-    End If
-    
-    'Otherwise, return the number of burst-spikes over the number of bursts
-    spikesPerBurstInUnit = burstSpikesInUnit(spikes, bursts) / UBound(bursts)
+    percentBurstTimeAboveFreqInUnit = avgTime / UBound(bursts)
 End Function
 Public Function spikeTimeTilingCoefficient1(ByRef spikes1 As Variant, ByRef spikes2 As Variant, ByVal recordingDuration As Double) As Double
     Dim P1, P2 As Double

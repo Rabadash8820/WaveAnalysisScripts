@@ -271,8 +271,8 @@ End Sub
 
 Public Sub GetConfigVars()
     'Prepare the property units array
-    NUM_PROPERTIES = 12
-    NUM_BKGRD_PROPERTIES = 6
+    NUM_PROPERTIES = 16
+    NUM_BKGRD_PROPERTIES = 10
     ReDim PROP_UNITS(1 To NUM_PROPERTIES)
     
     'Get the config parameters from the Params table
@@ -300,18 +300,22 @@ Public Sub GetConfigVars()
     'Set property name strings
     'Try to just use alphanumeric characters w/o spaces since these will be Excel table headers later
     ReDim PROPERTIES(1 To NUM_PROPERTIES)
-    PROPERTIES(1) = "BkgrdFiringRate"
-    PROPERTIES(2) = "BkgrdISI"
-    PROPERTIES(3) = "PercentSpikesInBursts"
-    PROPERTIES(4) = "BurstFrequency"
-    PROPERTIES(5) = "IBI"
-    PROPERTIES(6) = "PercentBurstsInWaves"
-    PROPERTIES(7) = "BurstDuration"
-    PROPERTIES(8) = "BurstFiringRate"
-    PROPERTIES(9) = "BurstISI"
-    PROPERTIES(10) = "PercentBurstTimeAbove1Hz"
-    PROPERTIES(11) = "PercentBurstTimeAbove10Hz"
-    PROPERTIES(12) = "SpikesPerBurst"
+    PROPERTIES(1) = "NumSpikes"
+    PROPERTIES(2) = "FiringRateOutsideAllBursts"
+    PROPERTIES(3) = "FiringRateOutsideWABs"
+    PROPERTIES(4) = "ISIOutsideAllBursts"
+    PROPERTIES(5) = "ISIOutsideWABs"
+    PROPERTIES(6) = "PercentSpikesOutsideAllBursts"
+    PROPERTIES(7) = "PercentSpikesOutsideWABs"
+    PROPERTIES(8) = "BurstFrequency"
+    PROPERTIES(9) = "IBI"
+    PROPERTIES(10) = "PercentBurstsInWaves"
+    PROPERTIES(11) = "NumBursts"
+    PROPERTIES(12) = "BurstDuration"
+    PROPERTIES(13) = "BurstFiringRate"
+    PROPERTIES(14) = "BurstISI"
+    PROPERTIES(15) = "PercentBurstTimeAbove10Hz"
+    PROPERTIES(16) = "SpikesPerBurst"
     
     'Get some other config flags set by the user
     Dim propMedIQR As Boolean, sttcMedIQR As Boolean
@@ -343,29 +347,39 @@ Private Sub storeParam(ByVal Name As String, ByVal value As Variant)
         MIN_BINS = CInt(value)
     ElseIf Name = "Num Bins" Then
         NUM_BINS = CInt(value)
-    ElseIf Name = "BkgrdFiringRate Units" Then
+        
+    ElseIf Name = "NumSpikes Units" Then
         PROP_UNITS(1) = CStr(value)
-    ElseIf Name = "BkgrdISI Units" Then
+    ElseIf Name = "FiringRateOutsideAllBursts Units" Then
         PROP_UNITS(2) = CStr(value)
-    ElseIf Name = "PercentSpikesInBursts Units" Then
+    ElseIf Name = "FiringRateOutsideWABs Units" Then
         PROP_UNITS(3) = CStr(value)
-    ElseIf Name = "BurstFrequency Units" Then
+    ElseIf Name = "ISIOutsideAllBursts Units" Then
         PROP_UNITS(4) = CStr(value)
-    ElseIf Name = "IBI Units" Then
+    ElseIf Name = "ISIOutsideWABs Units" Then
         PROP_UNITS(5) = CStr(value)
-    ElseIf Name = "PercentBurstsInWaves Units" Then
+    ElseIf Name = "PercentSpikesOutsideAllBursts Units" Then
         PROP_UNITS(6) = CStr(value)
-    ElseIf Name = "BurstDuration Units" Then
+    ElseIf Name = "PercentSpikesOutsideWABs Units" Then
         PROP_UNITS(7) = CStr(value)
-    ElseIf Name = "BurstFiringRate Units" Then
+    ElseIf Name = "BurstFrequency Units" Then
         PROP_UNITS(8) = CStr(value)
-    ElseIf Name = "BurstISI Units" Then
+    ElseIf Name = "IBI Units" Then
         PROP_UNITS(9) = CStr(value)
-    ElseIf Name = "PercentBurstTimeAbove1Hz Units" Then
+    ElseIf Name = "PercentBurstsInWaves Units" Then
         PROP_UNITS(10) = CStr(value)
-    ElseIf Name = "PercentBurstTimeAbove10Hz Units" Then
+    ElseIf Name = "NumBursts Units" Then
         PROP_UNITS(11) = CStr(value)
-    ElseIf Name = "SpikesPerBurst Units" Then
+    ElseIf Name = "BurstDuration Units" Then
         PROP_UNITS(12) = CStr(value)
+    ElseIf Name = "BurstFiringRate Units" Then
+        PROP_UNITS(13) = CStr(value)
+    ElseIf Name = "BurstISI Units" Then
+        PROP_UNITS(14) = CStr(value)
+    ElseIf Name = "PercentBurstTimeAbove10Hz Units" Then
+        PROP_UNITS(15) = CStr(value)
+    ElseIf Name = "SpikesPerBurst Units" Then
+        PROP_UNITS(16) = CStr(value)
     End If
+    
 End Sub

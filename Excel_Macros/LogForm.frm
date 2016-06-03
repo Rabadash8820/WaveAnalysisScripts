@@ -4,7 +4,7 @@ Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} LogForm
    ClientHeight    =   5715
    ClientLeft      =   45
    ClientTop       =   390
-   ClientWidth     =   12825
+   ClientWidth     =   13755
    OleObjectBlob   =   "LogForm.frx":0000
    StartUpPosition =   1  'CenterOwner
 End

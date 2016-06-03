@@ -15,23 +15,31 @@ Public Sub CombineDataIntoWorkbook(ByRef wb As Workbook)
     Worksheets.Add After:=Worksheets(CONTENTS_NAME)
     Call buildStatsSheet
     
-    'Store base property names
+    'Store property names
     ReDim propNames(1 To NUM_BKGRD_PROPERTIES) As String
-    propNames(1) = "Background Firing Rate"
-    propNames(2) = "Background Interspike Interval"
-    propNames(3) = "Percent of Spikes Occurring in Bursts"
-    propNames(4) = "Burst Frequency"
-    propNames(5) = "Interburst Interval"
-    propNames(6) = "Percent of Bursts Occurring In Waves"
+    propNames(1) = "Number of Spikes"
+    propNames(2) = "Firing Rate Outside All Bursts"
+    propNames(3) = "Firing Rate Outside WABs"
+    propNames(4) = "ISI Outside All Bursts"
+    propNames(5) = "ISI Outside WABs"
+    propNames(6) = "Percent of Spikes Outside All Bursts"
+    propNames(7) = "Percent of Spikes Outside WABs"
+    propNames(8) = "Burst Frequency"
+    propNames(9) = "Interburst Interval"
+    propNames(10) = "Percent of Bursts That Are WABs"
     ReDim wbTypePropNames(1 To NUM_BURST_PROPERTIES, 1 To 2) As String
-    wbTypePropNames(1, 2) = " Duration"
-    wbTypePropNames(2, 2) = " Firing Rate"
-    wbTypePropNames(3, 2) = " Interspike Interval"
-    wbTypePropNames(4, 1) = "Percent "
-    wbTypePropNames(4, 2) = " Time >1 Hz"
+    wbTypePropNames(1, 1) = "Number of "
+    wbTypePropNames(1, 2) = "s"
+    wbTypePropNames(2, 1) = ""
+    wbTypePropNames(2, 2) = " Duration"
+    wbTypePropNames(3, 1) = ""
+    wbTypePropNames(3, 2) = " Firing Rate"
+    wbTypePropNames(4, 1) = ""
+    wbTypePropNames(4, 2) = " ISI"
     wbTypePropNames(5, 1) = "Percent "
     wbTypePropNames(5, 2) = " Time >10 Hz"
     wbTypePropNames(6, 1) = "Spikes Per "
+    wbTypePropNames(6, 2) = ""
     Dim sttcHeaders() As String
     ReDim sttcHeaders(1 To 5)
     sttcHeaders(1) = "Tissue"

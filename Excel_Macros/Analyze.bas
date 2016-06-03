@@ -583,26 +583,79 @@ Private Sub burstAssociatedWithUnits(ByVal firstUnit As Integer, ByVal lastUnit 
 End Sub
 
 Private Sub storePreValues(ByVal index As Integer, ByRef spikes As Variant, ByRef bursts As Variant, ByVal recDuration As Double)
+    'Calculate some fundamental values
+    Dim hasSpikes As Boolean, hasBursts As Boolean
+    Dim numSpikes As Long, numBurstSpikes As Long, numBursts As Integer, burstTime As Double, croppedDur As Double
+    Dim bkgrdFiringRate As Double, ibi As Double
+    hasSpikes = (spikes(1, 1) <> -1)
+    hasBursts = (bursts(1, 1) <> -1)
+    If hasSpikes Then _
+        numSpikes = UBound(spikes)
+    If hasBursts Then
+        numBursts = UBound(bursts)
+        burstTime = burstTimeInUnit(bursts)
+        croppedDur = bursts(numBursts, 2) - bursts(1, 1)
+    End If
+    If hasSpikes And hasBursts Then _
+        numBurstSpikes = burstSpikesInUnit(spikes, bursts)
+    
+    'Calculate more complicated values
+    bkgrdFiringRate = (numSpikes - numBurstSpikes) / (recDuration - burstTime)
+    If numBursts <> 1 Then _
+        ibi = (croppedDur - burstTime) / (numBursts - 1) 'numerator comes out to zero if no bursts
+    
     'Store background spiking properties (these deal w/ spikes outside ALL bursts, not just wave-bursts)
-    bkgrdResults(index, 1) = bkgrdResults(index, 1) + backgroundFiringInUnit(spikes, bursts, recDuration)
-    bkgrdResults(index, 2) = bkgrdResults(index, 2) + backgroundISIInUnit(spikes, bursts, recDuration)
-    bkgrdResults(index, 3) = bkgrdResults(index, 3) + percentBurstSpikesInUnit(spikes, bursts)
-    bkgrdResults(index, 4) = bkgrdResults(index, 4) + burstFreqInUnit(bursts, recDuration)
-    bkgrdResults(index, 5) = bkgrdResults(index, 5) + ibiInUnit(bursts, recDuration)
+    bkgrdResults(index, 1) = bkgrdResults(index, 1) + numSpikes                         'Number of spikes
+    bkgrdResults(index, 2) = bkgrdResults(index, 2) + bkgrdFiringRate * 60              'Firing rate outside all bursts
+    If bkgrdFiringRate > 0 Then _
+        bkgrdResults(index, 4) = bkgrdResults(index, 4) + 1 / bkgrdFiringRate           'ISI outside all bursts
+    If numSpikes > 0 Then _
+        bkgrdResults(index, 6) = bkgrdResults(index, 6) + (numSpikes - numBurstSpikes) / numSpikes * 100 'Percent spikes outside all bursts
+    bkgrdResults(index, 8) = bkgrdResults(index, 8) + numBursts / recDuration * 60      'Burst frequency
+    bkgrdResults(index, 9) = bkgrdResults(index, 9) + ibi                               'Interburst interval
 End Sub
 
 Private Sub storePostValues(ByVal index As Integer, ByRef spikes As Variant, ByRef bursts As Variant, ByVal recDuration As Double, ByVal wabRatio As Double)
-    'Store burst-specific spiking properties (if this channel HAD bursts of the correct type)
-    burstResults(index, 1) = burstResults(index, 1) + burstDurationInUnit(bursts)
-    burstResults(index, 2) = burstResults(index, 2) + burstSpikeFreqInUnit(spikes, bursts)
-    If burstResults(index, 2) > 0 Then _
-        burstResults(index, 3) = burstResults(index, 3) + 1 / burstResults(index, 2)    'Inverse of spike freq
-    burstResults(index, 4) = burstResults(index, 4) + percentBurstTimeAboveFreqInUnit(spikes, bursts, 1)
-    burstResults(index, 5) = burstResults(index, 5) + percentBurstTimeAboveFreqInUnit(spikes, bursts, 10)
-    burstResults(index, 6) = burstResults(index, 6) + spikesPerBurstInUnit(spikes, bursts)
+    'Calculate some fundamental values
+    Dim hasSpikes As Boolean, hasBursts As Boolean
+    Dim numSpikes As Long, numBursts As Integer, burstTime As Double, numBurstSpikes As Long
+    Dim avgBurstDur As Double, avgBurstFiringRate As Double, pctTimeAbove10Hz As Double, firingRateOutside As Double
+    hasSpikes = (spikes(1, 1) <> -1)
+    hasBursts = (bursts(1, 1) <> -1)
+    If hasSpikes Then _
+        numSpikes = UBound(spikes)
+    If hasBursts Then
+        numBursts = UBound(bursts)
+        burstTime = burstTimeInUnit(bursts)
+    End If
+    If hasSpikes And hasBursts Then _
+        numBurstSpikes = burstSpikesInUnit(spikes, bursts)
     
-    'Store other all-burst properties that had to wait until after removing unneeded bursts
-    bkgrdResults(index, 6) = bkgrdResults(index, 6) + wabRatio * 100    'Note which array this is!!!!
+    'Calculate more complicated values
+    If hasBursts Then
+        avgBurstDur = burstDurationInUnit(bursts)
+        avgBurstFiringRate = burstFiringRateInUnit(spikes, bursts)
+    End If
+    If hasSpikes And hasBursts Then _
+        pctTimeAbove10Hz = percentBurstTimeAboveFreqInUnit(spikes, bursts, 10)
+    firingRateOutside = (numSpikes - numBurstSpikes) / (recDuration - burstTime)
+
+    'Store burst-specific spiking properties (if this channel HAD bursts of the correct type)
+    burstResults(index, 1) = burstResults(index, 1) + numBursts                         'Number of bursts
+    burstResults(index, 2) = burstResults(index, 2) + avgBurstDur                       'Burst duration
+    burstResults(index, 3) = burstResults(index, 3) + avgBurstFiringRate                'Burst firing rate
+    If avgBurstFiringRate > 0 Then _
+        burstResults(index, 4) = burstResults(index, 4) + 1 / avgBurstFiringRate        'Burst ISI
+    burstResults(index, 5) = burstResults(index, 5) + pctTimeAbove10Hz * 100            'Percent time in burst firing >10 Hz
+    If numBursts > 0 Then _
+        burstResults(index, 6) = burstResults(index, 6) + numBurstSpikes / numBursts    'Spikes per burst
+    
+    'Store other "background" properties that had to wait until after removing unneeded bursts
+    bkgrdResults(index, 3) = bkgrdResults(index, 3) + firingRateOutside * 60            'Firing rate outside this kind of burst
+    If firingRateOutside > 0 Then _
+        bkgrdResults(index, 5) = bkgrdResults(index, 5) + 1 / firingRateOutside         'ISI outside this kind of burst
+    bkgrdResults(index, 7) = bkgrdResults(index, 7) + (numSpikes - numBurstSpikes) / numSpikes * 100  'Percent spikes outside this kind of burst
+    bkgrdResults(index, 10) = bkgrdResults(index, 10) + wabRatio * 100                  'Percent bursts that are this kind of burst
 End Sub
 
 Private Function getSpikeTrain(ByVal spikeCol As Integer) As Variant
