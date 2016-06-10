@@ -1,12 +1,13 @@
-% SurpriseBurstsExport.nsc
 % Created by Daniel Vicarel on 9/4/14, 8:20 pm
 
-% void SurpriseBurstsExport()
-% Scans through every PLX file in a folder selected by the user
+% void ExportBursts()
+% Scans through every file in a folder selected by the user
 % Each file is burst analyzed with the provided algorithm, and the resulting burst timestamps are exported to text files
+% 5/26/2016:  user now has option to open PLX or NEX files
 
 Global filePath
 Global fileName
+Global ext
 
 Global algorithm
 Global minSurprise
@@ -18,7 +19,7 @@ Global minSpikesInBurst
 
 NexOnTop()
 
-% Remind future developers of how to make this script work properly
+% Remind future users/developers of how to make this script work properly
 MsgBox("For this to work properly, make sure that:")
 MsgBox(" 	NeuroExplorer is set to export Neuron (spike) and Interval data only! (must be reset every NeuroExplorer is opened)")
 MsgBox("	The Scrips directory (under Script > Script Options) is set appropriately")
@@ -42,16 +43,31 @@ end
 rootPath = Left(rootPath, Find(rootPath, tempPath) - 2)
 MsgBox("Folder: " + rootPath)
 
-% Make sure there is at least one .PLX file in the folder
-if (GetFileCount(rootPath + "\*.plx") == 0)
+% Ask the user which type of files they are trying to open
+ext = "plx"
+result = Dialog(GetActiveDocument(), ext, "Which files? (enter 'plx' or 'nex')", "string")
+if (result <> 1)
 	MsgBox("")
-	MsgBox("No .PLX files in Folder")
+	MsgBox("No file type provided.")
+	return
+end
+if (ext <> "plx") & (ext <> "nex")
+	MsgBox("")
+	MsgBox("File type must be 'plx' or 'nex' (case sensitive).")
+	return
+end
+ext = "." + ext
+
+% Make sure there is at least one file of this type in the folder
+if (GetFileCount(rootPath + "\*" + ext) == 0)
+	MsgBox("")
+	MsgBox("No " + ext + " files in this folder.")
 	return
 end
 
 % Ask the user which burst analysis algorithm they wish to use
-algorithm = "Surprise"
-result = Dialog(GetActiveDocument(), algorithm, "Algorithm to use (Max Interval or Surprise)", "string")
+algorithm = "Max Interval"
+result = Dialog(GetActiveDocument(), algorithm, "Which algorithm? (enter 'Max Interval' or 'Surprise')", "string")
 if (result <> 1)
 	MsgBox("")
 	MsgBox("No Burst Analysis algorithm provided.")
@@ -91,14 +107,14 @@ if (result <> 1)
 	return
 end
 
-% Process all .PLX files in the folder
+% Process all files in the folder
 MsgBox("")
-for recording = 1 to GetFileCount(rootPath + "\*.plx")
+for recording = 1 to GetFileCount(rootPath + "\*" + ext)
 	filePath = GetFileName(recording)
-	RunScript("BurstAnalyzeFile")
+	RunScript("DoBurstAnalysis")
 end
 
 % Display success
 MsgBox("")
-MsgBox("All " + NumToStr(GetFileCount(rootPath + "\*.plx")) + " PLX files in this folder were succesfully burst-analyzed and exported.")
+MsgBox("All " + NumToStr(GetFileCount(rootPath + "\*" + ext)) + " " + ext + " files in this folder were succesfully burst-analyzed and exported.")
 MsgBox("I hope you remembered to export only Neuron (spike) and Interval data!")

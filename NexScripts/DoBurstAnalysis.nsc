@@ -1,0 +1,40 @@
+% Created by Daniel Vicarel on 9/2/14, 8:14 pm
+
+% void DoBurstAnalysis(string filePath, string algorithm)
+% Opens the file represented by filePath (path + name + extension), runs a bust analysis on it using the given algorithm,
+% then saves the resulting burst timestamps to a new text file
+% Make sure that NeuroExplorer is set to export Interval data only for this to export correctly!
+% 5/26/16: Now works with arbitrary extensions (PLX or NEX)
+
+% Named constants
+TEMPLATE_NAME = "RennaBurstAnalysis"
+			
+% Extract the file name from the filePath
+fileName = filePath
+while Find(fileName, "\") <> 0
+	slashPos = Find(fileName, "\")
+	fileName = Mid(fileName, slashPos + 1, StrLength(fileName) - slashPos)
+end
+fileName= Left(fileName, Find(fileName, ".") - 1)
+
+MsgBox("Analyzing file: " + fileName + ext)
+
+% Open the file
+doc = OpenDocument(filePath)
+
+% Initialize the Burst Analysis template's parameters
+ModifyTemplate(doc, TEMPLATE_NAME, "Select Data", "All")
+ModifyTemplate(doc, TEMPLATE_NAME, "Algorithm", algorithm)
+ModifyTemplate(doc, TEMPLATE_NAME, "Min Surprise", NumToStr(minSurprise))
+ModifyTemplate(doc, TEMPLATE_NAME, "Max Int. (sec)", NumToStr(maxISIToStart))
+ModifyTemplate(doc, TEMPLATE_NAME, "Max End Int.", NumToStr(minISIToEnd))
+ModifyTemplate(doc, TEMPLATE_NAME, "Min Interburst Int.", NumToStr(minIBI))
+ModifyTemplate(doc, TEMPLATE_NAME, "Min Burst Duration", NumToStr(minBurstDur))
+ModifyTemplate(doc, TEMPLATE_NAME, "Min Num. Spikes", NumToStr(minSpikesInBurst))
+
+% Apply the Burst Analysis and save the results to a text file
+ApplyTemplate(doc, TEMPLATE_NAME)
+SaveAsTextFile(doc, fileName + ".txt")
+
+% Close the PLX file
+CloseDocument(doc)
