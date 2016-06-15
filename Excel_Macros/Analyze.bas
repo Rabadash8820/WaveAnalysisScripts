@@ -206,9 +206,8 @@ Private Sub processRecording(ByRef unitNames As Variant, ByVal burstsToUse As Bu
     'bursts don't get associated with bursts that would later get deleted
     
     'Store STTC values using the entire spike trains of every possible pair of channels
-    Dim numUnits As Integer
+    Dim numUnits As Integer, Duration As Double
     numUnits = UBound(unitNames)
-    Dim Duration As Double
     Duration = endtime - StartTime
     Call storeSttcValues(Duration, numUnits)
         
@@ -376,7 +375,7 @@ Private Sub deleteBadSpikesFrom(ByVal u As Integer, ByRef spikes As Variant, ByV
     Next s
     
     'Replace the old spike train with only those spikes that are valid
-    'Remove the first/last spikes if they represent the end/start of cutoff bursts
+    'Remove the first/last spikes if they represent the end/start of bursts that were cut off
     Dim spikeRng As Range
     Set spikeRng = Cells(2, u)
     spikeRng.Resize(UBound(spikes)).Clear

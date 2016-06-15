@@ -38,7 +38,6 @@ end
 
 function data = getSpikeData(h5Path)
     % Read data from the h5 file
-    names        = h5read(h5Path, '/names');
     counts       = h5read(h5Path, '/sCount');
     spikesLinear = h5read(h5Path, '/spikes');
     N            = h5read(h5Path, '/summary/N');
@@ -59,7 +58,7 @@ function data = getSpikeData(h5Path)
     end
     
     % Return all necessary data wrapped in a struct
-    data = struct('NumUnits', N, 'NumSpikes', numSpikes, 'Names', {names}, 'Spikes', {unitSpikes});
+    data = struct('NumUnits', N, 'NumSpikes', numSpikes, 'Spikes', {unitSpikes});
 end
 
 
