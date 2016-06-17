@@ -38,7 +38,9 @@ end
 
 function data = getSpikeData(h5Path)
     % Read data from the h5 file
+    array        = h5read(h5Path, '/array');
     counts       = h5read(h5Path, '/sCount');
+    epos         = h5read(h5Path, '/epos');
     spikesLinear = h5read(h5Path, '/spikes');
     N            = h5read(h5Path, '/summary/N');
     numSpikes    = h5read(h5Path, '/summary/totalspikes');
@@ -57,8 +59,41 @@ function data = getSpikeData(h5Path)
         offset = offset + counts(u);
     end
     
+    % Create unit names in the Multi Channel Sytems format
+    unitNames = getUnitNames(N, array, epos);
+    
     % Return all necessary data wrapped in a struct
-    data = struct('NumUnits', N, 'NumSpikes', numSpikes, 'Spikes', {unitSpikes});
+    data = struct('NumUnits', N, 'NumSpikes', numSpikes, 'Spikes', {unitSpikes}, 'Names', {unitNames});
 end
 
+function names = getUnitNames(N, array, epos)
+    % Determine the MEA's interelectrode distance
+    array = array{1};
+    underScoreIndices = strfind(array, '_');
+    umIndices = strfind(array, 'um');
+    iStart = underScoreIndices(length(underScoreIndices)) + 1;
+    iEnd = umIndices(length(umIndices)) - 1;
+    interElecDist = array(iStart : iEnd);
+    
+    % Divide all electrode positions by that distance
+    epos = epos / str2num(interElecDist);
+    
+    % For each electrode, store a name in the form 'adch_{row}{column}{unit}'
+    % {unit} is a letter to distinguish multiple units from the same electrode
+    names = cell(N, 1);
+    for u = 1 : N
+        name = ['adch_' num2str(epos(u,2)) num2str(epos(u,1))];
+        letter = 'a';
+        if u > 1
+            prevName = names(u - 1);
+            prevName = prevName{1};
+            diffChannel = isempty(strfind(prevName, name));
+            if ~diffChannel
+                unitLetterAscii = uint8(prevName(length(prevName)));
+                letter = char(unitLetterAscii + 1);
+            end
+        end
+        names(u) = {[ name letter ]};        
+    end
+end
 

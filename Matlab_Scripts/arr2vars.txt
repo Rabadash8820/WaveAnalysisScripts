@@ -2,9 +2,9 @@
 % Adjust the unit variable to whichever unit you're working with
 unit = 1;
 clear -regexp ^adch_;
-for s = 1 : data{unit}.NumUnits
-    chStr = num2str(str2num(data{unit}.Names{s}));
-    spikesStr= ['data{' num2str(unit) '}.Spikes{' num2str(s) '}'];
-    eval(['adch_' chStr '=' spikesStr ';']);
+for st = 1 : data{unit}.NumUnits
+    unitVarStr = data{unit}.Names{st};
+    spikesStr= ['data{' num2str(unit) '}.Spikes{' num2str(st) '}'];
+    eval([unitVarStr '=' spikesStr ';']);
 end;
-clear('s', 'chStr', 'spikesStr', 'unit', 'ans');
+clear('st', 'unitVarStr', 'spikesStr', 'unit', 'ans');
