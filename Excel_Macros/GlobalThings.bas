@@ -95,14 +95,18 @@ Public Function DefineObjects() As Boolean
     End If
     
     'Get Tissue/Recording and experimental Population info
-    Application.DisplayAlerts = False
     Workbooks.Open (summaryFile.Path)
-    Call DefineRecordings
-    Workbooks(summaryFile.Name).Close
-    
-    Workbooks.Open (popFile.Path)
-    Call DefinePopulations
+    Call defineRecordings
+    Call definePopulations
     Call getInvalidUnits
+    Application.DisplayAlerts = False
+    Workbooks(summaryFile.Name).Close
+    Application.DisplayAlerts = True
+        
+    'Wrap these objects in Views associated with the appropriate Population
+    Workbooks.Open (popFile.Path)
+    Call definePopulationViews
+    Application.DisplayAlerts = False
     Workbooks(popFile.Name).Close
     Application.DisplayAlerts = True
     
@@ -112,7 +116,7 @@ ExitFunc:
     DefineObjects = Success
 End Function
 
-Private Sub DefineTissues()
+Private Sub defineTissues()
     'Get the Tissues table
     Dim tissueSht As Worksheet, tissueTbl As ListObject
     Set tissueSht = Worksheets(TISSUES_NAME)
@@ -131,9 +135,9 @@ Private Sub DefineTissues()
 
 End Sub
 
-Private Sub DefineRecordings()
+Private Sub defineRecordings()
     'Make sure parent objects are defined first
-    Call DefineTissues
+    Call defineTissues
 
     'Get the Recordings table
     Dim recSht As Worksheet, recTbl As ListObject
@@ -157,13 +161,11 @@ Private Sub DefineRecordings()
 
 End Sub
 
-Private Sub DefinePopulations()
+Private Sub definePopulations()
     'Get the Populations and Recordings tables
-    Dim popsSht As Worksheet, recSht As Worksheet, popsTbl As ListObject, recTbl As ListObject
+    Dim popsSht As Worksheet, popsTbl As ListObject
     Set popsSht = Worksheets(POPS_NAME)
     Set popsTbl = popsSht.ListObjects(POPS_NAME)
-    Set recSht = Worksheets(RECORDING_VIEWS_NAME)
-    Set recTbl = recSht.ListObjects(RECORDING_VIEWS_NAME)
     
     'Get burst types
     Dim numBurstTypes As Integer, t As Integer, bType As String
@@ -205,9 +207,17 @@ Private Sub DefinePopulations()
         result = MsgBox("You must identify one (and only one) experimental population as the control.", vbOKOnly)
         Exit Sub
     End If
+    
+End Sub
+
+Private Sub definePopulationViews()
+    'Get the Populations and Recordings tables
+    Dim recSht As Worksheet, recTbl As ListObject
+    Set recSht = Worksheets(RECORDING_VIEWS_NAME)
+    Set recTbl = recSht.ListObjects(RECORDING_VIEWS_NAME)
 
     'If no Recording info was provided on the Combine sheet, then just return
-    Dim numRecs As Integer
+    Dim numRecs As Integer, result As VbMsgBoxResult
     numRecs = recTbl.ListRows.Count
     If recTbl.DataBodyRange Is Nothing Then
         result = MsgBox("No recording-population associations have been specified.  Provide this info on the " & RECORDING_VIEWS_NAME & " sheet", vbOKOnly)
@@ -215,7 +225,7 @@ Private Sub DefinePopulations()
     End If
     
     'For each Population, associate each of its Tissues with a TissueView
-    Dim tvs As New Dictionary, tv As TissueView
+    Dim tvs As New Dictionary, tv As TissueView, p As Integer, pop As Population
     For p = 0 To POPULATIONS.Count - 1
         Set pop = POPULATIONS.Items()(p)
         tvs.Add pop.ID, New Dictionary
@@ -223,7 +233,7 @@ Private Sub DefinePopulations()
     
     'Build Views...
     Dim popID As Integer, recID As Integer, tID As Integer, rv As RecordingView
-    Dim txtPath As String, wbPath As String
+    Dim txtPath As String, wbPath As String, lsRow As ListRow, t As Integer, bType As String
     For Each lsRow In recTbl.ListRows
         'Create the TissueView object (if it doesn't already exist)
         'This includes defining its summary workbook paths
