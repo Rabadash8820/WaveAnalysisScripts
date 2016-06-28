@@ -23,7 +23,6 @@ Set SaveInvalidated 0
 Set SaveUnsorted 0
 
 // Run the spike detection, artifact removal, spike sorting, and exporting
-ForEachChannel Filter
 ForEachChannel Detect
 ForEachChannel Sort
 ForEachFile InvalidateArtifactsAfter

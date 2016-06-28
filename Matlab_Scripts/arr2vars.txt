@@ -1,10 +1,16 @@
 % Copy and paste this code into MATLAB
-% Adjust the unit variable to whichever unit you're working with
-unit = 1;
+% Before running this code for the first time, 
+% make sure a variable called "unit" is defined with a value of 1
+clc;
 clear -regexp ^adch_;
-for st = 1 : data{unit}.NumUnits
-    unitVarStr = data{unit}.Names{st};
-    spikesStr= ['data{' num2str(unit) '}.Spikes{' num2str(st) '}'];
+unitObj = data{unit};
+for st = 1 : numel(unitObj.UnitSpikes)
+    unitVarStr = unitObj.Names{st};
+    spikesStr= ['data{' num2str(unit) '}.UnitSpikes{' num2str(st) '}'];
     eval([unitVarStr '=' spikesStr ';']);
 end;
-clear('st', 'unitVarStr', 'spikesStr', 'unit', 'ans');
+indices = strfind(unitObj.FullName, '\');
+name = unitObj.FullName(indices(end) + 1:end);
+disp(['Successfully exported spike trains from ' name]);
+clear('st', 'unitObj', 'unitVarStr', 'spikesStr', 'ans', 'indices', 'name');
+unit = unit + 1;

@@ -24,33 +24,36 @@ function allData = hdf2arr()
         filePath = [folderPath, '\', files(f).name];
         fileData = getSpikeData(filePath);
         data(f) = {fileData};
-        msg = [num2str(fileData.NumSpikes) ' spikes loaded from ' ...
-               num2str(fileData.NumUnits) ' units in ' ...
+        numSpikes = h5read(filePath, '/summary/totalspikes');
+        msg = [num2str(numSpikes) ' spikes loaded from ' ...
+               num2str(numel(fileData.UnitSpikes)) ' units in ' ...
                '"' files(f).name, '"'];
         disp(msg);
     end
     
     % Show a success message and return all loaded data
     disp(' ');
-    disp('All spike timestamps succesfully loaded!');
-    allData = data;    
+    disp(['Successfully loaded spike timestamps from all ' num2str(numFiles) ' files!']);
+    allData = data;
 end
 
 function data = getSpikeData(h5Path)
     % Read data from the h5 file
+    dur          = h5read(h5Path, '/summary/duration');
+    age          = h5read(h5Path, '/meta/age');
+    genotype     = h5read(h5Path, '/meta/genotype');
     array        = h5read(h5Path, '/array');
     counts       = h5read(h5Path, '/sCount');
     epos         = h5read(h5Path, '/epos');
     spikesLinear = h5read(h5Path, '/spikes');
-    N            = h5read(h5Path, '/summary/N');
-    numSpikes    = h5read(h5Path, '/summary/totalspikes');
 
     % Create the spike timestamp matrix
-    unitSpikes = cell(N, 1);
+    numUnits = numel(counts);
+    unitSpikes = cell(numUnits, 1);
 
     % Populate the matrix with timestamps
     offset = 0;
-    for u = 1 : N
+    for u = 1 : numUnits
         spikes = zeros(counts(u), 1);
         for s = 1 : counts(u)
             spikes(s) = spikesLinear(offset + s);
@@ -60,10 +63,15 @@ function data = getSpikeData(h5Path)
     end
     
     % Create unit names in the Multi Channel Sytems format
-    unitNames = getUnitNames(N, array, epos);
+    unitNames = getUnitNames(numUnits, array, epos);
     
     % Return all necessary data wrapped in a struct
-    data = struct('NumUnits', N, 'NumSpikes', numSpikes, 'Spikes', {unitSpikes}, 'Names', {unitNames});
+    data = struct('FullName', h5Path, ...
+                  'Duration', dur, ...
+                  'Age', age, ...
+                  'Genotype', genotype, ...
+                  'UnitSpikes', {unitSpikes}, ...
+                  'Names', {unitNames});
 end
 
 function names = getUnitNames(N, array, epos)
