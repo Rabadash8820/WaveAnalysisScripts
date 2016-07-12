@@ -86,7 +86,7 @@ Public Sub CombineDataIntoWorkbook(ByRef wb As Workbook)
         .Columns(1).Insert Shift:=xlToRight
         With .ListObjects("Contents")
             .ShowTotals = True
-            .TotalsRowRange(1, 1).value = "Count"
+            .TotalsRowRange(1, 1).Value = "Count"
             .ListColumns(2).TotalsCalculation = xlTotalsCalculationCount
             .ListColumns(NUM_CONTENTS_COLS - 2).TotalsCalculation = xlTotalsCalculationNone
         End With
@@ -127,7 +127,7 @@ Private Sub buildContentsSheet()
     For t = 1 To numBurstTypes
         headers(1, 3 + t) = BURST_TYPES(1, t) & " Workbook"
     Next t
-    tbl.HeaderRowRange.value = headers
+    tbl.HeaderRowRange.Value = headers
     
     'Allocate the Contents array
     Dim contents As Variant, numTissues As Integer, popV As Variant, pop As Population
@@ -155,7 +155,7 @@ Private Sub buildContentsSheet()
             Next t
         Next tv
     Next popV
-    tbl.DataBodyRange.value = contents
+    tbl.DataBodyRange.Value = contents
     
     'Format sheet
     'Columns/rows will be autofitted after combining data
@@ -192,7 +192,7 @@ Private Sub buildStatsSheet()
     headers(1, 1) = "Property"
     headers(1, 2) = "Value"
     headers(1, 3) = "Comments"
-    tbl.HeaderRowRange.value = headers
+    tbl.HeaderRowRange.Value = headers
     
     'Add data to its DataBodyRange
     numRows = 3
@@ -208,7 +208,7 @@ Private Sub buildStatsSheet()
     For row = 1 To numRows
         tbl.ListRows.Add
     Next row
-    tbl.DataBodyRange.value = data
+    tbl.DataBodyRange.Value = data
     
     'Name the value cells
     Dim valueCol As ListColumn
@@ -244,7 +244,7 @@ Private Sub buildPropDataSheet(ByRef pop As Population, ByVal wbTypeName As Stri
     'Add its columns
     Dim col As Integer
     numCols = UBound(headers)
-    tbl.HeaderRowRange.Cells(1, 1).value = "Tissue"
+    tbl.HeaderRowRange.Cells(1, 1).Value = "Tissue"
     tbl.HeaderRowRange.Cells(1, 2) = "Cell"
     If numDimensions(headers) = 1 Then
         tbl.HeaderRowRange.Cells(1, 3).Resize(1, numCols) = headers
@@ -262,7 +262,7 @@ Private Sub buildPropDataSheet(ByRef pop As Population, ByVal wbTypeName As Stri
     popNameCols = 2
     Application.DisplayAlerts = False
     With Cells(1, 1).Resize(1, popNameCols)
-        .value = pop.Name
+        .Value = pop.Name
         .Merge
         .Font.Bold = True
         .Font.Size = 16
@@ -270,7 +270,7 @@ Private Sub buildPropDataSheet(ByRef pop As Population, ByVal wbTypeName As Stri
         .Interior.Color = pop.BackColor
     End With
     With Cells(1, popNameCols + 1).Resize(1, numCols)
-        .value = wbTypeName & "s"
+        .Value = wbTypeName & "s"
         .Merge
         .Font.Bold = True
         .Font.Size = 16
@@ -301,14 +301,14 @@ Private Sub buildSttcDataSheet(ByRef pop As Population, ByRef sttcHeaders() As S
     'Add its columns
     Dim numCols As Integer
     numCols = UBound(sttcHeaders)
-    tbl.HeaderRowRange.value = sttcHeaders
+    tbl.HeaderRowRange.Value = sttcHeaders
 
     'Add sheet "headers"
     Dim popNameCols As Integer
     popNameCols = 3
     Application.DisplayAlerts = False
     With Cells(1, 1).Resize(1, popNameCols)
-        .value = pop.Name
+        .Value = pop.Name
         .Merge
         .Font.Bold = True
         .Font.Size = 16
@@ -316,7 +316,7 @@ Private Sub buildSttcDataSheet(ByRef pop As Population, ByRef sttcHeaders() As S
         .Interior.Color = pop.BackColor
     End With
     With Cells(1, popNameCols + 1).Resize(1, numCols - popNameCols)
-        .value = "STTC"
+        .Value = "STTC"
         .Merge
         .Font.Bold = True
         .Font.Size = 16
@@ -384,7 +384,7 @@ Private Sub buildPropFiguresSheet()
         Next p
     Next row
 
-    cornerCell.Resize(numRows, numCols).value = data
+    cornerCell.Resize(numRows, numCols).Value = data
 
     'Store hidden chart titles
     Dim chartTitles As Variant
@@ -450,7 +450,7 @@ Private Sub buildPropFiguresSheet()
         .TintAndShade = -0.349986266670736
     End With
     With cornerCell.offset(numPropRows + titleOffset, 0)
-        .value = "All"
+        .Value = "All"
         .Style = "Neutral"
         .Font.Size = 16
         .Font.Bold = True
@@ -465,7 +465,7 @@ Private Sub buildPropFiguresSheet()
             .TintAndShade = -0.349986266670736
         End With
         With cornerCell.offset(rOffset + titleOffset, 0)
-            .value = BURST_TYPES(1, t)
+            .Value = BURST_TYPES(1, t)
             .Style = wbTypeStyles(t)
             .Font.Size = 16
             .Font.Bold = True
@@ -600,7 +600,7 @@ Private Sub buildPropFiguresSheet()
     'Final formatting...
     Columns.AutoFit
     Rows.AutoFit
-    cornerCell.offset(-1, 0).Resize(1, numRows - 1).value = chartTitles
+    cornerCell.offset(-1, 0).Resize(1, numRows - 1).Value = chartTitles
     Rows(cornerCell.row - 1).Hidden = True
 
 End Sub
@@ -625,7 +625,7 @@ Private Sub buildSttcFiguresSheet()
     distVals(2, 1) = "200"
     distVals(3, 1) = "Ignore Cutoff Distance (µm)"
     distVals(4, 1) = "800"
-    cornerCell.Resize(4, 1).value = distVals
+    cornerCell.Resize(4, 1).Value = distVals
     cornerCell.offset(1, 0).Name = "InterElectrodeDist"
     cornerCell.offset(3, 0).Name = "IgnoreDist"
         
@@ -673,7 +673,7 @@ Private Sub buildSttcFiguresSheet()
             col = col + 1
         Next t
     Next p
-    tbl.HeaderRowRange.value = headers
+    tbl.HeaderRowRange.Value = headers
     
     'Add inter-electrode distances
     numRows = NUM_CHANNELS * (NUM_CHANNELS - 1) / 2
@@ -683,7 +683,7 @@ Private Sub buildSttcFiguresSheet()
         For ch2 = ch1 To NUM_CHANNELS - 1
             tbl.ListRows.Add
             row = row + 1
-            tbl.ListRows(row).Range(1, 1).value = interElectrodeDistance(ch1, ch2)
+            tbl.ListRows(row).Range(1, 1).Value = interElectrodeDistance(ch1, ch2)
         Next ch2
     Next ch1
     
@@ -887,7 +887,7 @@ Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, 
         cornerCell.offset(2, 2 * p + 1).Resize(1, 2).Interior.Color = pop.BackColor
         cornerCell.offset(2, 2 * p + 1).Resize(1, 2).Font.Color = pop.ForeColor
     Next p
-    cornerCell.offset(2, 0).Resize(1, numHeaders).value = headers
+    cornerCell.offset(2, 0).Resize(1, numHeaders).Value = headers
     cornerCell.offset(2, 0).Resize(1, numHeaders).Font.Bold = True
     
     'Identify the control population's data ranges
@@ -905,16 +905,16 @@ Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, 
     'Write tissue results (formulas depends on whether data is paired and how we're reporting results)
     Dim tissueCell As Range, pctChangeStr As String, ctrlValueStr As String, tblName As String
     For t = 1 To maxTissues
-        cornerCell.offset(2 + t, 0).value = t
+        cornerCell.offset(2 + t, 0).Value = t
         For p = 0 To POPULATIONS.Count - 1
             Set pop = POPULATIONS.Items()(p)
             tblName = pop.Name & "_" & bType & "s"
             Set tissueCell = cornerCell.offset(2 + t, p * numPopCols + 1)
             If REPORT_PROPS_TYPE = MeanSEM Then
-                valStr = "=AVERAGEIF(" & tblName & "[Tissue],""" & t & """," & tblName & "[" & tblRowCell.value & "])"
+                valStr = "=AVERAGEIF(" & tblName & "[Tissue],""" & t & """," & tblName & "[" & tblRowCell.Value & "])"
                 tissueCell.offset(0, 0).Formula = valStr
             Else
-                valStr = "=MEDIAN(IF(" & tblName & "[Tissue]=""" & t & """," & tblName & "[" & tblRowCell.value & "] " & "))"
+                valStr = "=MEDIAN(IF(" & tblName & "[Tissue]=""" & t & """," & tblName & "[" & tblRowCell.Value & "] " & "))"
                 tissueCell.offset(0, 0).FormulaArray = valStr
             End If
             ctrlValueStr = IIf(DATA_PAIRED, ctrlRng.offset(t, 0).Address, ctrlRng.Address)
@@ -929,7 +929,7 @@ Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, 
     For p = 0 To POPULATIONS.Count - 1
         Set pop = POPULATIONS.Items()(p)
         Set formulaRng = tblRowCell.offset(0, 6 * p + 1)
-        dataStr = pop.Name & "_" & bType & "s[" & tblRowCell.value & "]"
+        dataStr = pop.Name & "_" & bType & "s[" & tblRowCell.Value & "]"
         pctChangeStr = "(" & dataStr & "-" & mainCtrlRng.Address & ")/" & mainCtrlRng.Address
         If REPORT_PROPS_TYPE = MeanSEM Then
             valStr = "=AVERAGE(" & dataStr & ")"
@@ -948,7 +948,7 @@ Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, 
     Dim chartShp As Shape
     Set chartShp = ActiveSheet.Shapes.AddChart(xlColumnClustered, chartRng.Left, chartRng.Top, chartRng.Width, chartRng.Height)
     With chartShp
-        .Name = Replace(tblRowCell.value, " ", "_") & "_Chart"
+        .Name = Replace(tblRowCell.Value, " ", "_") & "_Chart"
         .Line.Visible = False
     End With
     
@@ -1095,7 +1095,7 @@ Private Sub copyTissueData(ByRef tissueWb As Workbook, ByVal fetchName As String
     fetchRng.Copy Destination:=outputRng
     Set idRng = outputRng.offset(0, -1).Resize(fetchRng.Rows.Count, 1)
     idRng.NumberFormat = "@" 'Text, use "0" for integers
-    idRng.value = tissueID
+    idRng.Value = tissueID
 End Sub
 
 Private Sub cleanSheets(ByRef wb As Workbook, ByVal keyword As String)

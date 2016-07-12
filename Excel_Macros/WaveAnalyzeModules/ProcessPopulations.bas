@@ -123,18 +123,18 @@ Private Sub addContentsSheet()
     'Add the time generated info
     Dim timeGenRng As Range
     Set timeGenRng = Cells(1, 1)
-    timeGenRng.offset(0, 0).value = TIME_GENERATED_STR
+    timeGenRng.offset(0, 0).Value = TIME_GENERATED_STR
     timeGenRng.offset(0, 0).Font.Bold = True
-    timeGenRng.offset(1, 0).value = Now
+    timeGenRng.offset(1, 0).Value = Now
     timeGenRng.offset(1, 0).NumberFormat = "mm/dd/yyyy hh:mm:ss AM/PM"
     
     'Add the other summary info...
     Dim infoCell As Range
     Set infoCell = timeGenRng.offset(3, 0)
-    infoCell.offset(0, 0).value = "FileName"
-    infoCell.offset(0, 1).value = "SheetName"
-    infoCell.offset(0, 2).value = "StartTime"
-    infoCell.offset(0, 3).value = "EndTime"
+    infoCell.offset(0, 0).Value = "FileName"
+    infoCell.offset(0, 1).Value = "SheetName"
+    infoCell.offset(0, 2).Value = "StartTime"
+    infoCell.offset(0, 3).Value = "EndTime"
         
     '...and put it in a table
     Dim contentsTbl As ListObject
@@ -170,7 +170,7 @@ Private Sub openFile(ByRef rec As RecordingView, ByRef recFile As File)
     'Load data into a new sheet of the new workbook and format it
     Worksheets.Add After:=Sheets(Worksheets.Count)
     ActiveSheet.Name = RECORDING_STR & Worksheets.Count - 1
-    With ActiveSheet.QueryTables.Add(Connection:="TEXT;" & recFile.Path, Destination:=Cells(1, 1))
+    With ActiveSheet.QueryTables.Add(Connection:="TEXT;" & recFile.path, Destination:=Cells(1, 1))
         .Name = RECORDING_STR & Worksheets.Count - 1
         .FieldNames = True
         .RefreshOnFileOpen = False
@@ -187,7 +187,7 @@ Private Sub openFile(ByRef rec As RecordingView, ByRef recFile As File)
     'Delete columns for the A1 electrode (if it exists) and the All File interval
     numCols = Cells(1, 1).End(xlToRight).Column
     For col = 1 To numCols
-        header = Cells(1, col).value
+        header = Cells(1, col).Value
         If InStr(1, header, "A1") Or InStr(1, header, "AllFile") Then
             Columns(col).Delete
             col = col - 1

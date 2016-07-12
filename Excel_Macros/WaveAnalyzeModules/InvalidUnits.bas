@@ -22,9 +22,9 @@ Public Sub invalidateUnits(ByRef sht As Worksheet, ByVal tiss As Tissue, ByRef u
             For u = 1 To numUnits
                 If unitNames(u, 1) = unitName Then
                     burstOffset = numUnits + 2 * (u - 1)
-                    cornerCell.offset(0, u - 1).value = DELETE_PREFIX & cornerCell.offset(0, u - 1).value
-                    cornerCell.offset(0, burstOffset).value = DELETE_PREFIX & cornerCell.offset(0, burstOffset).value
-                    cornerCell.offset(0, burstOffset + 1).value = DELETE_PREFIX & cornerCell.offset(0, burstOffset + 1).value
+                    cornerCell.offset(0, u - 1).Value = DELETE_PREFIX & cornerCell.offset(0, u - 1).Value
+                    cornerCell.offset(0, burstOffset).Value = DELETE_PREFIX & cornerCell.offset(0, burstOffset).Value
+                    cornerCell.offset(0, burstOffset + 1).Value = DELETE_PREFIX & cornerCell.offset(0, burstOffset + 1).Value
                 End If
             Next u
         End If
@@ -34,7 +34,7 @@ Public Sub invalidateUnits(ByRef sht As Worksheet, ByVal tiss As Tissue, ByRef u
     Dim doDelete As Boolean, headerRng As Range
     For u = 3 * numUnits - 1 To 0 Step -1
         Set headerRng = cornerCell.offset(0, u)
-        doDelete = (Left(headerRng.value, Len(DELETE_PREFIX)) = DELETE_PREFIX)
+        doDelete = (Left(headerRng.Value, Len(DELETE_PREFIX)) = DELETE_PREFIX)
         If doDelete Then _
             Columns(headerRng.Column).Delete
     Next u
@@ -57,7 +57,7 @@ Public Sub deleteZeroBurstDurUnits(ByRef wb As Workbook)
                 currRow = 1
                 Set lsRows = sht.ListObjects(sht.Name).ListRows
                 For lr = 1 To lsRows.Count
-                    rowMatches = (lsRows(currRow).Range(1, BURST_DUR_COL).value = 0)
+                    rowMatches = (lsRows(currRow).Range(1, BURST_DUR_COL).Value = 0)
                     If rowMatches Then
                         lsRows(currRow).Delete
                     Else

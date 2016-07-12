@@ -11,7 +11,7 @@ Public Sub importMacros()
     'Cache some references
     Dim thisFolder As Folder
     Set allComponents = ThisWorkbook.VBProject.VBComponents
-    Set thisFolder = fileSys.GetFolder(ThisWorkbook.Path)
+    Set thisFolder = fileSys.GetFolder(ThisWorkbook.path)
                 
     'Import all macros from this workbook's folder (if any)
     Dim imports As New Dictionary
@@ -39,9 +39,7 @@ Public Sub importMacros()
 End Sub
 Public Sub exportMacros()
     'Cache some references
-    Dim thisFolder As Folder
     Set allComponents = ThisWorkbook.VBProject.VBComponents
-    Set thisFolder = fileSys.GetFolder(ThisWorkbook.Path)
     
     'Export all modules from this workbook (except sheet/workbook modules)
     Dim vbc As VBComponent, correctType As Boolean
@@ -53,7 +51,6 @@ Public Sub exportMacros()
 End Sub
 Public Sub removeMacros()
     'Cache some references
-    Dim thisFolder As Folder
     Set allComponents = ThisWorkbook.VBProject.VBComponents
     
     'Remove all modules from this workbook (except sheet/workbook modules)
@@ -98,7 +95,7 @@ Private Function doImport(ByRef macroFile As File) As Boolean
         allComponents.Remove m
     
     'Then import the new module
-    allComponents.Import (macroFile.Path)
+    allComponents.Import (macroFile.path)
     doImport = alreadyExists
 End Function
 Private Function doExport(ByRef module As VBComponent) As Boolean
@@ -112,7 +109,7 @@ Private Function doExport(ByRef module As VBComponent) As Boolean
         Case vbext_ct_StdModule
             ext = "bas"
     End Select
-    filePath = ThisWorkbook.Path & "\" & module.Name & "." & ext
+    filePath = ThisWorkbook.path & "\" & module.Name & "." & ext
     alreadyExists = fileSys.FileExists(filePath)
         
     'If so, remove it (even if its ReadOnly)
@@ -129,6 +126,3 @@ Private Function doExport(ByRef module As VBComponent) As Boolean
     module.Export (filePath)
     doExport = alreadyExists
 End Function
-
-
-

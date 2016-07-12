@@ -95,7 +95,7 @@ Public Function DefineObjects() As Boolean
     End If
     
     'Get Tissue/Recording and experimental Population info
-    Workbooks.Open (summaryFile.Path)
+    Workbooks.Open (summaryFile.path)
     Call defineRecordings
     Call definePopulations
     Call getInvalidUnits
@@ -104,7 +104,7 @@ Public Function DefineObjects() As Boolean
     Application.DisplayAlerts = True
         
     'Wrap these objects in Views associated with the appropriate Population
-    Workbooks.Open (popFile.Path)
+    Workbooks.Open (popFile.path)
     Call definePopulationViews
     Application.DisplayAlerts = False
     Workbooks(popFile.Name).Close
@@ -128,8 +128,8 @@ Private Sub defineTissues()
     TISSUES.RemoveAll
     For Each lsRow In tissueTbl.ListRows
         Set tiss = New Tissue
-        tiss.ID = lsRow.Range(1, tissueTbl.ListColumns("ID").index).value
-        tiss.DatePrepared = lsRow.Range(1, tissueTbl.ListColumns("Date Prepared").index).value
+        tiss.ID = lsRow.Range(1, tissueTbl.ListColumns("ID").index).Value
+        tiss.DatePrepared = lsRow.Range(1, tissueTbl.ListColumns("Date Prepared").index).Value
         TISSUES.Add tiss.ID, tiss
     Next lsRow
 
@@ -150,10 +150,10 @@ Private Sub defineRecordings()
     Recordings.RemoveAll
     For Each lsRow In recTbl.ListRows
         Set rec = New Recording
-        rec.ID = lsRow.Range(1, recTbl.ListColumns("ID").index).value
-        rec.StartTime = lsRow.Range(1, recTbl.ListColumns("StartStamp").index).value
-        rec.Duration = lsRow.Range(1, recTbl.ListColumns("Duration").index).value
-        tissueID = lsRow.Range(1, recTbl.ListColumns("Tissue ID").index).value
+        rec.ID = lsRow.Range(1, recTbl.ListColumns("ID").index).Value
+        rec.StartTime = lsRow.Range(1, recTbl.ListColumns("StartStamp").index).Value
+        rec.Duration = lsRow.Range(1, recTbl.ListColumns("Duration").index).Value
+        tissueID = lsRow.Range(1, recTbl.ListColumns("Tissue ID").index).Value
         Set rec.Tissue = TISSUES(tissueID)
         TISSUES(tissueID).Recordings.Add rec
         Recordings.Add rec.ID, rec
@@ -184,10 +184,10 @@ Private Sub definePopulations()
     POPULATIONS.RemoveAll
     For Each lsRow In popsTbl.ListRows
         Set pop = New Population
-        pop.ID = lsRow.Range(1, popsTbl.ListColumns("Population ID").index).value
-        pop.Name = lsRow.Range(1, popsTbl.ListColumns("Name").index).value
-        pop.Abbreviation = lsRow.Range(1, popsTbl.ListColumns("Abbreviation").index).value
-        pop.IsControl = (lsRow.Range(1, popsTbl.ListColumns("Control?").index).value <> "")
+        pop.ID = lsRow.Range(1, popsTbl.ListColumns("Population ID").index).Value
+        pop.Name = lsRow.Range(1, popsTbl.ListColumns("Name").index).Value
+        pop.Abbreviation = lsRow.Range(1, popsTbl.ListColumns("Abbreviation").index).Value
+        pop.IsControl = (lsRow.Range(1, popsTbl.ListColumns("Control?").index).Value <> "")
         pop.ForeColor = lsRow.Range(1, popsTbl.ListColumns("Population ID").index).Font.Color
         pop.BackColor = lsRow.Range(1, popsTbl.ListColumns("Population ID").index).Interior.Color
         POPULATIONS.Add pop.ID, pop
@@ -237,11 +237,11 @@ Private Sub definePopulationViews()
     For Each lsRow In recTbl.ListRows
         'Create the TissueView object (if it doesn't already exist)
         'This includes defining its summary workbook paths
-        popID = lsRow.Range(1, recTbl.ListColumns("Population ID").index).value
-        recID = lsRow.Range(1, recTbl.ListColumns("Recording ID").index).value
+        popID = lsRow.Range(1, recTbl.ListColumns("Population ID").index).Value
+        recID = lsRow.Range(1, recTbl.ListColumns("Recording ID").index).Value
         tID = Recordings(recID).Tissue.ID
-        txtPath = lsRow.Range(1, recTbl.ListColumns("Text File").index).value
-        If tvs(popID).Exists(tID) Then
+        txtPath = lsRow.Range(1, recTbl.ListColumns("Text File").index).Value
+        If tvs(popID).exists(tID) Then
             Set tv = tvs(popID)(tID)
         Else
             Set tv = New TissueView
@@ -272,7 +272,7 @@ Private Sub getInvalidUnits()
     Set invalidsTbl = Worksheets(INVALIDS_NAME).ListObjects(INVALIDS_NAME)
     Set invalidRng = invalidsTbl.DataBodyRange
     If Not invalidRng Is Nothing Then
-        INVALIDS = invalidRng.value
+        INVALIDS = invalidRng.Value
     Else
         ReDim INVALIDS(1 To 1, 1 To 1)
         INVALIDS(1, 1) = -1
@@ -290,7 +290,7 @@ Public Sub GetConfigVars()
     Set analyzeSht = Worksheets(ANALYZE_NAME)
     Set configSht = Worksheets(CONFIG_NAME)
     Set configTbl = configSht.ListObjects(CONFIG_NAME)
-    params = configTbl.DataBodyRange.Resize(, 2).value
+    params = configTbl.DataBodyRange.Resize(, 2).Value
     
     'Loop through each of its rows to cache parameter values
     Dim p As Integer
@@ -329,67 +329,67 @@ Public Sub GetConfigVars()
     
     'Get some other config flags set by the user
     Dim propMedIQR As Boolean, sttcMedIQR As Boolean
-    DATA_PAIRED = (analyzeSht.Shapes("DataPairedChk").OLEFormat.Object.value = 1)
-    ASSOC_SAME_CHANNEL_UNITS = (analyzeSht.Shapes("SameChannelAssocChk").OLEFormat.Object.value = 1)
-    ASSOC_MULTIPLE_UNITS = (analyzeSht.Shapes("MultipleUnitsAssocChk").OLEFormat.Object.value = 1)
-    MARK_BURST_DUR_UNITS = (analyzeSht.Shapes("ExcludeBurstDurChk").OLEFormat.Object.value = 1)
+    DATA_PAIRED = (analyzeSht.Shapes("DataPairedChk").OLEFormat.Object.Value = 1)
+    ASSOC_SAME_CHANNEL_UNITS = (analyzeSht.Shapes("SameChannelAssocChk").OLEFormat.Object.Value = 1)
+    ASSOC_MULTIPLE_UNITS = (analyzeSht.Shapes("MultipleUnitsAssocChk").OLEFormat.Object.Value = 1)
+    MARK_BURST_DUR_UNITS = (analyzeSht.Shapes("ExcludeBurstDurChk").OLEFormat.Object.Value = 1)
     
-    propMedIQR = (analyzeSht.Shapes("PropMedIQRChk").OLEFormat.Object.value = 1)
-    sttcMedIQR = (analyzeSht.Shapes("SttcMedIQRChk").OLEFormat.Object.value = 1)
+    propMedIQR = (analyzeSht.Shapes("PropMedIQRChk").OLEFormat.Object.Value = 1)
+    sttcMedIQR = (analyzeSht.Shapes("SttcMedIQRChk").OLEFormat.Object.Value = 1)
     REPORT_PROPS_TYPE = IIf(propMedIQR, ReportStatsType.MedianIQR, ReportStatsType.MeanSEM)
     REPORT_STTC_TYPE = IIf(sttcMedIQR, ReportStatsType.MedianIQR, ReportStatsType.MeanSEM)
 End Sub
 
-Private Sub storeParam(ByVal Name As String, ByVal value As Variant)
+Private Sub storeParam(ByVal Name As String, ByVal Value As Variant)
     If Name = "MEA Rows" Then
-        MEA_ROWS = CInt(value)
+        MEA_ROWS = CInt(Value)
     ElseIf Name = "MEA Columns" Then
-        MEA_COLS = CInt(value)
+        MEA_COLS = CInt(Value)
     ElseIf Name = "Min Burst Duration" Then
-        MIN_DURATION = CDbl(value)
+        MIN_DURATION = CDbl(Value)
     ElseIf Name = "Max Burst Duration" Then
-        MAX_DURATION = CDbl(value)
+        MAX_DURATION = CDbl(Value)
     ElseIf Name = "Correlation dT" Then
-        CORRELATION_DT = CDbl(value)
+        CORRELATION_DT = CDbl(Value)
     ElseIf Name = "Min Correlated Units" Then
-        MIN_ASSOC_UNITS = CInt(value)
+        MIN_ASSOC_UNITS = CInt(Value)
     ElseIf Name = "Min Correlated Bins" Then
-        MIN_BINS = CInt(value)
+        MIN_BINS = CInt(Value)
     ElseIf Name = "Num Bins" Then
-        NUM_BINS = CInt(value)
+        NUM_BINS = CInt(Value)
         
     ElseIf Name = "NumSpikes Units" Then
-        PROP_UNITS(1) = CStr(value)
+        PROP_UNITS(1) = CStr(Value)
     ElseIf Name = "FiringRateOutsideAllBursts Units" Then
-        PROP_UNITS(2) = CStr(value)
+        PROP_UNITS(2) = CStr(Value)
     ElseIf Name = "FiringRateOutsideWABs Units" Then
-        PROP_UNITS(3) = CStr(value)
+        PROP_UNITS(3) = CStr(Value)
     ElseIf Name = "ISIOutsideAllBursts Units" Then
-        PROP_UNITS(4) = CStr(value)
+        PROP_UNITS(4) = CStr(Value)
     ElseIf Name = "ISIOutsideWABs Units" Then
-        PROP_UNITS(5) = CStr(value)
+        PROP_UNITS(5) = CStr(Value)
     ElseIf Name = "PercentSpikesOutsideAllBursts Units" Then
-        PROP_UNITS(6) = CStr(value)
+        PROP_UNITS(6) = CStr(Value)
     ElseIf Name = "PercentSpikesOutsideWABs Units" Then
-        PROP_UNITS(7) = CStr(value)
+        PROP_UNITS(7) = CStr(Value)
     ElseIf Name = "BurstFrequency Units" Then
-        PROP_UNITS(8) = CStr(value)
+        PROP_UNITS(8) = CStr(Value)
     ElseIf Name = "IBI Units" Then
-        PROP_UNITS(9) = CStr(value)
+        PROP_UNITS(9) = CStr(Value)
     ElseIf Name = "PercentBurstsInWaves Units" Then
-        PROP_UNITS(10) = CStr(value)
+        PROP_UNITS(10) = CStr(Value)
     ElseIf Name = "NumBursts Units" Then
-        PROP_UNITS(11) = CStr(value)
+        PROP_UNITS(11) = CStr(Value)
     ElseIf Name = "BurstDuration Units" Then
-        PROP_UNITS(12) = CStr(value)
+        PROP_UNITS(12) = CStr(Value)
     ElseIf Name = "BurstFiringRate Units" Then
-        PROP_UNITS(13) = CStr(value)
+        PROP_UNITS(13) = CStr(Value)
     ElseIf Name = "BurstISI Units" Then
-        PROP_UNITS(14) = CStr(value)
+        PROP_UNITS(14) = CStr(Value)
     ElseIf Name = "PercentBurstTimeAbove10Hz Units" Then
-        PROP_UNITS(15) = CStr(value)
+        PROP_UNITS(15) = CStr(Value)
     ElseIf Name = "SpikesPerBurst Units" Then
-        PROP_UNITS(16) = CStr(value)
+        PROP_UNITS(16) = CStr(Value)
     End If
     
 End Sub

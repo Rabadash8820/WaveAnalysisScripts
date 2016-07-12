@@ -20,7 +20,7 @@ Public Sub processTissueWorkbook(ByVal wbName As String, ByVal tiss As Tissue, B
             
     'Get the names of all units on the first sheet (assumed to be same on all other recording sheets)
     Dim wksht As Worksheet, numUnits As Long
-    Set wksht = wb.Worksheets(contentsTbl.ListRows(1).Range(1, 2).value)
+    Set wksht = wb.Worksheets(contentsTbl.ListRows(1).Range(1, 2).Value)
     numUnits = wksht.Cells(1, 1).End(xlToRight).Column / 3    'Since every unit is mentioned once for spikes, burst_start, and burst_end
     unitNames = Application.Transpose(wksht.Cells(1, 1).Resize(1, numUnits))
     
@@ -76,16 +76,16 @@ Private Sub addAllAvgsSheet()
     Worksheets.Add After:=Sheets(CONTENTS_NAME)
     ActiveSheet.Name = ALL_AVGS_NAME
     Set avgsRng = Worksheets(ALL_AVGS_NAME).Cells(2, 2)
-    Cells(1, 1).value = CELL_STR
-    avgsRng.offset(0, -1).Resize(numUnits, 1).value = unitNames
-    avgsRng.offset(-1, 0).Resize(1, NUM_BKGRD_PROPERTIES).value = PROPERTIES
+    Cells(1, 1).Value = CELL_STR
+    avgsRng.offset(0, -1).Resize(numUnits, 1).Value = unitNames
+    avgsRng.offset(-1, 0).Resize(1, NUM_BKGRD_PROPERTIES).Value = PROPERTIES
     avgsRng.offset(-1, -1).Resize(numUnits + 1).Font.Bold = True
     
     'Write out column (property) headers, indicating which properties are being skipped with a "*"
     Dim pStr As String
     For p = 1 To NUM_BKGRD_PROPERTIES
         pStr = PROPERTIES(p)
-        avgsRng.offset(-1, p - 1).value = pStr
+        avgsRng.offset(-1, p - 1).Value = pStr
     Next p
     
     'Initialize all output cells to zero
@@ -95,7 +95,7 @@ Private Sub addAllAvgsSheet()
             zeroes(u, p) = 0
         Next p
     Next u
-    avgsRng.Resize(numUnits, NUM_BKGRD_PROPERTIES).value = zeroes
+    avgsRng.Resize(numUnits, NUM_BKGRD_PROPERTIES).Value = zeroes
         
     'Make a table for all the average values
     Worksheets(ALL_AVGS_NAME).ListObjects.Add( _
@@ -118,15 +118,15 @@ Private Sub addBurstAvgsSheet()
     Worksheets.Add After:=Sheets(ALL_AVGS_NAME)
     ActiveSheet.Name = BURST_AVGS_NAME
     Set avgsRng = Worksheets(BURST_AVGS_NAME).Cells(2, 2)
-    Cells(1, 1).value = CELL_STR
-    avgsRng.offset(0, -1).Resize(numUnits, 1).value = unitNames
+    Cells(1, 1).Value = CELL_STR
+    avgsRng.offset(0, -1).Resize(numUnits, 1).Value = unitNames
     avgsRng.offset(-1, -1).Resize(numUnits + 1).Font.Bold = True
     
     'Write out column (property) headers, indicating which properties are being skipped with a "*"
     Dim pStr As String
     For p = 1 To NUM_BURST_PROPERTIES
         pStr = PROPERTIES(NUM_BKGRD_PROPERTIES + p)
-        avgsRng.offset(-1, p - 1).value = pStr
+        avgsRng.offset(-1, p - 1).Value = pStr
     Next p
     
     'Initialize all output cells to zero
@@ -136,7 +136,7 @@ Private Sub addBurstAvgsSheet()
             zeroes(u, p) = 0
         Next p
     Next u
-    avgsRng.Resize(numUnits, NUM_BURST_PROPERTIES).value = zeroes
+    avgsRng.Resize(numUnits, NUM_BURST_PROPERTIES).Value = zeroes
         
     'Make a table for all the average values
     Worksheets(BURST_AVGS_NAME).ListObjects.Add( _
@@ -162,13 +162,13 @@ Private Sub addSttcSheet()
     ActiveSheet.Name = STTC_NAME
     Set sttcRng = Worksheets(STTC_NAME).Cells(4, 1)
     With sttcRng
-        .offset(-3, 0).value = STTC_HEADER_STR
+        .offset(-3, 0).Value = STTC_HEADER_STR
         .offset(-3, 0).Font.Bold = True
         .offset(-3, 0).Font.Size = 16
-        .offset(-1, 0).value = "Cell1"
-        .offset(-1, 1).value = "Cell2"
-        .offset(-1, 2).value = "Unit Distance"
-        .offset(-1, 3).value = "STTC"
+        .offset(-1, 0).Value = "Cell1"
+        .offset(-1, 1).Value = "Cell2"
+        .offset(-1, 2).Value = "Unit Distance"
+        .offset(-1, 3).Value = "STTC"
         .offset(-1, 0).EntireRow.Font.Bold = True
     End With
     
@@ -187,7 +187,7 @@ Private Sub addSttcSheet()
             row = row + 1
         Next u2
     Next u1
-    sttcRng.Resize(numRows, 3).value = initial
+    sttcRng.Resize(numRows, 3).Value = initial
         
     'Make a table for all the STTC values
     Dim sttcTbl As ListObject
@@ -343,7 +343,7 @@ Private Sub deleteBadBurstsFrom(ByVal u As Integer, ByVal numUnits As Integer, B
     Dim burstRng As Range
     Set burstRng = Cells(2, burstColumn(u, numUnits))
     burstRng.Resize(UBound(bursts), 2).Clear
-    burstRng.Resize(UBound(newBursts), 2).value = newBursts
+    burstRng.Resize(UBound(newBursts), 2).Value = newBursts
     
     'Set the new start and end times for this unit
     startEndTimes(u, 1) = newStart
@@ -379,7 +379,7 @@ Private Sub deleteBadSpikesFrom(ByVal u As Integer, ByRef spikes As Variant, ByV
     Dim spikeRng As Range
     Set spikeRng = Cells(2, u)
     spikeRng.Resize(UBound(spikes)).Clear
-    spikeRng.Resize(UBound(newSpikes)).value = newSpikes
+    spikeRng.Resize(UBound(newSpikes)).Value = newSpikes
     If unitEnd <> recEnd Then _
         spikeRng.offset(activeRow - 1, 0).Delete Shift:=xlUp
     If unitStart <> recStart Then _
@@ -406,7 +406,7 @@ Private Sub deleteUnusedBursts(ByVal wabsOnly As Boolean, ByRef unitNames As Var
     maxBursts = getMaxBursts(numUnits)
     ReDim trimmedBursts(1 To maxBursts, 1 To 2 * numUnits)
     Set burstRng = Cells(2, numUnits + 1).Resize(maxBursts, numUnits * 2)
-    bursts = burstRng.value
+    bursts = burstRng.Value
     
     'For each unit...
     For u = 1 To numUnits
@@ -475,7 +475,7 @@ Private Sub deleteUnusedBursts(ByVal wabsOnly As Boolean, ByRef unitNames As Var
     
     'Overwrite the old burst timestamps with the "trimmed" ones
     burstRng.Clear
-    burstRng.value = trimmedBursts
+    burstRng.Value = trimmedBursts
 End Sub
 
 Private Sub neighborUnitsAssociatedWithBurst(ByVal unit As Integer, ByVal neighbor As Variant, ByVal b As Integer, ByRef bursts As Variant, ByRef numAssocUnits As Integer)
@@ -671,11 +671,11 @@ Private Function getSpikeTrain(ByVal spikeCol As Integer) As Variant
     'If there is only one spike, Excel wont return an array so we have to construct it
     ElseIf numSpikes = 1 Then
         ReDim spikeTrain(1 To 1, 1 To 1)
-        spikeTrain(1, 1) = Cells(2, spikeCol).value
+        spikeTrain(1, 1) = Cells(2, spikeCol).Value
     
     'Otherwise, return the spike train as a 1-column 2D array
     Else
-        spikeTrain = Cells(2, spikeCol).Resize(numSpikes, 1).value
+        spikeTrain = Cells(2, spikeCol).Resize(numSpikes, 1).Value
     End If
     
     getSpikeTrain = spikeTrain
@@ -696,7 +696,7 @@ Private Function getBurstTrain(ByVal spikeCol As Integer, ByVal numUnits As Inte
         ReDim burstTrain(1 To 1, 1 To 1)
         burstTrain(1, 1) = -1
     Else
-        burstTrain = Cells(2, burstCol).Resize(numBursts, 2).value
+        burstTrain = Cells(2, burstCol).Resize(numBursts, 2).Value
     End If
     
     getBurstTrain = burstTrain
@@ -731,9 +731,9 @@ Private Sub storeAvgValues(ByVal numRecordings As Integer, ByVal numUnits As Int
     Set allTbl = Worksheets(ALL_AVGS_NAME).ListObjects(ALL_AVGS_NAME)
     Set burstTbl = Worksheets(BURST_AVGS_NAME).ListObjects(BURST_AVGS_NAME)
     Set sttcTbl = Worksheets(STTC_NAME).ListObjects(STTC_NAME)
-    allTbl.DataBodyRange.offset(0, 1).Resize(, allTbl.ListColumns.Count - 1).value = bkgrdResults
-    burstTbl.DataBodyRange.offset(0, 1).Resize(, burstTbl.ListColumns.Count - 1).value = burstResults
-    sttcTbl.DataBodyRange.offset(0, 3).Resize(, sttcTbl.ListColumns.Count - 3).value = sttcResults
+    allTbl.DataBodyRange.offset(0, 1).Resize(, allTbl.ListColumns.Count - 1).Value = bkgrdResults
+    burstTbl.DataBodyRange.offset(0, 1).Resize(, burstTbl.ListColumns.Count - 1).Value = burstResults
+    sttcTbl.DataBodyRange.offset(0, 3).Resize(, sttcTbl.ListColumns.Count - 3).Value = sttcResults
 End Sub
 
 Public Sub cleanSheets()
