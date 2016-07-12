@@ -195,3 +195,9 @@ ModelManifest.xml
 # Default templates and scripts added by NeuroExplorer
 Nex_Analysis_Templates/3D Templates/
 Nex_Analysis_Templates/Default/
+
+# Workbooks based on templates that haven't been moved elsewhere
+Excel_Macros/Cell_Units*.xlsx
+Excel_Macros/Light_Properties*.xlsx
+!Excel_Macros/Cell_Units_Template.xlsx
+!Excel_Macros/Light_Properties_Template.xlsx
