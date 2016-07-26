@@ -31,7 +31,7 @@ Public Sub ProcessPopulations()
     'then perform wave analyses on each TissueView!
     Dim fs As New FileSystemObject
     Dim p As Integer, r As Integer, t As Integer, bt As Integer, bType As String, wbPath As String
-    Dim pop As Population, rv As RecordingView, tv As TissueView
+    Dim pop As cPopulation, rv As cRecordingView, tv As cTissueView
     For p = 0 To POPULATIONS.Count - 1
         Set pop = POPULATIONS.Items()(p)
         For t = 1 To pop.TissueViews.Count
@@ -81,8 +81,8 @@ ExitSub:
     Call tearDownOptimizations
 End Sub
 
-Private Sub loadRecording(ByRef rv As RecordingView, ByVal rvIndex As Integer)
-    Dim pop As Population, tv As TissueView
+Private Sub loadRecording(ByRef rv As cRecordingView, ByVal rvIndex As Integer)
+    Dim pop As cPopulation, tv As cTissueView
     
     'For each burst type...
     Dim t As Integer, bType As String, wbPath As String, wb As Workbook
@@ -151,7 +151,7 @@ Private Sub addContentsSheet()
     Application.DisplayAlerts = True
 End Sub
 
-Private Sub openFile(ByRef rec As RecordingView, ByRef recFile As File)
+Private Sub openFile(ByRef rec As cRecordingView, ByRef recFile As File)
     Dim header As String
     Dim col, numCols As Integer
     Dim numValues As Long
@@ -210,7 +210,7 @@ Private Function checkTextFiles() As Collection
     'then perform wave analyses on each TissueView!
     Dim fs As New FileSystemObject, unfound As New Collection, notGiven As New Collection
     Dim p As Integer, r As Integer, t As Integer, bt As Integer, bType As String, wbPath As String
-    Dim pop As Population, rv As RecordingView, tv As TissueView
+    Dim pop As cPopulation, rv As cRecordingView, tv As cTissueView
     For p = 0 To POPULATIONS.Count - 1
         Set pop = POPULATIONS.Items()(p)
         For t = 1 To pop.TissueViews.Count
@@ -254,7 +254,7 @@ End Function
 Private Function successStrings() As Collection
     Dim outputStrs As New Collection, numRecs As Integer
     Dim p As Integer, t As Integer, r As Integer
-    Dim pop As Population, tv As TissueView, rv As RecordingView
+    Dim pop As cPopulation, tv As cTissueView, rv As cRecordingView
         
     'For each Tissue of each Population...
     For p = 0 To POPULATIONS.Count - 1

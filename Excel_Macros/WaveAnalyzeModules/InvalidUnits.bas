@@ -6,7 +6,7 @@ Const DELETE_PREFIX = "XxxX_"
 Const NUM_NONPOP_SHEETS = 4
 Const BURST_DUR_COL = 3
 
-Public Sub invalidateUnits(ByRef sht As Worksheet, ByVal tiss As Tissue, ByRef unitNames As Variant)
+Public Sub invalidateUnits(ByRef sht As Worksheet, ByVal tiss As cTissue, ByRef unitNames As Variant)
     'For each invalid unit on this Tissue, mark the columns that contains its data
     'These include the spike timestamp and burst start/end timestamp columns
     Dim cornerCell As Range

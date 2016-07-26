@@ -49,7 +49,7 @@ Public Sub CombineDataIntoWorkbook(ByRef wb As Workbook)
     sttcHeaders(5) = "STTC"
     
     'Build data sheets (one per workbook type per experimental population)
-    Dim p As Integer, pop As Population, bType As Integer
+    Dim p As Integer, pop As cPopulation, bType As Integer
     For p = 0 To POPULATIONS.Count - 1
         Set pop = POPULATIONS.Items()(p)
         Worksheets.Add After:=Worksheets(Worksheets.Count)
@@ -69,7 +69,7 @@ Public Sub CombineDataIntoWorkbook(ByRef wb As Workbook)
     Call buildSttcFiguresSheet
         
     'For each tissue, open its workbooks, fetch their data, and re-close the workbooks
-    Dim t As Integer, tv As TissueView
+    Dim t As Integer, tv As cTissueView
     For p = 0 To POPULATIONS.Count - 1
         Set pop = POPULATIONS.Items()(p)
         For t = 1 To pop.TissueViews.Count
@@ -130,7 +130,7 @@ Private Sub buildContentsSheet()
     tbl.HeaderRowRange.Value = headers
     
     'Allocate the Contents array
-    Dim contents As Variant, numTissues As Integer, popV As Variant, pop As Population
+    Dim contents As Variant, numTissues As Integer, popV As Variant, pop As cPopulation
     For Each popV In POPULATIONS.Items
         Set pop = popV
         numTissues = numTissues + pop.TissueViews.Count
@@ -138,7 +138,7 @@ Private Sub buildContentsSheet()
     ReDim contents(1 To numTissues, 1 To NUM_CONTENTS_COLS)
     
     'Copy data to its DataBodyRange
-    Dim tv As TissueView, tIndex As Integer
+    Dim tv As cTissueView, tIndex As Integer
     row = 0
     For Each popV In POPULATIONS.Items
         Set pop = popV
@@ -227,7 +227,7 @@ Private Sub buildStatsSheet()
 
 End Sub
 
-Private Sub buildPropDataSheet(ByRef pop As Population, ByVal wbTypeName As String, ByRef headers() As String)
+Private Sub buildPropDataSheet(ByRef pop As cPopulation, ByVal wbTypeName As String, ByRef headers() As String)
     'Build the Data sheet
     Dim Name As String
     Name = pop.Name & "_" & wbTypeName & "s"
@@ -286,7 +286,7 @@ Private Sub buildPropDataSheet(ByRef pop As Population, ByVal wbTypeName As Stri
 
 End Sub
 
-Private Sub buildSttcDataSheet(ByRef pop As Population, ByRef sttcHeaders() As String)
+Private Sub buildSttcDataSheet(ByRef pop As cPopulation, ByRef sttcHeaders() As String)
     'Build the Data sheet
     Dim Name As String
     Name = pop.Name & "_STTC"
@@ -352,7 +352,7 @@ Private Sub buildPropFiguresSheet()
     numCols = 1 + 6 * POPULATIONS.Count
     ReDim data(1 To numRows, 1 To numCols)
     data(1, 1) = "Property"
-    Dim pop As Population, valStr As String, rangeStr As String
+    Dim pop As cPopulation, valStr As String, rangeStr As String
     valStr = IIf(REPORT_PROPS_TYPE = ReportStatsType.MedianIQR, "Med", "Mean")
     rangeStr = IIf(REPORT_PROPS_TYPE = ReportStatsType.MedianIQR, "IQR/2", "SEM")
     For p = 0 To POPULATIONS.Count - 1
@@ -638,7 +638,7 @@ Private Sub buildSttcFiguresSheet()
     tbl.Name = STTC_NAME
     
     'Add its columns
-    Dim pop As Population, tv As TissueView, colIncrement As Integer
+    Dim pop As cPopulation, tv As cTissueView, colIncrement As Integer
     numCols = 2
     colIncrement = IIf(REPORT_STTC_TYPE = ReportStatsType.MedianIQR, 3, 2)
     tbl.ListColumns.Add
@@ -859,7 +859,7 @@ End Sub
 Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, ByRef chartRng As Range, ByVal unitsStr As String, ByVal bType As String, ByVal maxTissues As Integer)
 
     Dim numBurstTypes As Integer, numHeaders As Integer
-    Dim t As Integer, pop As Population, p As Integer
+    Dim t As Integer, pop As cPopulation, p As Integer
     Dim rOffset As Integer, cOffset As Integer
     numBurstTypes = UBound(BURST_TYPES, 2)
     numHeaders = 1 + 2 * numBurstTypes
@@ -1029,7 +1029,7 @@ Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, 
 
 End Sub
 
-Private Sub fetchTissue(ByRef tv As TissueView, ByVal tissueShtID As Integer)
+Private Sub fetchTissue(ByRef tv As cTissueView, ByVal tissueShtID As Integer)
     'Make sure an ID was provided for this tissue
     Dim result As VbMsgBoxResult
     If tv.Tissue.ID = 0 Then

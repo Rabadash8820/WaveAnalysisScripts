@@ -6,7 +6,7 @@ Option Explicit
 Private maxBursts As Integer
 Private unitNames As Variant
 Private sttcResults() As Double, bkgrdResults() As Double, burstResults() As Double
-Public Sub processTissueWorkbook(ByVal wbName As String, ByVal tiss As Tissue, ByVal burstsToUse As BurstUseType)
+Public Sub processTissueWorkbook(ByVal wbName As String, ByVal tiss As cTissue, ByVal burstsToUse As BurstUseType)
     Dim rec As Integer, u As Integer
     
     'If there are no recordings in this workbook then just return

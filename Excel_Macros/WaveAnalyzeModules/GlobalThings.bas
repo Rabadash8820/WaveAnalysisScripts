@@ -66,7 +66,7 @@ Public NUM_BURST_PROPERTIES As Integer
 Public PROPERTIES() As String
 Public PROP_UNITS() As String
 Public BURST_TYPES As Variant
-Public CTRL_POP As Population
+Public CTRL_POP As cPopulation
 Public POPULATIONS As New Dictionary
 Public TISSUES As New Dictionary
 Public Recordings As New Dictionary
@@ -124,10 +124,10 @@ Private Sub defineTissues()
     
     'Store the population info (or just return if none was provided)
     Dim lsRow As ListRow
-    Dim tiss As Tissue
+    Dim tiss As cTissue
     TISSUES.RemoveAll
     For Each lsRow In tissueTbl.ListRows
-        Set tiss = New Tissue
+        Set tiss = New cTissue
         tiss.ID = lsRow.Range(1, tissueTbl.ListColumns("ID").index).Value
         tiss.DatePrepared = lsRow.Range(1, tissueTbl.ListColumns("Date Prepared").index).Value
         TISSUES.Add tiss.ID, tiss
@@ -146,10 +146,10 @@ Private Sub defineRecordings()
     
     'Store the population info (or just return if none was provided)
     Dim lsRow As ListRow
-    Dim rec As Recording, tissueID As Integer
+    Dim rec As cRecording, tissueID As Integer
     Recordings.RemoveAll
     For Each lsRow In recTbl.ListRows
-        Set rec = New Recording
+        Set rec = New cRecording
         rec.ID = lsRow.Range(1, recTbl.ListColumns("ID").index).Value
         rec.StartTime = lsRow.Range(1, recTbl.ListColumns("StartStamp").index).Value
         rec.Duration = lsRow.Range(1, recTbl.ListColumns("Duration").index).Value
@@ -180,10 +180,10 @@ Private Sub definePopulations()
         result = MsgBox("No experimental populations have been defined.  Provide this info on the " & POPS_NAME & " sheet", vbOKOnly)
         Exit Sub
     End If
-    Dim pop As Population
+    Dim pop As cPopulation
     POPULATIONS.RemoveAll
     For Each lsRow In popsTbl.ListRows
-        Set pop = New Population
+        Set pop = New cPopulation
         pop.ID = lsRow.Range(1, popsTbl.ListColumns("Population ID").index).Value
         pop.Name = lsRow.Range(1, popsTbl.ListColumns("Name").index).Value
         pop.Abbreviation = lsRow.Range(1, popsTbl.ListColumns("Abbreviation").index).Value
@@ -225,14 +225,14 @@ Private Sub definePopulationViews()
     End If
     
     'For each Population, associate each of its Tissues with a TissueView
-    Dim tvs As New Dictionary, tv As TissueView, p As Integer, pop As Population
+    Dim tvs As New Dictionary, tv As cTissueView, p As Integer, pop As cPopulation
     For p = 0 To POPULATIONS.Count - 1
         Set pop = POPULATIONS.Items()(p)
         tvs.Add pop.ID, New Dictionary
     Next p
     
     'Build Views...
-    Dim popID As Integer, recID As Integer, tID As Integer, rv As RecordingView
+    Dim popID As Integer, recID As Integer, tID As Integer, rv As cRecordingView
     Dim txtPath As String, wbPath As String, lsRow As ListRow, t As Integer, bType As String
     For Each lsRow In recTbl.ListRows
         'Create the TissueView object (if it doesn't already exist)
@@ -244,7 +244,7 @@ Private Sub definePopulationViews()
         If tvs(popID).exists(tID) Then
             Set tv = tvs(popID)(tID)
         Else
-            Set tv = New TissueView
+            Set tv = New cTissueView
             Set tv.Tissue = TISSUES(tID)
             tvs(popID).Add tID, tv
             For t = 1 To UBound(BURST_TYPES, 2)
@@ -256,7 +256,7 @@ Private Sub definePopulationViews()
         End If
         
         'Create the RecordingView object
-        Set rv = New RecordingView
+        Set rv = New cRecordingView
         Set rv.Recording = Recordings(recID)
         Set rv.TissueView = tv
         tv.RecordingViews.Add rv
