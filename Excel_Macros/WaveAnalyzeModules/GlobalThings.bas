@@ -31,7 +31,7 @@ Public Const POPS_NAME = "Populations"
 Public Const TISSUES_NAME = "Tissues"
 Public Const ANALYZE_NAME = "Analyze"
 Public Const COMBINE_NAME = "Combine_Results"
-Public Const INVALIDS_NAME = "Invalid_Units"
+Public Const INVALIDS_NAME = "Unit_Removal"
 Public Const CONFIG_NAME = "Config"
 Public Const CONTENTS_NAME = "Contents"
 Public Const ALL_AVGS_NAME = "All_Avgs"
@@ -70,7 +70,9 @@ Public CTRL_POP As cPopulation
 Public POPULATIONS As New Dictionary
 Public TISSUES As New Dictionary
 Public Recordings As New Dictionary
-Public INVALIDS As Variant
+Public DELETE_UNITS As New Collection
+Public EXCLUDE_UNITS As New Collection
+
 'OTHER VALUES
 Public Const MAX_EXCEL_ROWS = 1048576
 
@@ -98,7 +100,7 @@ Public Function DefineObjects() As Boolean
     Workbooks.Open (summaryFile.path)
     Call defineRecordings
     Call definePopulations
-    Call getInvalidUnits
+    Call defineInvalidUnits
     Application.DisplayAlerts = False
     Workbooks(summaryFile.Name).Close
     Application.DisplayAlerts = True
@@ -266,16 +268,35 @@ Private Sub definePopulationViews()
     Next lsRow
 End Sub
 
-Private Sub getInvalidUnits()
+Private Sub defineInvalidUnits()
     'Get all the provided invalid unit info
     Dim invalidsTbl As ListObject, invalidRng As Range
     Set invalidsTbl = Worksheets(INVALIDS_NAME).ListObjects(INVALIDS_NAME)
     Set invalidRng = invalidsTbl.DataBodyRange
+    
+    Dim lr As ListRow, unit As cUnit, popID As Integer, tissID As Integer, unitName As String, del As Boolean, exclude As Boolean
     If Not invalidRng Is Nothing Then
-        INVALIDS = invalidRng.Value
-    Else
-        ReDim INVALIDS(1 To 1, 1 To 1)
-        INVALIDS(1, 1) = -1
+        For Each lr In invalidsTbl.ListRows
+            Set unit = New cUnit
+            
+            popID = lr.Range(1, invalidsTbl.ListColumns("Population ID").index).Value
+            tissID = lr.Range(1, invalidsTbl.ListColumns("Tissue ID").index).Value
+            unitName = lr.Range(1, invalidsTbl.ListColumns("Unit").index).Value
+            del = (lr.Range(1, invalidsTbl.ListColumns("Delete?").index).Value <> "")
+            exclude = (lr.Range(1, invalidsTbl.ListColumns("Exclude?").index).Value <> "")
+            
+            Set unit.Population = POPULATIONS(popID)
+            Set unit.Tissue = TISSUES(tissID)
+            unit.Name = unitName
+            unit.ShouldDelete = del
+            unit.ShouldExclude = exclude
+            
+            If del Then
+                DELETE_UNITS.Add unit
+            Else
+                If exclude Then EXCLUDE_UNITS.Add unit
+            End If
+        Next lr
     End If
 End Sub
 

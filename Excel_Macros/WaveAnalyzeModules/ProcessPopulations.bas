@@ -55,7 +55,7 @@ Public Sub ProcessPopulations()
     
     'If requested, remove bursts with durations of zero from the totals
     If MARK_BURST_DUR_UNITS Then _
-        Call deleteZeroBurstDurUnits(combineWb)
+        Call DeleteZeroBurstDurUnits(combineWb)
     
     'Remove the no-longer-needed Tissue summary workbooks
     For p = 0 To POPULATIONS.Count - 1

@@ -6,29 +6,26 @@ Const DELETE_PREFIX = "XxxX_"
 Const NUM_NONPOP_SHEETS = 4
 Const BURST_DUR_COL = 3
 
-Public Sub invalidateUnits(ByRef sht As Worksheet, ByVal tiss As cTissue, ByRef unitNames As Variant)
+Public Sub InvalidateUnits(ByRef sht As Worksheet, ByVal tiss As cTissue, ByRef unitNames As Variant)
     'For each invalid unit on this Tissue, mark the columns that contains its data
     'These include the spike timestamp and burst start/end timestamp columns
     Dim cornerCell As Range
     Set cornerCell = Cells(1, 1)
-    Dim numInvalids As Long, numUnits As Integer, iu As Long, u As Integer
-    Dim ID As Integer, unitName As String, burstOffset As Integer
-    numInvalids = UBound(INVALIDS)
+    Dim numUnits As Integer, u As Integer, unit As cUnit, burstOffset As Integer
     numUnits = UBound(unitNames)
-    For iu = 1 To numInvalids
-        ID = INVALIDS(iu, 2)
-        If ID = tiss.ID Then
-            unitName = INVALIDS(iu, 3)
+    For Each unit In DELETE_UNITS
+        If unit.Tissue.ID = tiss.ID Then
             For u = 1 To numUnits
-                If unitNames(u, 1) = unitName Then
+                If unitNames(u, 1) = unit.Name Then
                     burstOffset = numUnits + 2 * (u - 1)
                     cornerCell.offset(0, u - 1).Value = DELETE_PREFIX & cornerCell.offset(0, u - 1).Value
                     cornerCell.offset(0, burstOffset).Value = DELETE_PREFIX & cornerCell.offset(0, burstOffset).Value
                     cornerCell.offset(0, burstOffset + 1).Value = DELETE_PREFIX & cornerCell.offset(0, burstOffset + 1).Value
+                    Exit For
                 End If
             Next u
         End If
-    Next iu
+    Next unit
     
     'Go back through the columns and delete the ones that were marked
     Dim doDelete As Boolean, headerRng As Range
@@ -40,7 +37,7 @@ Public Sub invalidateUnits(ByRef sht As Worksheet, ByVal tiss As cTissue, ByRef 
     Next u
 End Sub
 
-Public Sub deleteZeroBurstDurUnits(ByRef wb As Workbook)
+Public Sub DeleteZeroBurstDurUnits(ByRef wb As Workbook)
     'Sheets with the following keywords in their names will have units with burst durations of 0 marked
     Dim keywords(1 To 2) As String, keyword As Variant
     keywords(1) = "_WABs"

@@ -26,11 +26,11 @@ Public Sub processTissueWorkbook(ByVal wbName As String, ByVal tiss As cTissue, 
     
     'If invalid units were provided, then delete their data columns and adjust the unitNames
     Dim recRow As ListRow, recName As String
-    If INVALIDS(1, 1) <> -1 Then
+    If DELETE_UNITS.Count > 0 Then
         For Each recRow In contentsTbl.ListRows
             recName = recRow.Range(1, 2)
             wb.Worksheets(recName).Activate
-            Call invalidateUnits(ActiveSheet, tiss, unitNames)
+            Call InvalidateUnits(ActiveSheet, tiss, unitNames)
         Next recRow
         numUnits = wksht.Cells(1, 1).End(xlToRight).Column / 3
         unitNames = Application.Transpose(wksht.Cells(1, 1).Resize(1, numUnits))
