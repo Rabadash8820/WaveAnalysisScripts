@@ -1,4 +1,4 @@
-Attribute VB_Name = "ProcessPopulations"
+Attribute VB_Name = "Main"
 Option Explicit
 
 Private Const TIME_COL = 5
@@ -43,7 +43,7 @@ Public Sub ProcessPopulations()
             For bt = 1 To UBound(BURST_TYPES, 2)
                 bType = BURST_TYPES(1, bt)
                 wbPath = tv.WorkbookPaths(bType)
-                Call processTissueWorkbook(wbPath, tv.Tissue, burstUseTypes(bType))
+                Call AnalyzeTissueWorkbook(wbPath, tv.Tissue, burstUseTypes(bType))
             Next bt
         Next t
     Next p

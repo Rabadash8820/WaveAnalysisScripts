@@ -1,4 +1,4 @@
-Attribute VB_Name = "Analyze"
+Attribute VB_Name = "Analysis"
 Option Private Module
 Option Explicit
 
@@ -6,7 +6,7 @@ Option Explicit
 Private maxBursts As Integer
 Private unitNames As Variant
 Private sttcResults() As Double, bkgrdResults() As Double, burstResults() As Double
-Public Sub processTissueWorkbook(ByVal wbName As String, ByVal tiss As cTissue, ByVal burstsToUse As BurstUseType)
+Public Sub AnalyzeTissueWorkbook(ByVal wbName As String, ByVal tiss As cTissue, ByVal burstsToUse As BurstUseType)
     Dim rec As Integer, u As Integer
     
     'If there are no recordings in this workbook then just return
@@ -29,8 +29,7 @@ Public Sub processTissueWorkbook(ByVal wbName As String, ByVal tiss As cTissue, 
     If DELETE_UNITS.Count > 0 Then
         For Each recRow In contentsTbl.ListRows
             recName = recRow.Range(1, 2)
-            wb.Worksheets(recName).Activate
-            Call InvalidateUnits(ActiveSheet, tiss, unitNames)
+            Call DeleteUnits(wb.Worksheets(recName), tiss, unitNames)
         Next recRow
         numUnits = wksht.Cells(1, 1).End(xlToRight).Column / 3
         unitNames = Application.Transpose(wksht.Cells(1, 1).Resize(1, numUnits))
@@ -55,7 +54,7 @@ Public Sub processTissueWorkbook(ByVal wbName As String, ByVal tiss As cTissue, 
         startT = recRow.Range(1, 3)
         endT = recRow.Range(1, 4)
         wb.Worksheets(recName).Activate
-        Call processRecording(unitNames, burstsToUse, startT, endT)
+        Call analyzeRecording(unitNames, burstsToUse, startT, endT)
     Next recRow
 
     'Reduce result sums to averages and finalize
@@ -198,7 +197,7 @@ Private Sub addSttcSheet()
     
 End Sub
 
-Private Sub processRecording(ByRef unitNames As Variant, ByVal burstsToUse As BurstUseType, ByVal StartTime As Double, ByVal endtime As Double)
+Private Sub analyzeRecording(ByRef unitNames As Variant, ByVal burstsToUse As BurstUseType, ByVal StartTime As Double, ByVal endtime As Double)
     Dim spikes As Variant, preBursts As Variant, postBursts As Variant
         
     'Keep the below For loops separated so that
@@ -224,7 +223,7 @@ Private Sub processRecording(ByRef unitNames As Variant, ByVal burstsToUse As Bu
     ActiveSheet.UsedRange   'Refresh used range by getting the property
     
     'Do PRE ANALYSES on each unit
-    'I.e., analyses BEFORE unused bursts are excluded (background firing metrics)
+    'I.e., analyses BEFORE unused bursts get deleted (background firing metrics)
     Dim preBurstCounts() As Integer
     ReDim preBurstCounts(1 To numUnits)
     For u = 1 To numUnits
@@ -235,7 +234,7 @@ Private Sub processRecording(ByRef unitNames As Variant, ByVal burstsToUse As Bu
         Call storePreValues(u, spikes, preBursts, Duration)
     Next u
     
-    'Exclude unused bursts (WABs or non-WABs), if requested
+    'Delete unused bursts (WABs or non-WABs), if requested
     If burstsToUse <> BurstUseType.All Then
         Dim wabsOnly As Boolean
         wabsOnly = (burstsToUse = BurstUseType.WABs)
@@ -243,7 +242,7 @@ Private Sub processRecording(ByRef unitNames As Variant, ByVal burstsToUse As Bu
     End If
         
     'Do POST ANALYSES on each unit
-    'I.e., analyses AFTER unused bursts are excluded (wave- or non-wave-associated firing metrics)
+    'I.e., analyses AFTER unused bursts have been deleted (wave- or non-wave-associated firing metrics)
     Dim wabRatio As Double
     Dim postBurstCounts() As Integer
     ReDim postBurstCounts(1 To numUnits)
