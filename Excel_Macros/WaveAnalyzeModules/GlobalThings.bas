@@ -70,8 +70,6 @@ Public CTRL_POP As cPopulation
 Public POPULATIONS As New Dictionary
 Public TISSUES As New Dictionary
 Public Recordings As New Dictionary
-Public DELETE_UNITS As New Collection
-Public EXCLUDE_UNITS As New Collection
 
 'OTHER VALUES
 Public Const MAX_EXCEL_ROWS = 1048576
@@ -81,35 +79,32 @@ Public Function DefineObjects() As Boolean
     Success = False
     
     'Open the Data Summary workbook
-    Dim summaryFile As File, result As VbMsgBoxResult
+    Dim summaryFile As File, result As VbMsgBoxResult, summaryWb As Workbook
     Set summaryFile = PickWorkbook("Select the Data Summary workbook")
     If summaryFile Is Nothing Then
         result = MsgBox("No workbook selected.", vbOKOnly, "Routine complete")
         GoTo ExitFunc
     End If
+    Set summaryWb = Workbooks.Open(summaryFile.path)
     
     'Open the Population-definition workbook
-    Dim popFile As File
+    Dim popFile As File, popWb As Workbook
     Set popFile = PickWorkbook("Select the workbook that defines your experimental populations")
     If popFile Is Nothing Then
         result = MsgBox("No workbook selected.", vbOKOnly, "Routine complete")
         GoTo ExitFunc
     End If
+    Set popWb = Workbooks.Open(popFile.path)
     
     'Get Tissue/Recording and experimental Population info
-    Workbooks.Open (summaryFile.path)
-    Call defineRecordings
-    Call definePopulations
-    Call defineInvalidUnits
-    Application.DisplayAlerts = False
-    Workbooks(summaryFile.Name).Close
-    Application.DisplayAlerts = True
-        
     'Wrap these objects in Views associated with the appropriate Population
-    Workbooks.Open (popFile.path)
-    Call definePopulationViews
+    Call defineRecordings(summaryWb)
+    Call definePopulations(summaryWb)
+    Call definePopulationViews(popWb)
+    Call defineUnits(summaryWb)
     Application.DisplayAlerts = False
-    Workbooks(popFile.Name).Close
+    summaryWb.Close
+    popWb.Close
     Application.DisplayAlerts = True
     
     Success = True
@@ -118,32 +113,13 @@ ExitFunc:
     DefineObjects = Success
 End Function
 
-Private Sub defineTissues()
-    'Get the Tissues table
-    Dim tissueSht As Worksheet, tissueTbl As ListObject
-    Set tissueSht = Worksheets(TISSUES_NAME)
-    Set tissueTbl = tissueSht.ListObjects(TISSUES_NAME)
-    
-    'Store the population info (or just return if none was provided)
-    Dim lsRow As ListRow
-    Dim tiss As cTissue
-    TISSUES.RemoveAll
-    For Each lsRow In tissueTbl.ListRows
-        Set tiss = New cTissue
-        tiss.ID = lsRow.Range(1, tissueTbl.ListColumns("ID").index).Value
-        tiss.DatePrepared = lsRow.Range(1, tissueTbl.ListColumns("Date Prepared").index).Value
-        TISSUES.Add tiss.ID, tiss
-    Next lsRow
-
-End Sub
-
-Private Sub defineRecordings()
+Private Sub defineRecordings(ByRef summaryWb As Workbook)
     'Make sure parent objects are defined first
-    Call defineTissues
+    Call defineTissues(summaryWb)
 
     'Get the Recordings table
     Dim recSht As Worksheet, recTbl As ListObject
-    Set recSht = Worksheets(RECORDINGS_NAME)
+    Set recSht = summaryWb.Worksheets(RECORDINGS_NAME)
     Set recTbl = recSht.ListObjects(RECORDINGS_NAME)
     
     'Store the population info (or just return if none was provided)
@@ -163,10 +139,29 @@ Private Sub defineRecordings()
 
 End Sub
 
-Private Sub definePopulations()
+Private Sub defineTissues(ByRef summaryWb As Workbook)
+    'Get the Tissues table
+    Dim tissueSht As Worksheet, tissueTbl As ListObject
+    Set tissueSht = summaryWb.Worksheets(TISSUES_NAME)
+    Set tissueTbl = tissueSht.ListObjects(TISSUES_NAME)
+    
+    'Store the population info (or just return if none was provided)
+    Dim lsRow As ListRow
+    Dim tiss As cTissue
+    TISSUES.RemoveAll
+    For Each lsRow In tissueTbl.ListRows
+        Set tiss = New cTissue
+        tiss.ID = lsRow.Range(1, tissueTbl.ListColumns("ID").index).Value
+        tiss.DatePrepared = lsRow.Range(1, tissueTbl.ListColumns("Date Prepared").index).Value
+        TISSUES.Add tiss.ID, tiss
+    Next lsRow
+
+End Sub
+
+Private Sub definePopulations(ByRef summaryWb As Workbook)
     'Get the Populations and Recordings tables
     Dim popsSht As Worksheet, popsTbl As ListObject
-    Set popsSht = Worksheets(POPS_NAME)
+    Set popsSht = summaryWb.Worksheets(POPS_NAME)
     Set popsTbl = popsSht.ListObjects(POPS_NAME)
     
     'Get burst types
@@ -212,10 +207,10 @@ Private Sub definePopulations()
     
 End Sub
 
-Private Sub definePopulationViews()
+Private Sub definePopulationViews(ByRef popRecWb As Workbook)
     'Get the Populations and Recordings tables
     Dim recSht As Worksheet, recTbl As ListObject
-    Set recSht = Worksheets(RECORDING_VIEWS_NAME)
+    Set recSht = popRecWb.Worksheets(RECORDING_VIEWS_NAME)
     Set recTbl = recSht.ListObjects(RECORDING_VIEWS_NAME)
 
     'If no Recording info was provided on the Combine sheet, then just return
@@ -252,7 +247,7 @@ Private Sub definePopulationViews()
             For t = 1 To UBound(BURST_TYPES, 2)
                 bType = BURST_TYPES(1, t)
                 wbPath = Left(txtPath, InStrRev(txtPath, "\"))
-                wbPath = wbPath & lsRow.index & "_" & Format(tv.Tissue.DatePrepared, "yyyy-mm-dd") & "_" & bType & ".xlsx"
+                wbPath = wbPath & tID & "_" & Format(tv.Tissue.DatePrepared, "yyyy-mm-dd") & "_" & bType & ".xlsx"
                 tv.WorkbookPaths.Add bType, wbPath
             Next t
         End If
@@ -268,34 +263,49 @@ Private Sub definePopulationViews()
     Next lsRow
 End Sub
 
-Private Sub defineInvalidUnits()
+Private Sub defineUnits(ByRef summaryWb As Workbook)
     'Get all the provided invalid unit info
     Dim invalidsTbl As ListObject, invalidRng As Range
-    Set invalidsTbl = Worksheets(INVALIDS_NAME).ListObjects(INVALIDS_NAME)
+    Set invalidsTbl = summaryWb.Worksheets(INVALIDS_NAME).ListObjects(INVALIDS_NAME)
     Set invalidRng = invalidsTbl.DataBodyRange
     
-    Dim lr As ListRow, unit As cUnit, popID As Integer, tissID As Integer, unitName As String, del As Boolean, exclude As Boolean
+    'For each provided unit...
+    Dim lr As ListRow, unit As cUnit, popID As Integer, tissID As Integer, findTissue As Boolean, tissView As cTissueView, unitName As String, del As Boolean, exclude As Boolean
     If Not invalidRng Is Nothing Then
         For Each lr In invalidsTbl.ListRows
             Set unit = New cUnit
             
-            popID = lr.Range(1, invalidsTbl.ListColumns("Population ID").index).Value
+            'Fetch its data from the table
             tissID = lr.Range(1, invalidsTbl.ListColumns("Tissue ID").index).Value
             unitName = lr.Range(1, invalidsTbl.ListColumns("Unit").index).Value
             del = (lr.Range(1, invalidsTbl.ListColumns("Delete?").index).Value <> "")
             exclude = (lr.Range(1, invalidsTbl.ListColumns("Exclude?").index).Value <> "")
             
-            Set unit.Population = POPULATIONS(popID)
-            Set unit.Tissue = TISSUES(tissID)
+            'Get its associated TissueView
+            findTissue = True
+            If Not tissView Is Nothing Then _
+                findTissue = (tissID <> tissView.Tissue.ID)
+            If findTissue Then
+                Dim p As Integer, pop As cPopulation, tv As cTissueView
+                Set tissView = Nothing
+                For p = 0 To POPULATIONS.Count - 1
+                    Set pop = POPULATIONS.Items()(p)
+                    For Each tv In pop.TissueViews
+                        If tv.Tissue.ID = tissID Then
+                            Set tissView = tv
+                            Exit For
+                        End If
+                    Next tv
+                    If Not tissView Is Nothing Then Exit For
+                Next p
+            End If
+            
+            'Wrap its data in a Unit object
+            Set unit.TissueView = tissView
+            tissView.BadUnits.Add unit
             unit.Name = unitName
             unit.ShouldDelete = del
             unit.ShouldExclude = exclude
-            
-            If del Then
-                DELETE_UNITS.Add unit
-            Else
-                If exclude Then EXCLUDE_UNITS.Add unit
-            End If
         Next lr
     End If
 End Sub

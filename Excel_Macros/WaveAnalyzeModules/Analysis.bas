@@ -6,7 +6,7 @@ Option Explicit
 Private maxBursts As Integer
 Private unitNames As Variant
 Private sttcResults() As Double, bkgrdResults() As Double, burstResults() As Double
-Public Sub AnalyzeTissueWorkbook(ByVal wbName As String, ByVal tiss As cTissue, ByVal burstsToUse As BurstUseType)
+Public Sub AnalyzeTissueWorkbook(ByVal wbName As String, ByVal tissView As cTissueView, ByVal burstsToUse As BurstUseType)
     Dim rec As Integer, u As Integer
     
     'If there are no recordings in this workbook then just return
@@ -26,10 +26,10 @@ Public Sub AnalyzeTissueWorkbook(ByVal wbName As String, ByVal tiss As cTissue, 
     
     'If invalid units were provided, then delete their data columns and adjust the unitNames
     Dim recRow As ListRow, recName As String
-    If DELETE_UNITS.Count > 0 Then
+    If tissView.BadUnits.Count > 0 Then
         For Each recRow In contentsTbl.ListRows
             recName = recRow.Range(1, 2)
-            Call DeleteUnits(wb.Worksheets(recName), tiss, unitNames)
+            Call DeleteUnits(wb.Worksheets(recName), tissView, unitNames)
         Next recRow
         numUnits = wksht.Cells(1, 1).End(xlToRight).Column / 3
         unitNames = Application.Transpose(wksht.Cells(1, 1).Resize(1, numUnits))
@@ -79,13 +79,6 @@ Private Sub addAllAvgsSheet()
     avgsRng.offset(0, -1).Resize(numUnits, 1).Value = unitNames
     avgsRng.offset(-1, 0).Resize(1, NUM_BKGRD_PROPERTIES).Value = PROPERTIES
     avgsRng.offset(-1, -1).Resize(numUnits + 1).Font.Bold = True
-    
-    'Write out column (property) headers, indicating which properties are being skipped with a "*"
-    Dim pStr As String
-    For p = 1 To NUM_BKGRD_PROPERTIES
-        pStr = PROPERTIES(p)
-        avgsRng.offset(-1, p - 1).Value = pStr
-    Next p
     
     'Initialize all output cells to zero
     ReDim zeroes(1 To numUnits, 1 To NUM_BKGRD_PROPERTIES)

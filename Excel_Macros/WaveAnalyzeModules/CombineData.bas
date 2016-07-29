@@ -74,7 +74,7 @@ Public Sub CombineDataIntoWorkbook(ByRef wb As Workbook)
         Set pop = POPULATIONS.Items()(p)
         For t = 1 To pop.TissueViews.Count
             Set tv = pop.TissueViews.item(t)
-            Call fetchTissue(tv, t)
+            Call fetchTissue(tv)
         Next t
     Next p
     
@@ -1029,7 +1029,7 @@ Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, 
 
 End Sub
 
-Private Sub fetchTissue(ByRef tv As cTissueView, ByVal tissueShtID As Integer)
+Private Sub fetchTissue(ByRef tv As cTissueView)
     'Make sure an ID was provided for this tissue
     Dim result As VbMsgBoxResult
     If tv.Tissue.ID = 0 Then
@@ -1066,12 +1066,12 @@ Private Sub fetchTissue(ByRef tv As cTissueView, ByVal tissueShtID As Integer)
             popName = tv.Population.Name
             Select Case wbTypeName
                 Case "WAB"
-                    Call copyTissueData(tissueWb, STTC_NAME, popName & "_STTC", tissueShtID)
-                    Call copyTissueData(tissueWb, ALL_AVGS_NAME, popName & "_Bursts", tissueShtID)
-                    Call copyTissueData(tissueWb, BURST_AVGS_NAME, popName & "_WABs", tissueShtID)
+                    Call copyTissueData(tissueWb, STTC_NAME, popName & "_STTC", tv.Tissue.ID)
+                    Call copyTissueData(tissueWb, ALL_AVGS_NAME, popName & "_Bursts", tv.Tissue.ID)
+                    Call copyTissueData(tissueWb, BURST_AVGS_NAME, popName & "_WABs", tv.Tissue.ID)
                     
                 Case "NonWAB"
-                    Call copyTissueData(tissueWb, BURST_AVGS_NAME, popName & "_NonWABs", tissueShtID)
+                    Call copyTissueData(tissueWb, BURST_AVGS_NAME, popName & "_NonWABs", tv.Tissue.ID)
             End Select
             tissueWb.Close
         End If

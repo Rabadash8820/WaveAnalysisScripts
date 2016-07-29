@@ -7,8 +7,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
-Public Population As cPopulation
-Public Tissue As cTissue
+Public TissueView As cTissueView
 Public Name As String
 Public ShouldDelete As Boolean
 Public ShouldExclude As Boolean

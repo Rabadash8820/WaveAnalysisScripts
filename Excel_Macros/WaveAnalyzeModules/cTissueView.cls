@@ -12,4 +12,5 @@ Option Explicit
 Public Tissue As cTissue
 Public Population As cPopulation
 Public RecordingViews As New Collection
+Public BadUnits As New Collection
 Public WorkbookPaths As New Dictionary

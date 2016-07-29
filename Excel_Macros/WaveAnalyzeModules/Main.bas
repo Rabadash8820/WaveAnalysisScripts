@@ -43,7 +43,7 @@ Public Sub ProcessPopulations()
             For bt = 1 To UBound(BURST_TYPES, 2)
                 bType = BURST_TYPES(1, bt)
                 wbPath = tv.WorkbookPaths(bType)
-                Call AnalyzeTissueWorkbook(wbPath, tv.Tissue, burstUseTypes(bType))
+                Call AnalyzeTissueWorkbook(wbPath, tv, burstUseTypes(bType))
             Next bt
         Next t
     Next p
@@ -53,9 +53,11 @@ Public Sub ProcessPopulations()
     Set combineWb = Workbooks.Add
     Call CombineDataIntoWorkbook(combineWb)
     
-    'If requested, remove bursts with durations of zero from the totals
+    'If requested, delete bursts with bad durations
+    'Also delete any remaining units marked for "exclusion"
     If MARK_BURST_DUR_UNITS Then _
         Call DeleteZeroBurstDurUnits(combineWb)
+    Call ExcludeUnits(combineWb)
     
     'Remove the no-longer-needed Tissue summary workbooks
     For p = 0 To POPULATIONS.Count - 1
