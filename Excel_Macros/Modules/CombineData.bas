@@ -858,11 +858,12 @@ End Sub
 
 Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, ByRef chartRng As Range, ByVal unitsStr As String, ByVal bType As String, ByVal maxTissues As Integer)
 
-    Dim numBurstTypes As Integer, numHeaders As Integer
+    Dim numBurstTypes As Integer, numPopCols As Integer, numHeaders As Integer
     Dim t As Integer, pop As cPopulation, p As Integer
     Dim rOffset As Integer, cOffset As Integer
+    numPopCols = 2
     numBurstTypes = UBound(BURST_TYPES, 2)
-    numHeaders = 1 + 2 * numBurstTypes
+    numHeaders = 1 + numPopCols * POPULATIONS.Count
     Dim headers() As Variant
     ReDim headers(1 To 1, 1 To numHeaders)
     
@@ -876,8 +877,7 @@ Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, 
     
     'Write data summary headers
     headers(1, 1) = "Tissue"
-    Dim numPopCols As Integer, valStr As String, rangeStr As String
-    numPopCols = 2
+    Dim valStr As String, rangeStr As String
     valStr = IIf(REPORT_PROPS_TYPE = ReportStatsType.MedianIQR, "Med", "Mean")
     For p = 0 To POPULATIONS.Count - 1
         Set pop = POPULATIONS.Items()(p)

@@ -182,6 +182,11 @@ Private Sub openFile(ByRef rec As cRecordingView, ByRef recFile As File)
         .TextFileStartRow = 1
         .TextFileParseType = xlDelimited
         .TextFileTabDelimiter = True
+        .TextFileCommaDelimiter = False
+        .TextFileConsecutiveDelimiter = True
+        .TextFileOtherDelimiter = ""
+        .TextFileSemicolonDelimiter = False
+        .TextFileSpaceDelimiter = False
         .Refresh
     End With
     ActiveSheet.Rows(1).Font.Bold = True

@@ -329,7 +329,7 @@ End Function
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Public Function binarySearch(ByRef list As Variant, ByVal lookup As Double) As Integer
     Dim pos As Integer
-    Dim lower, middle, upper As Integer
+    Dim lower, middle, upper As Long
     
     pos = -1
     upper = UBound(list)

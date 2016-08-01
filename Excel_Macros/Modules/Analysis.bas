@@ -343,14 +343,14 @@ Private Sub deleteBadBurstsFrom(ByVal u As Integer, ByVal numUnits As Integer, B
 End Sub
 
 Private Sub deleteBadSpikesFrom(ByVal u As Integer, ByRef spikes As Variant, ByVal recStart As Double, ByVal recEnd As Double, ByVal unitStart As Double, ByVal unitEnd As Double)
-    Dim s As Integer
+    Dim s As Long
     
     'If there are no spikes then just return
     If spikes(1, 1) = -1 Then _
         Exit Sub
     
     'Store the valid bursts in a new Variant
-    Dim activeRow As Integer
+    Dim activeRow As Long
     Dim newSpikes() As Variant
     Dim tooEarly As Boolean, tooLate As Boolean
     ReDim newSpikes(1 To UBound(spikes), 1 To 2)
@@ -645,7 +645,8 @@ Private Sub storePostValues(ByVal index As Integer, ByRef spikes As Variant, ByR
     bkgrdResults(index, 3) = bkgrdResults(index, 3) + firingRateOutside * 60            'Firing rate outside this kind of burst
     If firingRateOutside > 0 Then _
         bkgrdResults(index, 5) = bkgrdResults(index, 5) + 1 / firingRateOutside         'ISI outside this kind of burst
-    bkgrdResults(index, 7) = bkgrdResults(index, 7) + (numSpikes - numBurstSpikes) / numSpikes * 100  'Percent spikes outside this kind of burst
+    If numSpikes > 0 Then _
+        bkgrdResults(index, 7) = bkgrdResults(index, 7) + (numSpikes - numBurstSpikes) / numSpikes * 100  'Percent spikes outside this kind of burst
     bkgrdResults(index, 10) = bkgrdResults(index, 10) + wabRatio * 100                  'Percent bursts that are this kind of burst
 End Sub
 

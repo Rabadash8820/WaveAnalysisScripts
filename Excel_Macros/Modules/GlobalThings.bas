@@ -152,6 +152,7 @@ Private Sub defineTissues(ByRef summaryWb As Workbook)
     For Each lsRow In tissueTbl.ListRows
         Set tiss = New cTissue
         tiss.ID = lsRow.Range(1, tissueTbl.ListColumns("ID").index).Value
+        tiss.Name = lsRow.Range(1, tissueTbl.ListColumns("Name").index).Value
         tiss.DatePrepared = lsRow.Range(1, tissueTbl.ListColumns("Date Prepared").index).Value
         TISSUES.Add tiss.ID, tiss
     Next lsRow
@@ -247,7 +248,7 @@ Private Sub definePopulationViews(ByRef popRecWb As Workbook)
             For t = 1 To UBound(BURST_TYPES, 2)
                 bType = BURST_TYPES(1, t)
                 wbPath = Left(txtPath, InStrRev(txtPath, "\"))
-                wbPath = wbPath & tID & "_" & Format(tv.Tissue.DatePrepared, "yyyy-mm-dd") & "_" & bType & ".xlsx"
+                wbPath = wbPath & tID & "_" & Format(tv.Tissue.Name, "yyyy-mm-dd") & "_" & bType & ".xlsx"
                 tv.WorkbookPaths.Add bType, wbPath
             Next t
         End If
