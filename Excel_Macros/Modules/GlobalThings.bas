@@ -54,7 +54,9 @@ Public Const CHANNEL_PREFIX = "adch_"
 'FLAGS
 Public ASSOC_SAME_CHANNEL_UNITS As Boolean
 Public ASSOC_MULTIPLE_UNITS As Boolean
-Public MARK_BURST_DUR_UNITS As Boolean
+Public DELETE_BAD_SPIKES As Boolean
+Public DELETE_BAD_BURSTS As Boolean
+Public EXCLUDE_BURST_DUR_UNITS As Boolean
 Public DATA_PAIRED As Boolean
 Public REPORT_PROPS_TYPE As ReportStatsType
 Public REPORT_STTC_TYPE As ReportStatsType
@@ -65,7 +67,7 @@ Public NUM_BKGRD_PROPERTIES As Integer
 Public NUM_BURST_PROPERTIES As Integer
 Public PROPERTIES() As String
 Public PROP_UNITS() As String
-Public BURST_TYPES As Variant
+Public BURST_TYPES As New Dictionary
 Public CTRL_POP As cPopulation
 Public POPULATIONS As New Dictionary
 Public TISSUES As New Dictionary
@@ -129,7 +131,7 @@ Private Sub defineRecordings(ByRef summaryWb As Workbook)
     For Each lsRow In recTbl.ListRows
         Set rec = New cRecording
         rec.ID = lsRow.Range(1, recTbl.ListColumns("ID").index).Value
-        rec.StartTime = lsRow.Range(1, recTbl.ListColumns("StartStamp").index).Value
+        rec.startTime = lsRow.Range(1, recTbl.ListColumns("StartStamp").index).Value
         rec.Duration = lsRow.Range(1, recTbl.ListColumns("Duration").index).Value
         tissueID = lsRow.Range(1, recTbl.ListColumns("Tissue ID").index).Value
         Set rec.Tissue = TISSUES(tissueID)
@@ -166,11 +168,9 @@ Private Sub definePopulations(ByRef summaryWb As Workbook)
     Set popsTbl = popsSht.ListObjects(POPS_NAME)
     
     'Get burst types
-    Dim numBurstTypes As Integer, t As Integer, bType As String
-    ReDim BURST_TYPES(1 To 1, 1 To 2)
-    BURST_TYPES(1, 1) = "WAB"
-    BURST_TYPES(1, 2) = "NonWAB"
-    numBurstTypes = UBound(BURST_TYPES, 2)
+    BURST_TYPES.RemoveAll
+    BURST_TYPES.Add BurstUseType.WABs, "WAB"
+    BURST_TYPES.Add BurstUseType.NonWABs, "NonWAB"
     
     'Store the population info (or just return if none was provided)
     Dim lsRow As ListRow, result As VbMsgBoxResult
@@ -231,7 +231,7 @@ Private Sub definePopulationViews(ByRef popRecWb As Workbook)
     
     'Build Views...
     Dim popID As Integer, recID As Integer, tID As Integer, rv As cRecordingView
-    Dim txtPath As String, wbPath As String, lsRow As ListRow, t As Integer, bType As String
+    Dim txtPath As String, wbPath As String, lsRow As ListRow, bType As String, bt As Variant
     For Each lsRow In recTbl.ListRows
         'Create the TissueView object (if it doesn't already exist)
         'This includes defining its summary workbook paths
@@ -245,12 +245,12 @@ Private Sub definePopulationViews(ByRef popRecWb As Workbook)
             Set tv = New cTissueView
             Set tv.Tissue = TISSUES(tID)
             tvs(popID).Add tID, tv
-            For t = 1 To UBound(BURST_TYPES, 2)
-                bType = BURST_TYPES(1, t)
+            For Each bt In BURST_TYPES.Keys()
+                bType = BURST_TYPES(bt)
                 wbPath = Left(txtPath, InStrRev(txtPath, "\"))
                 wbPath = wbPath & tID & "_" & Format(tv.Tissue.Name, "yyyy-mm-dd") & "_" & bType & ".xlsx"
-                tv.WorkbookPaths.Add bType, wbPath
-            Next t
+                tv.WorkbookPaths.Add bt, wbPath
+            Next bt
         End If
         
         'Create the RecordingView object
@@ -364,7 +364,9 @@ Public Sub GetConfigVars()
     DATA_PAIRED = (analyzeSht.Shapes("DataPairedChk").OLEFormat.Object.Value = 1)
     ASSOC_SAME_CHANNEL_UNITS = (analyzeSht.Shapes("SameChannelAssocChk").OLEFormat.Object.Value = 1)
     ASSOC_MULTIPLE_UNITS = (analyzeSht.Shapes("MultipleUnitsAssocChk").OLEFormat.Object.Value = 1)
-    MARK_BURST_DUR_UNITS = (analyzeSht.Shapes("ExcludeBurstDurChk").OLEFormat.Object.Value = 1)
+    DELETE_BAD_SPIKES = (analyzeSht.Shapes("DeleteBadSpikesChk").OLEFormat.Object.Value = 1)
+    DELETE_BAD_BURSTS = (analyzeSht.Shapes("DeleteBadBurstsChk").OLEFormat.Object.Value = 1)
+    EXCLUDE_BURST_DUR_UNITS = (analyzeSht.Shapes("ExcludeBurstDurChk").OLEFormat.Object.Value = 1)
     
     propMedIQR = (analyzeSht.Shapes("PropMedIQRChk").OLEFormat.Object.Value = 1)
     sttcMedIQR = (analyzeSht.Shapes("SttcMedIQRChk").OLEFormat.Object.Value = 1)

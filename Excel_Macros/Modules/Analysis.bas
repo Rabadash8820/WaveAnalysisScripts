@@ -190,7 +190,7 @@ Private Sub addSttcSheet()
     
 End Sub
 
-Private Sub analyzeRecording(ByRef unitNames As Variant, ByVal burstsToUse As BurstUseType, ByVal StartTime As Double, ByVal endtime As Double)
+Private Sub analyzeRecording(ByRef unitNames As Variant, ByVal burstsToUse As BurstUseType, ByVal startTime As Double, ByVal endTime As Double)
     Dim spikes As Variant, preBursts As Variant, postBursts As Variant
         
     'Keep the below For loops separated so that
@@ -200,20 +200,33 @@ Private Sub analyzeRecording(ByRef unitNames As Variant, ByVal burstsToUse As Bu
     'Store STTC values using the entire spike trains of every possible pair of channels
     Dim numUnits As Integer, Duration As Double
     numUnits = UBound(unitNames)
-    Duration = endtime - StartTime
+    Duration = endTime - startTime
     Call storeSttcValues(Duration, numUnits)
-        
-    'Remove bursts that start/end too late/early (lolwut?)
-    'Adjust the start/end times of each unit, if necessary
+    
+    'Initialize the start/end times of each Unit
     Dim startEndTimes() As Double, u As Integer
     ReDim startEndTimes(1 To numUnits, 1 To 2)
     For u = 1 To numUnits
-        spikes = getSpikeTrain(u)
-        preBursts = getBurstTrain(u, numUnits)
-        Call deleteBadBurstsFrom(u, numUnits, spikes, preBursts, StartTime, endtime, startEndTimes)
-        Call deleteBadSpikesFrom(u, spikes, StartTime, endtime, startEndTimes(u, 1), startEndTimes(u, 2))
+        startEndTimes(u, 1) = startTime
+        startEndTimes(u, 2) = endTime
     Next u
-    ActiveSheet.UsedRange   'Refresh used range by getting the property
+        
+    'Remove bursts/spikes that start/end too late/early (lolwut?)
+    'Removing spikes may adjust the start/end times of each unit
+    If DELETE_BAD_BURSTS Then
+        For u = 1 To numUnits
+            spikes = getSpikeTrain(u)
+            preBursts = getBurstTrain(u, numUnits)
+            Call deleteBadBurstsFrom(u, numUnits, spikes, preBursts, startTime, endTime, startEndTimes)
+        Next u
+    End If
+    If DELETE_BAD_SPIKES Then
+        For u = 1 To numUnits
+            spikes = getSpikeTrain(u)
+            Call deleteBadSpikesFrom(u, spikes, startTime, endTime, startEndTimes(u, 1), startEndTimes(u, 2))
+        Next u
+    End If
+    ActiveSheet.UsedRange   'Refresh UsedRange by getting the property
     
     'Do PRE ANALYSES on each unit
     'I.e., analyses BEFORE unused bursts get deleted (background firing metrics)
@@ -290,25 +303,20 @@ Private Sub storeSttcValues(ByVal Duration As Double, ByVal numUnits As Long)
 End Sub
 
 Private Sub deleteBadBurstsFrom(ByVal u As Integer, ByVal numUnits As Integer, ByRef spikes As Variant, ByRef bursts As Variant, ByVal recStart As Double, ByVal recEnd As Double, ByRef startEndTimes() As Double)
-    Dim b As Integer
-    
     'If there are no bursts then just return
-    If bursts(1, 1) = -1 Then
-        startEndTimes(u, 1) = recStart
-        startEndTimes(u, 2) = recEnd
-        Exit Sub
-    End If
+    If bursts(1, 1) = -1 Then Exit Sub
     
     'Store the valid bursts in a new Variant
     Dim activeRow As Integer, offset As Double
     Dim newStart As Double, newEnd As Double, newBursts() As Variant
-    Dim bStart As Double, bEnd As Double, burstDur As Double, tooEarly As Boolean, tooLate As Boolean, validDur As Boolean
+    Dim b As Integer, bStart As Double, bEnd As Double, burstDur As Double, tooEarly As Boolean, tooLate As Boolean, validDur As Boolean
     newStart = recStart
     newEnd = recEnd
     activeRow = 0
     offset = MAX_DURATION / 2
     ReDim newBursts(1 To UBound(bursts), 1 To 2)
     For b = 1 To UBound(bursts)
+    
         'Check if this burst is valid (not cut off by the recording and of a valid duration)
         bStart = bursts(b, 1)
         bEnd = bursts(b, 2)

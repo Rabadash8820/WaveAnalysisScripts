@@ -21,16 +21,11 @@ Public Sub ProcessPopulations()
     Set outputStrs = checkTextFiles
     If outputStrs.Count > 0 Then _
         GoTo ExitSub
-        
-    'Define the types of bursts to use
-    Dim burstUseTypes As New Dictionary
-    burstUseTypes.Add "WAB", BurstUseType.WABs
-    burstUseTypes.Add "NonWAB", BurstUseType.NonWABs
     
     'Load each provided RecordingView's text files,
     'then perform wave analyses on each TissueView!
     Dim fs As New FileSystemObject
-    Dim p As Integer, r As Integer, t As Integer, bt As Integer, bType As String, wbPath As String
+    Dim p As Integer, r As Integer, t As Integer, bType As Variant, wbPath As String
     Dim pop As cPopulation, rv As cRecordingView, tv As cTissueView
     For p = 0 To POPULATIONS.Count - 1
         Set pop = POPULATIONS.Items()(p)
@@ -40,11 +35,10 @@ Public Sub ProcessPopulations()
                 Set rv = tv.RecordingViews.item(r)
                 Call loadRecording(rv, r)
             Next r
-            For bt = 1 To UBound(BURST_TYPES, 2)
-                bType = BURST_TYPES(1, bt)
+            For Each bType In BURST_TYPES.Keys()
                 wbPath = tv.WorkbookPaths(bType)
-                Call AnalyzeTissueWorkbook(wbPath, tv, burstUseTypes(bType))
-            Next bt
+                Call AnalyzeTissueWorkbook(wbPath, tv, bType)
+            Next bType
         Next t
     Next p
     
@@ -55,7 +49,7 @@ Public Sub ProcessPopulations()
     
     'If requested, delete bursts with bad durations
     'Also delete any remaining units marked for "exclusion"
-    If MARK_BURST_DUR_UNITS Then _
+    If EXCLUDE_BURST_DUR_UNITS Then _
         Call DeleteZeroBurstDurUnits(combineWb)
     Call ExcludeUnits(combineWb)
     
@@ -64,13 +58,12 @@ Public Sub ProcessPopulations()
         Set pop = POPULATIONS.Items()(p)
         For t = 1 To pop.TissueViews.Count
             Set tv = pop.TissueViews.item(t)
-            For bt = 1 To UBound(BURST_TYPES, 2)
-                bType = BURST_TYPES(1, bt)
+            For Each bType In BURST_TYPES.Keys()
                 wbPath = tv.WorkbookPaths(bType)
                 If fs.FileExists(wbPath) Then
                     fs.DeleteFile (wbPath)
                 End If
-            Next bt
+            Next bType
         Next t
     Next p
     
@@ -87,11 +80,9 @@ Private Sub loadRecording(ByRef rv As cRecordingView, ByVal rvIndex As Integer)
     Dim pop As cPopulation, tv As cTissueView
     
     'For each burst type...
-    Dim t As Integer, bType As String, wbPath As String, wb As Workbook
+    Dim bType As Variant, wbPath As String, wb As Workbook
     Set tv = rv.TissueView
-    For t = 1 To UBound(BURST_TYPES, 2)
-        bType = BURST_TYPES(1, t)
-        
+    For Each bType In BURST_TYPES.Keys()
         'Open the summary workbook for this recording's tissue (replacing any old one)
         wbPath = tv.WorkbookPaths(bType)
         Dim fs As New FileSystemObject
@@ -114,7 +105,7 @@ Private Sub loadRecording(ByRef rv As cRecordingView, ByVal rvIndex As Integer)
             .Rows.EntireRow.AutoFit
         End With
         wb.Close (True)
-    Next t
+    Next bType
 
 End Sub
 
@@ -166,8 +157,8 @@ Private Sub openFile(ByRef rec As cRecordingView, ByRef recFile As File)
     Set rng = contentsTbl.ListRows.Add.Range
     rng.Cells(1, 1) = recFile.Name
     rng.Cells(1, 2) = RECORDING_STR & Worksheets.Count
-    rng.Cells(1, 3) = rec.Recording.StartTime
-    rng.Cells(1, 4) = rec.Recording.StartTime + rec.Recording.Duration
+    rng.Cells(1, 3) = rec.Recording.startTime
+    rng.Cells(1, 4) = rec.Recording.startTime + rec.Recording.Duration
 
     'Load data into a new sheet of the new workbook and format it
     Worksheets.Add After:=Sheets(Worksheets.Count)

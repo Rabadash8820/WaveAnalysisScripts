@@ -49,16 +49,16 @@ Public Sub CombineDataIntoWorkbook(ByRef wb As Workbook)
     sttcHeaders(5) = "STTC"
     
     'Build data sheets (one per workbook type per experimental population)
-    Dim p As Integer, pop As cPopulation, bType As Integer
+    Dim p As Integer, pop As cPopulation, bType As Variant
     For p = 0 To POPULATIONS.Count - 1
         Set pop = POPULATIONS.Items()(p)
         Worksheets.Add After:=Worksheets(Worksheets.Count)
         Call buildSttcDataSheet(pop, sttcHeaders)
         Worksheets.Add After:=Worksheets(Worksheets.Count)
         Call buildPropDataSheet(pop, "Burst", propNames)
-        For bType = 1 To UBound(BURST_TYPES, 2)
+        For Each bType In BURST_TYPES.Keys()
             Worksheets.Add After:=Worksheets(Worksheets.Count)
-            Call buildPropDataSheet(pop, BURST_TYPES(1, bType), wbTypePropNames)
+            Call buildPropDataSheet(pop, BURST_TYPES(bType), wbTypePropNames)
         Next bType
     Next p
 
@@ -103,11 +103,10 @@ End Sub
 Private Sub buildContentsSheet()
                 
     'Define some boilerplate variables
-    Dim numBurstTypes As Integer, t As Integer
+    Dim bt As Variant, t As Integer
     Dim numRows As Integer, col As Integer, row As Integer
     Dim tbl As ListObject
     Dim headers() As Variant, data() As Variant
-    numBurstTypes = UBound(BURST_TYPES, 2)
         
     'Build the Contents sheet
     ActiveSheet.Name = CONTENTS_NAME
@@ -124,9 +123,9 @@ Private Sub buildContentsSheet()
     headers(1, 1) = "Tissue ID"
     headers(1, 2) = "Tissue ID On Sheets"
     headers(1, 3) = "Population ID"
-    For t = 1 To numBurstTypes
-        headers(1, 3 + t) = BURST_TYPES(1, t) & " Workbook"
-    Next t
+    For Each bt In BURST_TYPES.Keys()
+        headers(1, 3 + t) = BURST_TYPES(bt) & " Workbook"
+    Next bt
     tbl.HeaderRowRange.Value = headers
     
     'Allocate the Contents array
@@ -150,9 +149,9 @@ Private Sub buildContentsSheet()
             contents(row, 1) = tv.Tissue.ID
             contents(row, 2) = tIndex
             contents(row, 3) = pop.ID
-            For t = 1 To numBurstTypes
-                contents(row, 3 + t) = tv.WorkbookPaths(BURST_TYPES(1, t))
-            Next t
+            For Each bt In BURST_TYPES.Keys()
+                contents(row, 3 + t) = tv.WorkbookPaths(bt)
+            Next bt
         Next tv
     Next popV
     tbl.DataBodyRange.Value = contents
@@ -170,11 +169,10 @@ End Sub
 Private Sub buildStatsSheet()
                 
     'Define some boilerplate variables
-    Dim maxTissues As Integer, numBurstTypes As Integer, p As Integer, t As Integer
+    Dim maxTissues As Integer, p As Integer, t As Integer
     Dim numCols As Integer, numRows As Integer, col As Integer, row As Integer
     Dim tbl As ListObject
     Dim headers() As Variant, data() As Variant
-    numBurstTypes = UBound(BURST_TYPES, 2)
     
     'Build the Stats sheet
     ActiveSheet.Name = STATS_NAME
@@ -339,7 +337,7 @@ Private Sub buildPropFiguresSheet()
     Dim numCols As Integer, numRows As Integer, col As Integer, row As Integer
     Dim tbl As ListObject
     Dim headers() As Variant, data() As Variant
-    numBurstTypes = UBound(BURST_TYPES, 2)
+    numBurstTypes = BURST_TYPES.Count
     Dim cornerCell As Range
     Set cornerCell = Cells(2, 1)
     
@@ -370,7 +368,7 @@ Private Sub buildPropFiguresSheet()
     Next row
     Dim bType As String
     For t = 0 To numBurstTypes - 1
-        bType = BURST_TYPES(1, t + 1)
+        bType = BURST_TYPES.Items()(t)
         rOffset = 1 + NUM_BKGRD_PROPERTIES + t * NUM_BURST_PROPERTIES
         For row = 1 To NUM_BURST_PROPERTIES
             data(rOffset + row, 1) = wbTypePropNames(row, 1) & bType & wbTypePropNames(row, 2)
@@ -394,7 +392,6 @@ Private Sub buildPropFiguresSheet()
     Next col
     cOffset = 1 + 5 * POPULATIONS.Count + 1
     For t = 0 To numBurstTypes - 1
-        bType = BURST_TYPES(1, t + 1)
         cOffset = NUM_BKGRD_PROPERTIES + t * NUM_BURST_PROPERTIES
         For col = 1 To NUM_BURST_PROPERTIES
             chartTitles(1, cOffset + col) = "=" & cornerCell.offset(cOffset + col, 0).Address & " & "" vs. Experimental Population"""
@@ -458,15 +455,15 @@ Private Sub buildPropFiguresSheet()
         .Resize(numPropRows - 2 * titleOffset - 1, 1).Merge
     End With
     rOffset = numPropRows + titleOffset
-    For t = 1 To numBurstTypes
-        rOffset = (t + 1) * numPropRows
+    For t = 0 To numBurstTypes - 1
+        rOffset = ((t + 1) + 1) * numPropRows
         With cornerCell.offset(rOffset - 1, 0).EntireRow.Interior
             .Pattern = xlSolid
             .TintAndShade = -0.349986266670736
         End With
         With cornerCell.offset(rOffset + titleOffset, 0)
-            .Value = BURST_TYPES(1, t)
-            .Style = wbTypeStyles(t)
+            .Value = BURST_TYPES.Items(t)
+            .Style = wbTypeStyles(t + 1)
             .Font.Size = 16
             .Font.Bold = True
             .Orientation = 90
@@ -586,14 +583,14 @@ Private Sub buildPropFiguresSheet()
         Set chartRng = propCornerCell.offset(-(numChartRows + 1), 0).Resize(numChartRows, 1 + 2 * POPULATIONS.Count)
         Call buildPropArea(propCornerCell, tblRowRng, chartRng, PROP_UNITS(prop), "Burst", maxTissues)
     Next prop
-    For t = 1 To numBurstTypes
-        rOffset = (t + 1) * numPropRows + 2 + numChartRows + 1
+    For t = 0 To numBurstTypes - 1
+        rOffset = ((t + 1) + 1) * numPropRows + 2 + numChartRows + 1
         For prop = 1 To NUM_BURST_PROPERTIES
-            Set tblRowRng = cornerCell.offset(NUM_BKGRD_PROPERTIES + (t - 1) * NUM_BURST_PROPERTIES + prop, 0)
+            Set tblRowRng = cornerCell.offset(NUM_BKGRD_PROPERTIES + t * NUM_BURST_PROPERTIES + prop, 0)
             cOffset = numCols + (prop - 1) * numPropCols
             Set propCornerCell = cornerCell.offset(rOffset, cOffset)
             Set chartRng = propCornerCell.offset(-(numChartRows + 1), 0).Resize(numChartRows, 1 + 2 * POPULATIONS.Count)
-            Call buildPropArea(propCornerCell, tblRowRng, chartRng, PROP_UNITS(NUM_BKGRD_PROPERTIES + prop), BURST_TYPES(1, t), maxTissues)
+            Call buildPropArea(propCornerCell, tblRowRng, chartRng, PROP_UNITS(NUM_BKGRD_PROPERTIES + prop), BURST_TYPES.Items(t), maxTissues)
         Next prop
     Next t
 
@@ -608,10 +605,9 @@ End Sub
 Private Sub buildSttcFiguresSheet()
 
     'Define some boilerplate variables
-    Dim numBurstTypes As Integer, p As Integer, t As Integer
+    Dim p As Integer, t As Integer
     Dim numCols As Integer, numRows As Integer, col As Integer, row As Integer
     Dim tbl As ListObject
-    numBurstTypes = UBound(BURST_TYPES, 2)
 
     'Build the Figures sheet
     ActiveSheet.Name = STTC_NAME
@@ -858,11 +854,10 @@ End Sub
 
 Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, ByRef chartRng As Range, ByVal unitsStr As String, ByVal bType As String, ByVal maxTissues As Integer)
 
-    Dim numBurstTypes As Integer, numPopCols As Integer, numHeaders As Integer
+    Dim numPopCols As Integer, numHeaders As Integer
     Dim t As Integer, pop As cPopulation, p As Integer
     Dim rOffset As Integer, cOffset As Integer
     numPopCols = 2
-    numBurstTypes = UBound(BURST_TYPES, 2)
     numHeaders = 1 + numPopCols * POPULATIONS.Count
     Dim headers() As Variant
     ReDim headers(1 To 1, 1 To numHeaders)
@@ -1041,22 +1036,20 @@ Private Sub fetchTissue(ByRef tv As cTissueView)
     'If so, then Initialize some local variables
     Dim fs As New FileSystemObject
     Dim tissueWb As Workbook
-    Dim numBurstTypes As Integer
-    numBurstTypes = UBound(BURST_TYPES, 2)
     
     'For each type of data...
-    Dim wbFound As Boolean, wbTypeName As Variant, wbPath As String
-    For Each wbTypeName In BURST_TYPES
+    Dim wbFound As Boolean, bType As Variant, wbPath As String
+    For Each bType In BURST_TYPES.Keys()
         'Check that a workbook was provided and exists (display error dialogs if not)
         wbFound = False
-        wbPath = tv.WorkbookPaths(wbTypeName)
+        wbPath = tv.WorkbookPaths(bType)
         If fs.FileExists(wbPath) Then
             wbFound = True
         ElseIf wbPath = "" Then
-            result = MsgBox("No " & wbTypeName & " workbook provided for tissue " & tv.Tissue.ID & " in population " & tv.Population.Name & ".", vbOKOnly)
+            result = MsgBox("No " & BURST_TYPES(bType) & " workbook provided for tissue " & tv.Tissue.ID & " in population " & tv.Population.Name & ".", vbOKOnly)
         Else
             result = MsgBox("""" & wbPath & """ could not be found." & vbCr & _
-                            "Make sure you provided the correct path to the " & wbTypeName & " workbook.", vbOKOnly)
+                            "Make sure you provided the correct path to the " & BURST_TYPES(bType) & " workbook.", vbOKOnly)
         End If
         
         'Load the tissue's data and store it in the appropriate sheets of the combination workbook
@@ -1064,18 +1057,24 @@ Private Sub fetchTissue(ByRef tv As cTissueView)
             Dim popName As String
             Set tissueWb = Workbooks.Open(wbPath)
             popName = tv.Population.Name
-            Select Case wbTypeName
-                Case "WAB"
+            Select Case bType
+                Case BurstUseType.WABs
                     Call copyTissueData(tissueWb, STTC_NAME, popName & "_STTC", tv.Tissue.ID)
                     Call copyTissueData(tissueWb, ALL_AVGS_NAME, popName & "_Bursts", tv.Tissue.ID)
                     Call copyTissueData(tissueWb, BURST_AVGS_NAME, popName & "_WABs", tv.Tissue.ID)
                     
-                Case "NonWAB"
+                Case BurstUseType.NonWABs
                     Call copyTissueData(tissueWb, BURST_AVGS_NAME, popName & "_NonWABs", tv.Tissue.ID)
+                    
+                Case BurstUseType.All
+                    Call copyTissueData(tissueWb, STTC_NAME, popName & "_STTC", tv.Tissue.ID)
+                    Call copyTissueData(tissueWb, ALL_AVGS_NAME, popName & "_Bursts", tv.Tissue.ID)
+                    Call copyTissueData(tissueWb, BURST_AVGS_NAME, popName & "_Alls", tv.Tissue.ID)
+                    
             End Select
             tissueWb.Close
         End If
-    Next wbTypeName
+    Next bType
 
 End Sub
 
