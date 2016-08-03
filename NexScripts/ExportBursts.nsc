@@ -66,7 +66,7 @@ if (GetFileCount(rootPath + "\*" + ext) == 0)
 end
 
 % Ask the user which burst analysis algorithm they wish to use
-algorithm = "Max Interval"
+algorithm = "Surprise"
 result = Dialog(GetActiveDocument(), algorithm, "Which algorithm? (enter 'Max Interval' or 'Surprise')", "string")
 if (result <> 1)
 	MsgBox("")
