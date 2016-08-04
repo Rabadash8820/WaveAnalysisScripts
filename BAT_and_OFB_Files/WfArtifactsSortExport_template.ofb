@@ -1,8 +1,8 @@
 // Waveform detection
 Set DetectSigmas -5
-Set DetectNPW 50	// samples
-Set DetectNPre 10	// samples
-Set DetectDead 0
+Set DetectNPW 26	// samples, (1040 microsec), total waveform duration
+Set DetectNPre 10	// samples, (400 microsec), time before threshold
+Set DetectDead 25	// samples, (1000 microsec), refactory period, roughly
 
 // Artifct removal
 Set ArtifactWidth 10	// samples
