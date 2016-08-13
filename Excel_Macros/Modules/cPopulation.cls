@@ -16,3 +16,4 @@ Public IsControl As Boolean
 Public ForeColor As Long
 Public BackColor As Long
 Public TissueViews As New Collection
+Public SheetTissueIDs As New Dictionary

@@ -2,7 +2,7 @@ Attribute VB_Name = "CombineData"
 Option Explicit
 Option Private Module
 
-Private Const NUM_CONTENTS_COLS = 5
+Private Const NUM_CONTENTS_COLS = 6
 
 Dim propNames() As String, wbTypePropNames() As String
 Dim combineWb As Workbook
@@ -80,10 +80,10 @@ Public Sub CombineDataIntoWorkbook(ByRef wb As Workbook)
     
     'Pretty up the Contents sheetnow that data is present
     With Worksheets(CONTENTS_NAME)
+        .Columns(6).Delete
         .Columns(5).Delete
-        .Columns(4).Delete
-        .Columns(3).Cut
-        .Columns(1).Insert Shift:=xlToRight
+        .Columns(4).Cut
+        .Columns(2).Insert Shift:=xlToRight
         With .ListObjects("Contents")
             .ShowTotals = True
             .TotalsRowRange(1, 1).Value = "Count"
@@ -120,11 +120,12 @@ Private Sub buildContentsSheet()
         tbl.ListColumns.Add
     Next col
     ReDim headers(1 To 1, 1 To NUM_CONTENTS_COLS)
-    headers(1, 1) = "Tissue ID"
-    headers(1, 2) = "Tissue ID On Sheets"
-    headers(1, 3) = "Population ID"
-    For Each bt In BURST_TYPES.Keys()
-        headers(1, 3 + t) = BURST_TYPES(bt) & " Workbook"
+    headers(1, 1) = "Population ID"
+    headers(1, 2) = "Tissue ID"
+    headers(1, 3) = "Tissue Name"
+    headers(1, 4) = "Tissue ID On Sheets"
+    For bt = 0 To BURST_TYPES.Count - 1
+        headers(1, 4 + bt + 1) = BURST_TYPES.Items(bt) & " Workbook"
     Next bt
     tbl.HeaderRowRange.Value = headers
     
@@ -144,13 +145,15 @@ Private Sub buildContentsSheet()
         tIndex = 0
         For Each tv In pop.TissueViews
             tIndex = tIndex + 1
+            pop.SheetTissueIDs.Add tIndex, tv.Tissue.ID
             row = row + 1
             tbl.ListRows.Add
-            contents(row, 1) = tv.Tissue.ID
-            contents(row, 2) = tIndex
-            contents(row, 3) = pop.ID
-            For Each bt In BURST_TYPES.Keys()
-                contents(row, 3 + t) = tv.WorkbookPaths(bt)
+            contents(row, 1) = pop.ID
+            contents(row, 2) = tv.Tissue.ID
+            contents(row, 3) = tv.Tissue.Name
+            contents(row, 4) = tIndex
+            For bt = 0 To BURST_TYPES.Count - 1
+                contents(row, 4 + bt + 1) = tv.WorkbookPaths(BURST_TYPES.Keys(bt))
             Next bt
         Next tv
     Next popV
@@ -162,7 +165,7 @@ Private Sub buildContentsSheet()
     Cells.HorizontalAlignment = xlLeft
     tbl.ListColumns(1).DataBodyRange.HorizontalAlignment = xlCenter
     tbl.ListColumns(2).DataBodyRange.HorizontalAlignment = xlCenter
-    tbl.ListColumns(3).DataBodyRange.HorizontalAlignment = xlCenter
+    tbl.ListColumns(4).DataBodyRange.HorizontalAlignment = xlCenter
 
 End Sub
 
@@ -304,7 +307,7 @@ Private Sub buildSttcDataSheet(ByRef pop As cPopulation, ByRef sttcHeaders() As 
     'Add sheet "headers"
     Dim popNameCols As Integer
     popNameCols = 3
-    Application.DisplayAlerts = False
+    Application.DisplayAlerts = False   'To ignore cell merge messages
     With Cells(1, 1).Resize(1, popNameCols)
         .Value = pop.Name
         .Merge
@@ -694,6 +697,8 @@ Private Sub buildSttcFiguresSheet()
     End With
     
     'Add formulas to the remaining rows/columns
+    Dim contentsTbl As ListObject
+    Set contentsTbl = Worksheets(CONTENTS_NAME).ListObjects(CONTENTS_NAME)
     Dim popRngStr As String, popSttcTblStr As String, valFormula As String
     numCols = 2
     tbl.ListColumns(2).DataBodyRange.Formula = "=IF(InterElectrodeDist*[@Unit Distance]<=IgnoreDist,InterElectrodeDist*[@[Unit Distance]],NA())"
@@ -711,7 +716,7 @@ Private Sub buildSttcFiguresSheet()
         End If
         numCols = numCols + colIncrement
         For t = 1 To pop.TissueViews.Count
-            popRngStr = "IF(" & popSttcTblStr & "[Tissue]=""" & t & """,IF(" & popSttcTblStr & "[Unit Distance]=[@[Unit Distance]]," & popSttcTblStr & "[STTC]))"
+            popRngStr = "IF(" & popSttcTblStr & "[Tissue]=""" & pop.SheetTissueIDs(t) & """,IF(" & popSttcTblStr & "[Unit Distance]=[@[Unit Distance]]," & popSttcTblStr & "[STTC]))"
             valFormula = IIf(REPORT_STTC_TYPE = ReportStatsType.MedianIQR, "MEDIAN", "AVERAGE")
             valFormula = "=" & valFormula & "(" & popRngStr & ")"
             tbl.ListColumns(numCols + t).DataBodyRange(1).FormulaArray = valFormula
@@ -896,27 +901,27 @@ Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, 
         End If
     Next p
     Set ctrlRng = IIf(DATA_PAIRED, propCtrlRng, mainCtrlRng)
-    
+        
     'Write tissue results (formulas depends on whether data is paired and how we're reporting results)
     Dim tissueCell As Range, pctChangeStr As String, ctrlValueStr As String, tblName As String
-    For t = 1 To maxTissues
-        cornerCell.offset(2 + t, 0).Value = t
-        For p = 0 To POPULATIONS.Count - 1
-            Set pop = POPULATIONS.Items()(p)
-            tblName = pop.Name & "_" & bType & "s"
+    For p = 0 To POPULATIONS.Count - 1
+        Set pop = POPULATIONS.Items()(p)
+        tblName = pop.Name & "_" & bType & "s"
+        For t = 1 To maxTissues
+            cornerCell.offset(2 + t, 0).Value = t
             Set tissueCell = cornerCell.offset(2 + t, p * numPopCols + 1)
             If REPORT_PROPS_TYPE = MeanSEM Then
-                valStr = "=AVERAGEIF(" & tblName & "[Tissue],""" & t & """," & tblName & "[" & tblRowCell.Value & "])"
+                valStr = "=AVERAGEIF(" & tblName & "[Tissue],""" & pop.SheetTissueIDs(t) & """," & tblName & "[" & tblRowCell.Value & "])"
                 tissueCell.offset(0, 0).Formula = valStr
             Else
-                valStr = "=MEDIAN(IF(" & tblName & "[Tissue]=""" & t & """," & tblName & "[" & tblRowCell.Value & "] " & "))"
+                valStr = "=MEDIAN(IF(" & tblName & "[Tissue]=""" & pop.SheetTissueIDs(t) & """," & tblName & "[" & tblRowCell.Value & "] " & "))"
                 tissueCell.offset(0, 0).FormulaArray = valStr
             End If
             ctrlValueStr = IIf(DATA_PAIRED, ctrlRng.offset(t, 0).Address, ctrlRng.Address)
             pctChangeStr = "=(" & tissueCell.Address & "-" & ctrlValueStr & ")/" & ctrlValueStr & ""
             tissueCell.offset(0, 1).Formula = pctChangeStr
-        Next p
-    Next t
+        Next t
+    Next p
     cornerCell.offset(3, 0).Resize(maxTissues, 1).Font.Bold = True
     
     'Write results to the main table (formulas depend on how we're reporting results)
