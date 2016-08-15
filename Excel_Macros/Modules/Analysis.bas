@@ -7,30 +7,27 @@ Private maxBursts As Integer
 Private unitNames As Variant
 Private sttcResults() As Double, bkgrdResults() As Double, burstResults() As Double
 Public Sub AnalyzeTissueWorkbook(ByVal wbName As String, ByVal tissView As cTissueView, ByVal burstsToUse As BurstUseType)
-    Dim rec As Integer, u As Integer
+    Dim u As Integer
     
     'If there are no recordings in this workbook then just return
-    Dim wb As Workbook, numRecs As Integer
+    Dim wb As Workbook
     Set wb = Workbooks.Open(wbName)
     Dim contentsTbl As ListObject
     Set contentsTbl = wb.Worksheets(CONTENTS_NAME).ListObjects(CONTENTS_NAME)
-    numRecs = contentsTbl.ListRows.Count
-    If numRecs = 0 Then _
+    If contentsTbl.ListRows.Count = 0 Then _
         Exit Sub
             
-    'Get the names of all units on the first sheet (assumed to be same on all other recording sheets)
+    'Get the names of all units
     Dim wksht As Worksheet, numUnits As Long
     Set wksht = wb.Worksheets(contentsTbl.ListRows(1).Range(1, 2).Value)
     numUnits = wksht.Cells(1, 1).End(xlToRight).Column / 3    'Since every unit is mentioned once for spikes, burst_start, and burst_end
     unitNames = Application.Transpose(wksht.Cells(1, 1).Resize(1, numUnits))
     
     'If invalid units were provided, then delete their data columns and adjust the unitNames
-    Dim recRow As ListRow, recName As String
+    Dim recName As String
     If tissView.BadUnits.Count > 0 Then
-        For Each recRow In contentsTbl.ListRows
-            recName = recRow.Range(1, 2)
-            Call DeleteUnits(wb.Worksheets(recName), tissView, unitNames)
-        Next recRow
+        recName = contentsTbl.ListRows(1).Range(1, 2)
+        Call DeleteUnits(wb.Worksheets(recName), tissView, unitNames)
         numUnits = wksht.Cells(1, 1).End(xlToRight).Column / 3
         unitNames = Application.Transpose(wksht.Cells(1, 1).Resize(1, numUnits))
     End If
@@ -49,16 +46,24 @@ Public Sub AnalyzeTissueWorkbook(ByVal wbName As String, ByVal tissView As cTiss
     
     'Process each recording for this tissue (represented as separate sheets)
     Dim startT As Double, endT As Double
-    For Each recRow In contentsTbl.ListRows
-        recName = recRow.Range(1, 2)
-        startT = recRow.Range(1, 3)
-        endT = recRow.Range(1, 4)
-        wb.Worksheets(recName).Activate
-        Call analyzeRecording(unitNames, burstsToUse, startT, endT)
-    Next recRow
+    Dim recRng As Range
+    Set recRng = contentsTbl.ListRows(1).Range(1, 1)
+    recName = recRng.offset(0, 1)
+    startT = recRng.offset(0, 2)
+    endT = recRng.offset(0, 3)
+    wb.Worksheets(recName).Activate
+    Call analyzeRecording(unitNames, burstsToUse, startT, endT)
+        
+    'Store results to their respective Excel tables
+    Dim allTbl As ListObject, burstTbl As ListObject, sttcTbl As ListObject
+    Set allTbl = Worksheets(ALL_AVGS_NAME).ListObjects(ALL_AVGS_NAME)
+    Set burstTbl = Worksheets(BURST_AVGS_NAME).ListObjects(BURST_AVGS_NAME)
+    Set sttcTbl = Worksheets(STTC_NAME).ListObjects(STTC_NAME)
+    allTbl.DataBodyRange.offset(0, 1).Resize(, allTbl.ListColumns.Count - 1).Value = bkgrdResults
+    burstTbl.DataBodyRange.offset(0, 1).Resize(, burstTbl.ListColumns.Count - 1).Value = burstResults
+    sttcTbl.DataBodyRange.offset(0, 3).Resize(, sttcTbl.ListColumns.Count - 3).Value = sttcResults
 
     'Reduce result sums to averages and finalize
-    Call storeAvgValues(numRecs, numUnits)
     Call cleanSheets
     wb.Close (True)
 End Sub
@@ -295,7 +300,7 @@ Private Sub storeSttcValues(ByVal Duration As Double, ByVal numUnits As Long)
         For u2 = u1 + 1 To numUnits
             spikes2 = getSpikeTrain(u2)
             sttc = spikeTimeTilingCoefficient2(spikes1, spikes2, tValues(u1), tValues(u2), CORRELATION_DT)
-            sttcResults(row, 1) = sttcResults(row, 1) + sttc
+            sttcResults(row, 1) = sttc
             row = row + 1
         Next u2
     Next u1
@@ -604,14 +609,14 @@ Private Sub storePreValues(ByVal index As Integer, ByRef spikes As Variant, ByRe
         ibi = (croppedDur - burstTime) / (numBursts - 1) 'numerator comes out to zero if no bursts
     
     'Store background spiking properties (these deal w/ spikes outside ALL bursts, not just wave-bursts)
-    bkgrdResults(index, 1) = bkgrdResults(index, 1) + numSpikes                         'Number of spikes
-    bkgrdResults(index, 2) = bkgrdResults(index, 2) + bkgrdFiringRate * 60              'Firing rate outside all bursts
+    bkgrdResults(index, 1) = numSpikes                                              'Number of spikes
+    bkgrdResults(index, 2) = bkgrdFiringRate * 60                                   'Firing rate outside all bursts
     If bkgrdFiringRate > 0 Then _
-        bkgrdResults(index, 4) = bkgrdResults(index, 4) + 1 / bkgrdFiringRate           'ISI outside all bursts
+        bkgrdResults(index, 4) = 1 / bkgrdFiringRate                                'ISI outside all bursts
     If numSpikes > 0 Then _
-        bkgrdResults(index, 6) = bkgrdResults(index, 6) + (numSpikes - numBurstSpikes) / numSpikes * 100 'Percent spikes outside all bursts
-    bkgrdResults(index, 8) = bkgrdResults(index, 8) + numBursts / recDuration * 60      'Burst frequency
-    bkgrdResults(index, 9) = bkgrdResults(index, 9) + ibi                               'Interburst interval
+        bkgrdResults(index, 6) = (numSpikes - numBurstSpikes) / numSpikes * 100     'Percent spikes outside all bursts
+    bkgrdResults(index, 8) = numBursts / recDuration * 60                           'Burst frequency
+    bkgrdResults(index, 9) = ibi                                                    'Interburst interval
 End Sub
 
 Private Sub storePostValues(ByVal index As Integer, ByRef spikes As Variant, ByRef bursts As Variant, ByVal recDuration As Double, ByVal wabRatio As Double)
@@ -640,22 +645,22 @@ Private Sub storePostValues(ByVal index As Integer, ByRef spikes As Variant, ByR
     firingRateOutside = (numSpikes - numBurstSpikes) / (recDuration - burstTime)
 
     'Store burst-specific spiking properties (if this channel HAD bursts of the correct type)
-    burstResults(index, 1) = burstResults(index, 1) + numBursts                         'Number of bursts
-    burstResults(index, 2) = burstResults(index, 2) + avgBurstDur                       'Burst duration
-    burstResults(index, 3) = burstResults(index, 3) + avgBurstFiringRate                'Burst firing rate
+    burstResults(index, 1) = numBursts                          'Number of bursts
+    burstResults(index, 2) = avgBurstDur                        'Burst duration
+    burstResults(index, 3) = avgBurstFiringRate                 'Burst firing rate
     If avgBurstFiringRate > 0 Then _
-        burstResults(index, 4) = burstResults(index, 4) + 1 / avgBurstFiringRate        'Burst ISI
-    burstResults(index, 5) = burstResults(index, 5) + pctTimeAbove10Hz * 100            'Percent time in burst firing >10 Hz
+        burstResults(index, 4) = 1 / avgBurstFiringRate         'Burst ISI
+    burstResults(index, 5) = pctTimeAbove10Hz * 100             'Percent time in burst firing >10 Hz
     If numBursts > 0 Then _
-        burstResults(index, 6) = burstResults(index, 6) + numBurstSpikes / numBursts    'Spikes per burst
+        burstResults(index, 6) = numBurstSpikes / numBursts     'Spikes per burst
     
     'Store other "background" properties that had to wait until after removing unneeded bursts
-    bkgrdResults(index, 3) = bkgrdResults(index, 3) + firingRateOutside * 60            'Firing rate outside this kind of burst
+    bkgrdResults(index, 3) = firingRateOutside * 60             'Firing rate outside this kind of burst
     If firingRateOutside > 0 Then _
-        bkgrdResults(index, 5) = bkgrdResults(index, 5) + 1 / firingRateOutside         'ISI outside this kind of burst
+        bkgrdResults(index, 5) = 1 / firingRateOutside          'ISI outside this kind of burst
     If numSpikes > 0 Then _
-        bkgrdResults(index, 7) = bkgrdResults(index, 7) + (numSpikes - numBurstSpikes) / numSpikes * 100  'Percent spikes outside this kind of burst
-    bkgrdResults(index, 10) = bkgrdResults(index, 10) + wabRatio * 100                  'Percent bursts that are this kind of burst
+        bkgrdResults(index, 7) = (numSpikes - numBurstSpikes) / numSpikes * 100   'Percent spikes outside this kind of burst
+    bkgrdResults(index, 10) = wabRatio * 100                   'Percent bursts that are this kind of burst
 End Sub
 
 Private Function getSpikeTrain(ByVal spikeCol As Integer) As Variant
@@ -702,40 +707,6 @@ Private Function getBurstTrain(ByVal spikeCol As Integer, ByVal numUnits As Inte
     
     getBurstTrain = burstTrain
 End Function
-
-Private Sub storeAvgValues(ByVal numRecordings As Integer, ByVal numUnits As Integer)
-    'Don't bother dividing if there was only 1 recording (and don't divide by 0!)
-    If numRecordings > 1 Then
-        'Reduce all sums of firing-property-values to averages
-        Dim u As Integer, p As Integer
-        Dim bkgrdRng As Range, burstRng As Range
-        For u = 1 To numUnits
-            For p = 1 To NUM_BKGRD_PROPERTIES
-                bkgrdResults(u, p) = bkgrdResults(u, p) / numRecordings
-            Next p
-            For p = 1 To NUM_BURST_PROPERTIES
-                burstResults(u, p) = burstResults(u, p) / numRecordings
-            Next p
-        Next u
-          
-        'Reduce all sums of STTC-values to averages
-        Dim r As Integer, numRows As Long
-        numRows = numUnits * (numUnits - 1) / 2
-        Dim sttcRng As Range
-        For r = 1 To numRows
-            sttcResults(r, 1) = sttcResults(r, 1) / numRecordings
-        Next r
-    End If
-    
-    'Store results to their respective Excel tables
-    Dim allTbl As ListObject, burstTbl As ListObject, sttcTbl As ListObject
-    Set allTbl = Worksheets(ALL_AVGS_NAME).ListObjects(ALL_AVGS_NAME)
-    Set burstTbl = Worksheets(BURST_AVGS_NAME).ListObjects(BURST_AVGS_NAME)
-    Set sttcTbl = Worksheets(STTC_NAME).ListObjects(STTC_NAME)
-    allTbl.DataBodyRange.offset(0, 1).Resize(, allTbl.ListColumns.Count - 1).Value = bkgrdResults
-    burstTbl.DataBodyRange.offset(0, 1).Resize(, burstTbl.ListColumns.Count - 1).Value = burstResults
-    sttcTbl.DataBodyRange.offset(0, 3).Resize(, sttcTbl.ListColumns.Count - 3).Value = sttcResults
-End Sub
 
 Public Sub cleanSheets()
     'Finalize the Averages sheet
