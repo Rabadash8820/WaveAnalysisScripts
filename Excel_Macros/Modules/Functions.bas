@@ -104,7 +104,7 @@ Public Function interElectrodeDistance(ByVal channel1 As Integer, ByVal channel2
     interElectrodeDistance = unitDistance
 End Function
 
-Private Function correlatedSpikeProportion(ByRef spikes1 As Variant, ByRef spikes2 As Variant) As Double
+Private Function correlatedSpikeProportion(ByRef spikes1 As Variant, ByRef spikes2 As Variant, ByVal dt As Double) As Double
     Dim s1, start2, end2 As Long
     Dim correlatedSpikes As Long
     
@@ -120,24 +120,23 @@ Private Function correlatedSpikeProportion(ByRef spikes1 As Variant, ByRef spike
     end2 = 1
     For s1 = 1 To UBound(spikes1)
         'If train1's tile has moved past the end of train2 then just break the loop
-        If spikes1(s1, 1) - CORRELATION_DT > spikes2(UBound(spikes2), 1) Then _
+        If spikes1(s1, 1) - dt > spikes2(UBound(spikes2), 1) Then _
             Exit For
     
         'Find the first spike in the second train that is at or after the start of this spike's tile
-        Do Until spikes2(start2, 1) >= spikes1(s1, 1) - CORRELATION_DT Or start2 = UBound(spikes2)
+        Do Until spikes2(start2, 1) >= spikes1(s1, 1) - dt Or start2 = UBound(spikes2)
             start2 = start2 + 1
         Loop
         
-        'If this spike is actually in the tile...
-        If spikes1(s1, 1) - CORRELATION_DT <= spikes2(start2, 1) And spikes2(start2, 1) <= spikes1(s1, 1) + CORRELATION_DT Then
-            'Find the last in the second train that is in this tile
-            Do Until spikes2(end2, 1) > spikes1(s1, 1) + CORRELATION_DT Or end2 = UBound(spikes2)
+        'If this spike is actually in the tile, then
+        'find the last spike in the second train that is in this tile
+        'and increment the number of correlated spikes
+        If Abs(spikes1(s1, 1) - spikes2(start2, 1)) <= dt Then
+            Do Until spikes2(end2, 1) > spikes1(s1, 1) + dt Or end2 = UBound(spikes2)
                 end2 = end2 + 1
             Loop
-            If spikes2(end2, 1) > spikes1(s1, 1) + CORRELATION_DT Then _
+            If spikes2(end2, 1) > spikes1(s1, 1) + dt Then _
                 end2 = end2 - 1
-            
-            'And increment the number of correlated spikes
             correlatedSpikes = correlatedSpikes + 1
         Else
             end2 = start2
@@ -147,7 +146,7 @@ Private Function correlatedSpikeProportion(ByRef spikes1 As Variant, ByRef spike
     'Return correlated spikes over total spikes
     correlatedSpikeProportion = correlatedSpikes / UBound(spikes1)
 End Function
-Public Function correlatedTimeProportion(ByRef spikes As Variant, ByVal recordingDuration As Double) As Double
+Public Function correlatedTimeProportion(ByRef spikes As Variant, ByVal recordingDuration As Double, ByVal dt As Double) As Double
     Dim s1, s2 As Long
     Dim start, finish As Double
     Dim correlatedTime As Double
@@ -163,17 +162,17 @@ Public Function correlatedTimeProportion(ByRef spikes As Variant, ByVal recordin
     s1 = 1
     Do Until s1 > UBound(spikes)
         'Find the last spike of this tile
-        start = WorksheetFunction.Max(spikes(s1, 1) - CORRELATION_DT, 0)
+        start = WorksheetFunction.Max(spikes(s1, 1) - dt, 0)
         s2 = s1
         finish = -1
         Do While finish = -1
             If s2 = UBound(spikes) Then
                 finish = spikes(s2, 1)
             Else
-                If spikes(s2, 1) + CORRELATION_DT >= spikes(s2 + 1, 1) - CORRELATION_DT Then
+                If spikes(s2, 1) + dt >= spikes(s2 + 1, 1) - dt Then
                     s2 = s2 + 1
                 Else
-                    finish = spikes(s2, 1) + CORRELATION_DT
+                    finish = spikes(s2, 1) + dt
                 End If
             End If
         Loop
@@ -294,29 +293,29 @@ Public Function percentBurstTimeAboveFreqInUnit(ByRef spikes As Variant, ByRef b
     Next b
     percentBurstTimeAboveFreqInUnit = avgTime / UBound(bursts)
 End Function
-Public Function spikeTimeTilingCoefficient1(ByRef spikes1 As Variant, ByRef spikes2 As Variant, ByVal recordingDuration As Double) As Double
+Public Function spikeTimeTilingCoefficient1(ByRef spikes1 As Variant, ByRef spikes2 As Variant, ByVal recordingDuration As Double, ByVal dt As Double) As Double
     Dim P1, P2 As Double
     Dim T1, T2 As Double
     Dim sttc As Double
     
     '1 in the function name is just there b/c VBA doesnt support overloading...
     
-    P1 = correlatedSpikeProportion(spikes1, spikes2)
-    P2 = correlatedSpikeProportion(spikes2, spikes1)
-    T1 = correlatedTimeProportion(spikes1, recordingDuration)
-    T2 = correlatedTimeProportion(spikes2, recordingDuration)
+    P1 = correlatedSpikeProportion(spikes1, spikes2, dt)
+    P2 = correlatedSpikeProportion(spikes2, spikes1, dt)
+    T1 = correlatedTimeProportion(spikes1, recordingDuration, dt)
+    T2 = correlatedTimeProportion(spikes2, recordingDuration, dt)
     
     sttc = 0.5 * ((P1 - T2) / (1 - P1 * T2) + (P2 - T1) / (1 - P2 * T1))
     spikeTimeTilingCoefficient1 = sttc
 End Function
-Public Function spikeTimeTilingCoefficient2(ByRef spikes1 As Variant, ByRef spikes2 As Variant, ByVal T1 As Double, ByVal T2 As Double) As Double
+Public Function spikeTimeTilingCoefficient2(ByRef spikes1 As Variant, ByRef spikes2 As Variant, ByVal T1 As Double, ByVal T2 As Double, ByVal dt As Double) As Double
     Dim P1, P2 As Double
     Dim sttc As Double
     
     '2 in the function name is just there b/c VBA doesnt support overloading...
     
-    P1 = correlatedSpikeProportion(spikes1, spikes2)
-    P2 = correlatedSpikeProportion(spikes2, spikes1)
+    P1 = correlatedSpikeProportion(spikes1, spikes2, dt)
+    P2 = correlatedSpikeProportion(spikes2, spikes1, dt)
     
     sttc = 0.5 * ((P1 - T2) / (1 - P1 * T2) + (P2 - T1) / (1 - P2 * T1))
     spikeTimeTilingCoefficient2 = sttc

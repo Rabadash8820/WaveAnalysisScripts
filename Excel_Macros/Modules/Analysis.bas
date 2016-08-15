@@ -284,7 +284,7 @@ Private Sub storeSttcValues(ByVal Duration As Double, ByVal numUnits As Long)
     For u1 = 1 To numUnits
         'For each unit, store the fraction of the recording's duration wherein its spikes are delta-t apart
         spikes1 = getSpikeTrain(u1)
-        tValues(u1) = correlatedTimeProportion(spikes1, Duration)
+        tValues(u1) = correlatedTimeProportion(spikes1, Duration, CORRELATION_DT)
     Next u1
     
     'Increment STTC values using the entire spike trains of every possible pair of units
@@ -294,7 +294,7 @@ Private Sub storeSttcValues(ByVal Duration As Double, ByVal numUnits As Long)
         spikes1 = getSpikeTrain(u1)
         For u2 = u1 + 1 To numUnits
             spikes2 = getSpikeTrain(u2)
-            sttc = spikeTimeTilingCoefficient2(spikes1, spikes2, tValues(u1), tValues(u2))
+            sttc = spikeTimeTilingCoefficient2(spikes1, spikes2, tValues(u1), tValues(u2), CORRELATION_DT)
             sttcResults(row, 1) = sttcResults(row, 1) + sttc
             row = row + 1
         Next u2
