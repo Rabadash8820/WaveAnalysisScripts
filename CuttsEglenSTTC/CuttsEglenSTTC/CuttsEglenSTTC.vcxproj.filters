@@ -26,5 +26,8 @@
     <ClCompile Include="sttc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="spike_time_tiling_coefficient.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
