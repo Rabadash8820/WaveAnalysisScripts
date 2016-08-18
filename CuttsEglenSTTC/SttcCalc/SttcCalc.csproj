@@ -67,6 +67,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Recording.cs" />
+    <Compile Include="RecordingWrapper.cs" />
     <Compile Include="Unit.cs" />
   </ItemGroup>
   <ItemGroup>

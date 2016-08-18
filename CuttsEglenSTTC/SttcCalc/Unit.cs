@@ -13,6 +13,16 @@ namespace SttcCalc {
         public string Name { get; private set; }
         public Tuple<short, short> MeaCoordinates { get; private set; }
         public IList<double> SpikeTrain { get; } = new List<double>();
+        public static double SqrDistance(Unit unit1, Unit unit2, double interChannelDist = 1d) {
+            int dr = unit1.MeaCoordinates.Item1 - unit2.MeaCoordinates.Item1;
+            int dc = unit1.MeaCoordinates.Item2 - unit2.MeaCoordinates.Item2;
+            double sqrDist = interChannelDist * interChannelDist * (dr * dr + dc * dc);
+            return sqrDist;
+        }
+        public static double Distance(Unit unit1, Unit unit2, double interChannelDist = 1d) {
+            double dist = Math.Sqrt(SqrDistance(unit1, unit2, interChannelDist));
+            return dist;
+        }
 
         // HELPERS
         private void reset(string name) {

@@ -1,12 +1,15 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Collections.Generic;
 
 using CuttsEglen;
 
 namespace SttcCalc {
 
     class Program {
+
+        private const double CORRELATION_DT = 0.05d;
 
         private static void Main(string[] args) {
             // Make sure only one directory path is provided
@@ -23,7 +26,7 @@ namespace SttcCalc {
             Console.WriteLine("Analyzing provided recordings...");
             DirectoryInfo dir = new DirectoryInfo(args[0]);
             Recording[] recs = dir.EnumerateFiles("*.txt")
-                                  .Select(f => Recording.FromText(f))
+                                  .Select(f => RecordingWrapper.FromText(f))
                                   .ToArray();
             Console.WriteLine("Complete!");
 
