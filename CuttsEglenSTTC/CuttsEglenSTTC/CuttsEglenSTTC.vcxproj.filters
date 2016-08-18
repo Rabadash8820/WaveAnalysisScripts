@@ -15,19 +15,22 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Sttc.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="AssemblyInfo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="sttc.cpp">
+    <ClCompile Include="Sttc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="spike_time_tiling_coefficient.cpp">
+    <ClCompile Include="cutts_eglen_sttc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Sttc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="cutts_eglen_sttc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
