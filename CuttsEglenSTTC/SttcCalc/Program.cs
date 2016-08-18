@@ -23,11 +23,20 @@ namespace SttcCalc {
             }
 
             // Analyze all provided recordings in that directory
-            Console.WriteLine("Analyzing provided recordings...");
+            Console.Write("Reading data from provided recordings...  ");
             DirectoryInfo dir = new DirectoryInfo(args[0]);
             Recording[] recs = dir.EnumerateFiles("*.txt")
                                   .Select(f => RecordingWrapper.FromText(f))
                                   .ToArray();
+            Console.WriteLine("Complete!");
+
+            // Get the median STTC vs distance for all Recordings
+            Console.Write("Calculating STTCs...  ");
+            IDictionary<Recording, IDictionary<double, double[]>> results = new Dictionary<Recording, IDictionary<double, double[]>>();
+            foreach (Recording rec in recs) {
+                IDictionary<double, double[]> recResults = RecordingWrapper.STTCvsDistance(rec, CORRELATION_DT);
+                results.Add(rec, recResults);
+            }
             Console.WriteLine("Complete!");
 
             Console.ReadKey();
