@@ -3,7 +3,8 @@
 % void ExportBursts()
 % Scans through every file in a folder selected by the user
 % Each file is burst analyzed with the provided algorithm, and the resulting burst timestamps are exported to text files
-% 5/26/2016:  user now has option to open PLX or NEX files
+% 2016/05/26:  user now has option to open PLX or NEX files
+% 2016/08/03:  Surprise algorithm now used by default
 
 Global filePath
 Global fileName

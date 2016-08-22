@@ -53,6 +53,9 @@ namespace SttcCalc {
             IEnumerable<string> lines = File.ReadLines(file.FullName);
             long numLines = lines.LongCount();
             string[] unitNames = lines.First().Split('\t');
+            bool validFile = unitNames.Any(n => n.Contains("adch_"));
+            if (!validFile)
+                throw new ApplicationException($"{file.FullName} is not in the valid Recording format!");
             int numUnits = (unitNames.Length % 3 == 0 ? unitNames.Length / 3 : (unitNames.Length - 2) / 3);
             Unit[] units = new Unit[numUnits];
 
