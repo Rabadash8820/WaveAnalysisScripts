@@ -17,8 +17,8 @@ Set SortDim 3
 
 // PLX exporting
 Set UseRangeStart -1	// Cancels sort range and uses entire file
-Set SaveCont 0
-Set SaveProcessedCont 0		// Filtered/upsampled continuous data, not raw (doesn't matter if SaveCont 0)
+Set SaveCont 1
+Set SaveProcessedCont 1		// Filtered/upsampled continuous data, not raw (doesn't matter if SaveCont 0)
 Set SaveInvalidated 0
 Set SaveUnsorted 0
 
