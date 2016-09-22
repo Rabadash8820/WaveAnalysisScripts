@@ -20,7 +20,7 @@ namespace SttcCalc {
                     for (short r2 = 0; r2 < rec.Dimensions.Item1; ++r2) {
                         for (short c2 = 0; c2 < rec.Dimensions.Item2; ++c2) {
                             Unit u2 = rec.UnitGrid[r2, c2];
-                            if (u2 == null)
+                            if (u2 == null || (r2 == r1 && c2 == c1))
                                 continue;
 
                             // Add their STTC value to the array for their square-intervening-distance
