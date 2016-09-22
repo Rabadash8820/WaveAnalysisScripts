@@ -9,7 +9,6 @@ Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 Option Explicit
 
-Public ID As Integer
 Public Name As String
 Public Abbreviation As String
 Public IsControl As Boolean

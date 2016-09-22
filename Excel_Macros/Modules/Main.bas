@@ -263,7 +263,7 @@ Private Function successStrings() As Collection
             'Add which of its Recordings were successfuly loaded
             Set tv = pop.TissueViews.item(t)
             numRecs = tv.RecordingViews.Count
-            outputStrs.Add "    Attempted to load " & numRecs & " recording" & IIf(numRecs = 1, "", "s") & " in Tissue " & tv.Tissue.ID
+            outputStrs.Add "    Attempted to load " & numRecs & " recording" & IIf(numRecs = 1, "", "s") & " in Tissue " & tv.Tissue.Name
             For r = 1 To tv.RecordingViews.Count
                 Set rv = tv.RecordingViews.item(r)
                 outputStrs.Add "        " & "Recording " & rv.Recording.ID & " successfully loaded"

@@ -73,7 +73,7 @@ Public Sub ExcludeUnits(ByRef wb As Workbook)
     Dim sh As Integer, sht As Worksheet, tbl As ListObject
     Dim numCols As Integer, currRow As Long, lr As Long
     Dim isSttcSht As Boolean, Units As Variant, doExclude As Boolean
-    Dim tissID As Integer, unitName1 As String, unitName2 As String, findTissue As Boolean, tissView As cTissueView, unit As cUnit
+    Dim tissName As String, unitName1 As String, unitName2 As String, findTissue As Boolean, tissView As cTissueView, unit As cUnit
     
     'For each data sheet...
     For sh = NUM_NONPOP_SHEETS + 1 To wb.Worksheets.Count
@@ -87,7 +87,7 @@ Public Sub ExcludeUnits(ByRef wb As Workbook)
             Units = tbl.DataBodyRange.Resize(tbl.ListRows.Count, numCols).Value
             currRow = 1
             For lr = 1 To UBound(Units)
-                tissID = Units(lr, 1)
+                tissName = Units(lr, 1)
                 unitName1 = Units(lr, 2)
                 unitName2 = unitName1
                 If isSttcSht Then unitName2 = Units(lr, 3)
@@ -95,14 +95,14 @@ Public Sub ExcludeUnits(ByRef wb As Workbook)
                 'Get its associated TissueView
                 findTissue = True
                 If Not tissView Is Nothing Then _
-                    findTissue = (tissID <> tissView.Tissue.ID)
+                    findTissue = (tissName <> tissView.Tissue.Name)
                 If findTissue Then
                     Dim p As Integer, pop As cPopulation, tv As cTissueView
                     Set tissView = Nothing
                     For p = 0 To POPULATIONS.Count - 1
                         Set pop = POPULATIONS.Items()(p)
                         For Each tv In pop.TissueViews
-                            If tv.Tissue.ID = tissID Then
+                            If tv.Tissue.Name = tissName Then
                                 Set tissView = tv
                                 Exit For
                             End If

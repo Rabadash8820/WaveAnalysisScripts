@@ -9,7 +9,6 @@ Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 Option Explicit
 
-Public ID As Integer
 Public Name As String
 Public DatePrepared As Date
 Public Recordings As New Collection

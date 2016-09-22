@@ -145,15 +145,14 @@ Private Sub buildContentsSheet()
         tIndex = 0
         For Each tv In pop.TissueViews
             tIndex = tIndex + 1
-            pop.SheetTissueIDs.Add tIndex, tv.Tissue.ID
+            pop.SheetTissueIDs.Add tIndex, tv.Tissue.Name
             row = row + 1
             tbl.ListRows.Add
-            contents(row, 1) = pop.ID
-            contents(row, 2) = tv.Tissue.ID
-            contents(row, 3) = tv.Tissue.Name
-            contents(row, 4) = tIndex
+            contents(row, 1) = pop.Name
+            contents(row, 2) = tv.Tissue.Name
+            contents(row, 3) = tIndex
             For bt = 0 To BURST_TYPES.Count - 1
-                contents(row, 4 + bt + 1) = tv.WorkbookPaths(BURST_TYPES.Keys(bt))
+                contents(row, 3 + bt + 1) = tv.WorkbookPaths(BURST_TYPES.Keys(bt))
             Next bt
         Next tv
     Next popV
@@ -497,7 +496,7 @@ Private Sub buildPropFiguresSheet()
         numSeries = 0
         For p = 0 To POPULATIONS.Count - 1
             Set pop = POPULATIONS.Items()(p)
-            If pop.ID <> CTRL_POP.ID Then
+            If pop.Name <> CTRL_POP.Name Then
                 numSeries = numSeries + 1
                 .SeriesCollection.Add Source:=cornerCell.offset(0, 6 * p + 4).Resize(numRows, 1)
                 .SeriesCollection(numSeries).Name = pop.Name
@@ -556,7 +555,7 @@ Private Sub buildPropFiguresSheet()
         numSeries = 0
         For p = 0 To POPULATIONS.Count - 1
             Set pop = POPULATIONS.Items()(p)
-            If pop.ID <> CTRL_POP.ID Then
+            If pop.Name <> CTRL_POP.Name Then
                 numSeries = numSeries + 1
                 With .FullSeriesCollection(numSeries)
                     .Format.Fill.ForeColor.RGB = pop.BackColor
@@ -894,7 +893,7 @@ Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, 
     Dim ctrlRng As Range, mainCtrlRng As Range, propCtrlRng As Range
     For p = 0 To POPULATIONS.Count - 1
         Set pop = POPULATIONS.Items()(p)
-        If pop.ID = CTRL_POP.ID Then
+        If pop.Name = CTRL_POP.Name Then
             Set propCtrlRng = cornerCell.offset(2, p * numPopCols + 1)
             Set mainCtrlRng = tblRowCell.offset(0, 6 * p + 1)
             Exit For
@@ -1032,8 +1031,8 @@ End Sub
 Private Sub fetchTissue(ByRef tv As cTissueView)
     'Make sure an ID was provided for this tissue
     Dim result As VbMsgBoxResult
-    If tv.Tissue.ID = 0 Then
-        result = MsgBox("A tissue in population " & tv.Population.Name & " was not given an ID." & vbCr & _
+    If tv.Tissue.Name = "" Then
+        result = MsgBox("A tissue in population " & tv.Population.Name & " was not given a Name." & vbCr & _
                         "Its data will not be loaded.")
         Exit Sub
     End If
@@ -1051,7 +1050,7 @@ Private Sub fetchTissue(ByRef tv As cTissueView)
         If fs.FileExists(wbPath) Then
             wbFound = True
         ElseIf wbPath = "" Then
-            result = MsgBox("No " & BURST_TYPES(bType) & " workbook provided for tissue " & tv.Tissue.ID & " in population " & tv.Population.Name & ".", vbOKOnly)
+            result = MsgBox("No " & BURST_TYPES(bType) & " workbook provided for tissue " & tv.Tissue.Name & " in population " & tv.Population.Name & ".", vbOKOnly)
         Else
             result = MsgBox("""" & wbPath & """ could not be found." & vbCr & _
                             "Make sure you provided the correct path to the " & BURST_TYPES(bType) & " workbook.", vbOKOnly)
@@ -1064,17 +1063,17 @@ Private Sub fetchTissue(ByRef tv As cTissueView)
             popName = tv.Population.Name
             Select Case bType
                 Case BurstUseType.WABs
-                    Call copyTissueData(tissueWb, STTC_NAME, popName & "_STTC", tv.Tissue.ID)
-                    Call copyTissueData(tissueWb, ALL_AVGS_NAME, popName & "_Bursts", tv.Tissue.ID)
-                    Call copyTissueData(tissueWb, BURST_AVGS_NAME, popName & "_WABs", tv.Tissue.ID)
+                    Call copyTissueData(tissueWb, STTC_NAME, popName & "_STTC", tv.Tissue.Name)
+                    Call copyTissueData(tissueWb, ALL_AVGS_NAME, popName & "_Bursts", tv.Tissue.Name)
+                    Call copyTissueData(tissueWb, BURST_AVGS_NAME, popName & "_WABs", tv.Tissue.Name)
                     
                 Case BurstUseType.NonWABs
-                    Call copyTissueData(tissueWb, BURST_AVGS_NAME, popName & "_NonWABs", tv.Tissue.ID)
+                    Call copyTissueData(tissueWb, BURST_AVGS_NAME, popName & "_NonWABs", tv.Tissue.Name)
                     
                 Case BurstUseType.All
-                    Call copyTissueData(tissueWb, STTC_NAME, popName & "_STTC", tv.Tissue.ID)
-                    Call copyTissueData(tissueWb, ALL_AVGS_NAME, popName & "_Bursts", tv.Tissue.ID)
-                    Call copyTissueData(tissueWb, BURST_AVGS_NAME, popName & "_Alls", tv.Tissue.ID)
+                    Call copyTissueData(tissueWb, STTC_NAME, popName & "_STTC", tv.Tissue.Name)
+                    Call copyTissueData(tissueWb, ALL_AVGS_NAME, popName & "_Bursts", tv.Tissue.Name)
+                    Call copyTissueData(tissueWb, BURST_AVGS_NAME, popName & "_Alls", tv.Tissue.Name)
                     
             End Select
             tissueWb.Close
@@ -1083,7 +1082,7 @@ Private Sub fetchTissue(ByRef tv As cTissueView)
 
 End Sub
 
-Private Sub copyTissueData(ByRef tissueWb As Workbook, ByVal fetchName As String, ByVal outputName As String, ByVal tissueID As String)
+Private Sub copyTissueData(ByRef tissueWb As Workbook, ByVal fetchName As String, ByVal outputName As String, ByVal tissueName As String)
     'Set the Range of data to be copied from the tissue workbook
     Dim fetchRng As Range
     Set fetchRng = tissueWb.Worksheets(fetchName).ListObjects(fetchName).DataBodyRange
@@ -1094,12 +1093,12 @@ Private Sub copyTissueData(ByRef tissueWb As Workbook, ByVal fetchName As String
     outputTbl.ListRows.Add
     Set outputRng = outputTbl.ListRows(outputTbl.ListRows.Count).Range.Cells(1, 2)
     
-    'Copy the data, and add the provided tissueID to each row
+    'Copy the data, and add the provided tissue name to each row
     Dim idRng As Range
     fetchRng.Copy Destination:=outputRng
     Set idRng = outputRng.offset(0, -1).Resize(fetchRng.Rows.Count, 1)
     idRng.NumberFormat = "@" 'Text, use "0" for integers
-    idRng.Value = tissueID
+    idRng.Value = tissueName
 End Sub
 
 Private Sub cleanSheets(ByRef wb As Workbook, ByVal keyword As String)

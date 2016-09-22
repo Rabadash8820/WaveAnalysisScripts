@@ -126,16 +126,16 @@ Private Sub defineRecordings(ByRef summaryWb As Workbook)
     
     'Store the population info (or just return if none was provided)
     Dim lsRow As ListRow
-    Dim rec As cRecording, tissueID As Integer
+    Dim rec As cRecording, tissName As String
     Recordings.RemoveAll
     For Each lsRow In recTbl.ListRows
         Set rec = New cRecording
         rec.ID = lsRow.Range(1, recTbl.ListColumns("ID").index).Value
         rec.startTime = lsRow.Range(1, recTbl.ListColumns("StartStamp").index).Value
         rec.Duration = lsRow.Range(1, recTbl.ListColumns("Duration").index).Value
-        tissueID = lsRow.Range(1, recTbl.ListColumns("Tissue ID").index).Value
-        Set rec.Tissue = TISSUES(tissueID)
-        TISSUES(tissueID).Recordings.Add rec
+        tissName = lsRow.Range(1, recTbl.ListColumns("Tissue Name").index).Value
+        Set rec.Tissue = TISSUES(tissName)
+        TISSUES(tissName).Recordings.Add rec
         Recordings.Add rec.ID, rec
     Next lsRow
 
@@ -153,10 +153,9 @@ Private Sub defineTissues(ByRef summaryWb As Workbook)
     TISSUES.RemoveAll
     For Each lsRow In tissueTbl.ListRows
         Set tiss = New cTissue
-        tiss.ID = lsRow.Range(1, tissueTbl.ListColumns("ID").index).Value
         tiss.Name = lsRow.Range(1, tissueTbl.ListColumns("Name").index).Value
         tiss.DatePrepared = lsRow.Range(1, tissueTbl.ListColumns("Date Prepared").index).Value
-        TISSUES.Add tiss.ID, tiss
+        TISSUES.Add tiss.Name, tiss
     Next lsRow
 
 End Sub
@@ -182,13 +181,12 @@ Private Sub definePopulations(ByRef summaryWb As Workbook)
     POPULATIONS.RemoveAll
     For Each lsRow In popsTbl.ListRows
         Set pop = New cPopulation
-        pop.ID = lsRow.Range(1, popsTbl.ListColumns("Population ID").index).Value
         pop.Name = lsRow.Range(1, popsTbl.ListColumns("Name").index).Value
         pop.Abbreviation = lsRow.Range(1, popsTbl.ListColumns("Abbreviation").index).Value
         pop.IsControl = (lsRow.Range(1, popsTbl.ListColumns("Control?").index).Value <> "")
-        pop.ForeColor = lsRow.Range(1, popsTbl.ListColumns("Population ID").index).Font.Color
-        pop.BackColor = lsRow.Range(1, popsTbl.ListColumns("Population ID").index).Interior.Color
-        POPULATIONS.Add pop.ID, pop
+        pop.ForeColor = lsRow.Range(1, popsTbl.ListColumns("Name").index).Font.Color
+        pop.BackColor = lsRow.Range(1, popsTbl.ListColumns("Name").index).Interior.Color
+        POPULATIONS.Add pop.Name, pop
     Next lsRow
     
     'Identify the control population
@@ -226,29 +224,29 @@ Private Sub definePopulationViews(ByRef popRecWb As Workbook)
     Dim tvs As New Dictionary, tv As cTissueView, p As Integer, pop As cPopulation
     For p = 0 To POPULATIONS.Count - 1
         Set pop = POPULATIONS.Items()(p)
-        tvs.Add pop.ID, New Dictionary
+        tvs.Add pop.Name, New Dictionary
     Next p
     
     'Build Views...
-    Dim popID As Integer, recID As Integer, tID As Integer, rv As cRecordingView
+    Dim popName As String, recID As Integer, tName As String, rv As cRecordingView
     Dim txtPath As String, wbPath As String, lsRow As ListRow, bType As String, bt As Variant
     For Each lsRow In recTbl.ListRows
         'Create the TissueView object (if it doesn't already exist)
         'This includes defining its summary workbook paths
-        popID = lsRow.Range(1, recTbl.ListColumns("Population ID").index).Value
+        popName = lsRow.Range(1, recTbl.ListColumns("Population Name").index).Value
         recID = lsRow.Range(1, recTbl.ListColumns("Recording ID").index).Value
-        tID = Recordings(recID).Tissue.ID
+        tName = Recordings(recID).Tissue.Name
         txtPath = lsRow.Range(1, recTbl.ListColumns("Text File").index).Value
-        If tvs(popID).exists(tID) Then
-            Set tv = tvs(popID)(tID)
+        If tvs(popName).exists(tName) Then
+            Set tv = tvs(popName)(tName)
         Else
             Set tv = New cTissueView
-            Set tv.Tissue = TISSUES(tID)
-            tvs(popID).Add tID, tv
+            Set tv.Tissue = TISSUES(tName)
+            tvs(popName).Add tName, tv
             For Each bt In BURST_TYPES.Keys()
                 bType = BURST_TYPES(bt)
                 wbPath = Left(txtPath, InStrRev(txtPath, "\"))
-                wbPath = wbPath & tID & "_" & Format(tv.Tissue.Name, "yyyy-mm-dd") & "_" & bType & ".xlsx"
+                wbPath = wbPath & tName & "_" & Format(tv.Tissue.Name, "yyyy-mm-dd") & "_" & bType & ".xlsx"
                 tv.WorkbookPaths.Add bt, wbPath
             Next bt
         End If
@@ -258,8 +256,8 @@ Private Sub definePopulationViews(ByRef popRecWb As Workbook)
         Set rv.Recording = Recordings(recID)
         Set rv.TissueView = tv
         tv.RecordingViews.Add rv
-        Set tv.Population = POPULATIONS(popID)
-        POPULATIONS(popID).TissueViews.Add tv
+        Set tv.Population = POPULATIONS(popName)
+        POPULATIONS(popName).TissueViews.Add tv
         rv.TextPath = txtPath
     Next lsRow
 End Sub
@@ -271,13 +269,13 @@ Private Sub defineUnits(ByRef summaryWb As Workbook)
     Set invalidRng = invalidsTbl.DataBodyRange
     
     'For each provided unit...
-    Dim lr As ListRow, unit As cUnit, popID As Integer, tissID As Integer, findTissue As Boolean, tissView As cTissueView, unitName As String, del As Boolean, exclude As Boolean
+    Dim lr As ListRow, unit As cUnit, tissName As String, findTissue As Boolean, tissView As cTissueView, unitName As String, del As Boolean, exclude As Boolean
     If Not invalidRng Is Nothing Then
         For Each lr In invalidsTbl.ListRows
             Set unit = New cUnit
             
             'Fetch its data from the table
-            tissID = lr.Range(1, invalidsTbl.ListColumns("Tissue ID").index).Value
+            tissName = lr.Range(1, invalidsTbl.ListColumns("Tissue Name").index).Value
             unitName = lr.Range(1, invalidsTbl.ListColumns("Unit").index).Value
             del = (lr.Range(1, invalidsTbl.ListColumns("Delete?").index).Value <> "")
             exclude = (lr.Range(1, invalidsTbl.ListColumns("Exclude?").index).Value <> "")
@@ -285,14 +283,14 @@ Private Sub defineUnits(ByRef summaryWb As Workbook)
             'Get its associated TissueView
             findTissue = True
             If Not tissView Is Nothing Then _
-                findTissue = (tissID <> tissView.Tissue.ID)
+                findTissue = (tissName <> tissView.Tissue.Name)
             If findTissue Then
                 Dim p As Integer, pop As cPopulation, tv As cTissueView
                 Set tissView = Nothing
                 For p = 0 To POPULATIONS.Count - 1
                     Set pop = POPULATIONS.Items()(p)
                     For Each tv In pop.TissueViews
-                        If tv.Tissue.ID = tissID Then
+                        If tv.Tissue.Name = tissName Then
                             Set tissView = tv
                             Exit For
                         End If

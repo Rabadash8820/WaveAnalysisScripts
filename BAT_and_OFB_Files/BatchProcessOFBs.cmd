@@ -23,7 +23,7 @@ IF NOT EXIST "!rootPath!" (
 CD /D "%rootPath%"
 FOR %%f in (*.ofb) DO (
     ECHO Beginning execution of %%f at !TIME! on !DATE!...
-    REM "C:\Program Files (x86)\Plexon Inc\Offline Sorter x64 V4\OfflineSorterx64V4.exe" /b "%%~ff"
+    "C:\Program Files (x86)\Plexon Inc\Offline Sorter x64 V4\OfflineSorterx64V4.exe" /b "%%~ff"
 )
 ECHO. && PAUSE
 
