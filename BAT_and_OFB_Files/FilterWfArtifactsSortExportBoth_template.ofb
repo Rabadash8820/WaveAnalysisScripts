@@ -34,4 +34,8 @@ ForEachChannel Sort
 ForEachFile InvalidateArtifactsAfter
 ForEachFile ExportToPlx
 
+// Do all of the above, once for continuous data, and once for just spike data
+Set SaveCont 1
+Process
+Set SaveCont 0
 Process
