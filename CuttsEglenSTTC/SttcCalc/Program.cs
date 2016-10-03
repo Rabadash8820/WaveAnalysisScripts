@@ -50,11 +50,11 @@ namespace SttcCalc {
 
             // Get STTC vs distance for all Recordings
             Console.Write("Calculating STTCs...  ");
-            IDictionary<Recording, IDictionary<double, double[]>> results = new Dictionary<Recording, IDictionary<double, double[]>>();
-            foreach (Recording rec in recs) {
-                IDictionary<double, double[]> recResults = RecordingWrapper.STTCvsDistance(rec, CORRELATION_DT);
-                results.Add(rec, recResults);
-            }
+            IDictionary<Recording, IDictionary<double, double[]>> results =
+                recs.ToDictionary(
+                    rec => rec,
+                    rec => RecordingWrapper.STTCvsDistance(rec, CORRELATION_DT)
+                );
             Console.WriteLine("Complete!");
 
             // Output values to a file

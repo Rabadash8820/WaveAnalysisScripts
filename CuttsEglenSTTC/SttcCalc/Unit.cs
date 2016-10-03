@@ -4,39 +4,50 @@ using System.Collections.Generic;
 namespace SttcCalc {
 
     public class Unit {
+
+        // HIDDEN FIELDS
+        private Channel _ch;
+
         // CONSTRUCTORS
-        public Unit(string name) {
-            reset(name);
+        public Unit(char letter) {
+            Letter = letter;
+        }
+        public Unit(Channel channel, char letter) {
+            Channel = channel;
+            Letter = letter;
         }
 
         // INTERFACE
-        public string Name { get; private set; }
-        public Tuple<short, short> MeaCoordinates { get; private set; }
+        public Channel Channel {
+            get { return _ch; }
+            set { setChannel(value); }
+        }
+        public char Letter { get; }
         public IList<double> SpikeTrain { get; } = new List<double>();
         public static double SqrDistance(Unit unit1, Unit unit2, double interChannelDist = 1d) {
-            int dr = unit1.MeaCoordinates.Item1 - unit2.MeaCoordinates.Item1;
-            int dc = unit1.MeaCoordinates.Item2 - unit2.MeaCoordinates.Item2;
-            double sqrDist = interChannelDist * interChannelDist * (dr * dr + dc * dc);
-            return sqrDist;
+            return Channel.SqrDistance(unit1.Channel, unit2.Channel, interChannelDist);
         }
         public static double Distance(Unit unit1, Unit unit2, double interChannelDist = 1d) {
-            double dist = Math.Sqrt(SqrDistance(unit1, unit2, interChannelDist));
-            return dist;
+            return Channel.Distance(unit1.Channel, unit2.Channel, interChannelDist);
+        }
+        public override string ToString() {
+            return Channel?.Name + Letter;
         }
 
         // HELPERS
-        private void reset(string name) {
-            Name = name;
-            MeaCoordinates = coordsFromName(name);
+        private void setChannel(Channel channel) {
+            // Only allow the Channel to be set once
+            if (_ch != null) {
+                if (channel != _ch)
+                    throw new InvalidOperationException($"A {nameof(Unit)} cannot have its {nameof(Channel)} set more than once!");
+                return;
+            }
+
+            // Create a parent-child relationship with the provided Channel
+            _ch = channel;
+            _ch.AddUnit(this);
         }
-        private static Tuple<short, short> coordsFromName(string name) {
-            // Assumes unit name is in format "adch_{row}{col}"
-            // Where {row} and {col} are 1-based (and must be converted to 0-based)
-            string coordsStr = name.Substring("adch_".Length, 2);
-            int row = Convert.ToInt16(coordsStr[0]) - 49;
-            int col = Convert.ToInt16(coordsStr[1]) - 49;
-            return new Tuple<short, short>((short)row, (short)col);
-        }
+
     }
 
 }
