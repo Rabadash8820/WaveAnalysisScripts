@@ -473,106 +473,108 @@ Private Sub buildPropFiguresSheet()
         End With
     Next t
 
-    'Add the new column chart object for percent changes
-    Dim chartShp As Shape, chartRng As Range
-    Set chartRng = cornerCell.offset(0, numCols + 2).Resize(numPropRows - 2, 7)
-    Set chartShp = ActiveSheet.Shapes.AddChart(xlBarClustered, chartRng.Left, chartRng.Top, chartRng.Width, chartRng.Height)
-    With chartShp
-        .Name = "Percent_Change_Chart"
-        .Line.Visible = False
-    End With
-
-    With chartShp.Chart
-
-        'Remove default Series
-        Dim s As Integer
-        For s = 1 To .SeriesCollection.Count
-            .SeriesCollection(1).Delete
-        Next s
-
-        'Set the new population Series (showing future hidden cells too)
-        .PlotVisibleOnly = False
-        Dim errorRng As Range, numSeries As Integer
-        numSeries = 0
-        For p = 0 To POPULATIONS.Count - 1
-            Set pop = POPULATIONS.Items()(p)
-            If pop.Name <> CTRL_POP.Name Then
-                numSeries = numSeries + 1
-                .SeriesCollection.Add Source:=cornerCell.offset(0, 6 * p + 4).Resize(numRows, 1)
-                .SeriesCollection(numSeries).Name = pop.Name
-                .SeriesCollection(numSeries).XValues = cornerCell.offset(1, 0).Resize(numRows - 1, 1)
-                .ApplyDataLabels Type:=xlDataLabelsShowValue
-                Set errorRng = cornerCell.offset(1, 6 * p + 6).Resize(numRows - 1, 1)
-                .SeriesCollection(numSeries).ErrorBar Direction:=xlX, include:=xlErrorBarIncludeBoth, Type:=xlErrorBarTypeCustom, _
-                    Amount:="='" & cornerCell.Worksheet.Name & "'!" & errorRng.Address, _
-                    minusvalues:="='" & cornerCell.Worksheet.Name & "'!" & errorRng.Address
-            End If
-        Next p
-
-        'Format the Chart
-        .HasAxis(xlCategory) = True
-        With .Axes(xlCategory)
-            .TickLabelPosition = xlTickLabelPositionLow
-            .TickLabels.offset = 500
-            .ReversePlotOrder = True
-            .MajorTickMark = xlTickMarkNone
-            .TickLabels.Font.Color = vbBlack
-            .TickLabels.Font.Bold = True
-            .TickLabels.Font.Size = 10
-            .Format.Line.ForeColor.RGB = vbBlack
-            .Format.Line.Weight = 3
-            .HasTitle = False
+    'Add the new column chart object for percent changes (if there are multiple populations)
+    If POPULATIONS.Count > 1 Then
+        Dim chartShp As Shape, chartRng As Range
+        Set chartRng = cornerCell.offset(0, numCols + 2).Resize(numPropRows - 2, 7)
+        Set chartShp = ActiveSheet.Shapes.AddChart(xlBarClustered, chartRng.Left, chartRng.Top, chartRng.Width, chartRng.Height)
+        With chartShp
+            .Name = "Percent_Change_Chart"
+            .Line.Visible = False
         End With
-        .HasAxis(xlValue) = True
-        With .Axes(xlValue)
-            .HasMajorGridlines = False
-            .TickLabelPosition = xlTickMarkNone
-            .Format.Line.Visible = False
-        End With
-        .HasTitle = True
-        .HasTitle = False   'I have ABSOLUTELY no idea why this f*cking toggle is necessary, but a runtime error occurs without it
-        .HasTitle = True
-        With .ChartTitle
-            .Text = "Percent Change in RGC Firing Properties"
-            .Font.Color = vbBlack
-            .Font.Bold = True
-            .Font.Size = 18
-        End With
-        If numSeries > 1 Then
-            .HasLegend = True
-            With .Legend
+    
+        With chartShp.Chart
+    
+            'Remove default Series
+            Dim s As Integer
+            For s = 1 To .SeriesCollection.Count
+                .SeriesCollection(1).Delete
+            Next s
+    
+            'Set the new population Series (showing future hidden cells too)
+            .PlotVisibleOnly = False
+            Dim errorRng As Range, numSeries As Integer
+            numSeries = 0
+            For p = 0 To POPULATIONS.Count - 1
+                Set pop = POPULATIONS.Items()(p)
+                If pop.Name <> CTRL_POP.Name Then
+                    numSeries = numSeries + 1
+                    .SeriesCollection.Add Source:=cornerCell.offset(0, 6 * p + 4).Resize(numRows, 1)
+                    .SeriesCollection(numSeries).Name = pop.Name
+                    .SeriesCollection(numSeries).XValues = cornerCell.offset(1, 0).Resize(numRows - 1, 1)
+                    .ApplyDataLabels Type:=xlDataLabelsShowValue
+                    Set errorRng = cornerCell.offset(1, 6 * p + 6).Resize(numRows - 1, 1)
+                    .SeriesCollection(numSeries).ErrorBar Direction:=xlX, include:=xlErrorBarIncludeBoth, Type:=xlErrorBarTypeCustom, _
+                        Amount:="='" & cornerCell.Worksheet.Name & "'!" & errorRng.Address, _
+                        minusvalues:="='" & cornerCell.Worksheet.Name & "'!" & errorRng.Address
+                End If
+            Next p
+    
+            'Format the Chart
+            .HasAxis(xlCategory) = True
+            With .Axes(xlCategory)
+                .TickLabelPosition = xlTickLabelPositionLow
+                .TickLabels.offset = 500
+                .ReversePlotOrder = True
+                .MajorTickMark = xlTickMarkNone
+                .TickLabels.Font.Color = vbBlack
+                .TickLabels.Font.Bold = True
+                .TickLabels.Font.Size = 10
+                .Format.Line.ForeColor.RGB = vbBlack
+                .Format.Line.Weight = 3
+                .HasTitle = False
+            End With
+            .HasAxis(xlValue) = True
+            With .Axes(xlValue)
+                .HasMajorGridlines = False
+                .TickLabelPosition = xlTickMarkNone
+                .Format.Line.Visible = False
+            End With
+            .HasTitle = True
+            .HasTitle = False   'I have ABSOLUTELY no idea why this f*cking toggle is necessary, but a runtime error occurs without it
+            .HasTitle = True
+            With .ChartTitle
+                .Text = "Percent Change in RGC Firing Properties"
                 .Font.Color = vbBlack
                 .Font.Bold = True
-                .Font.Size = 10
-                .Position = xlRight
+                .Font.Size = 18
             End With
-        Else
-            .HasLegend = False
-        End If
-        .ChartGroups(1).GapWidth = 50
-
-        'Formats the Chart's Series
-        numSeries = 0
-        For p = 0 To POPULATIONS.Count - 1
-            Set pop = POPULATIONS.Items()(p)
-            If pop.Name <> CTRL_POP.Name Then
-                numSeries = numSeries + 1
-                With .FullSeriesCollection(numSeries)
-                    .Format.Fill.ForeColor.RGB = pop.BackColor
-                    .Format.Line.ForeColor.RGB = vbBlack
-                    .Format.Line.Weight = 1.5
-                    .ErrorBars.Format.Line.ForeColor.RGB = vbBlack
-                    .ErrorBars.Format.Line.Weight = 1.5
-                    .HasLeaderLines = False
-                    .DataLabels.NumberFormat = "0.0%"
-                    .DataLabels.Position = xlLabelPositionOutsideEnd
-                    .DataLabels.Font.Size = 10
-                    .DataLabels.Font.Color = vbBlack
+            If numSeries > 1 Then
+                .HasLegend = True
+                With .Legend
+                    .Font.Color = vbBlack
+                    .Font.Bold = True
+                    .Font.Size = 10
+                    .Position = xlRight
                 End With
+            Else
+                .HasLegend = False
             End If
-        Next p
-
-    End With
+            .ChartGroups(1).GapWidth = 50
+    
+            'Formats the Chart's Series
+            numSeries = 0
+            For p = 0 To POPULATIONS.Count - 1
+                Set pop = POPULATIONS.Items()(p)
+                If pop.Name <> CTRL_POP.Name Then
+                    numSeries = numSeries + 1
+                    With .FullSeriesCollection(numSeries)
+                        .Format.Fill.ForeColor.RGB = pop.BackColor
+                        .Format.Line.ForeColor.RGB = vbBlack
+                        .Format.Line.Weight = 1.5
+                        .ErrorBars.Format.Line.ForeColor.RGB = vbBlack
+                        .ErrorBars.Format.Line.Weight = 1.5
+                        .HasLeaderLines = False
+                        .DataLabels.NumberFormat = "0.0%"
+                        .DataLabels.Position = xlLabelPositionOutsideEnd
+                        .DataLabels.Font.Size = 10
+                        .DataLabels.Font.Color = vbBlack
+                    End With
+                End If
+            Next p
+    
+        End With
+    End If
 
     'Build property areas
     Dim prop As Integer
@@ -983,6 +985,7 @@ Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, 
         End With
         .HasAxis(xlValue) = True
         With .Axes(xlValue)
+            .MinimumScale = 0
             .HasMajorGridlines = False
             .TickLabels.Font.Color = vbBlack
             .TickLabels.Font.Bold = True
