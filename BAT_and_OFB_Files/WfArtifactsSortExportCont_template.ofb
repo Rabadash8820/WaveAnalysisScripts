@@ -20,17 +20,11 @@ Set UseRangeStart -1	// Cancels sort range and uses entire file
 Set SaveProcessedCont 1		// Filtered/upsampled continuous data, not raw (doesn't matter if SaveCont 0)
 Set SaveInvalidated 0
 Set SaveUnsorted 0
+Set SaveCont 1
 
-// Prepare to do spike detection, artifact removal, spike sorting, and exporting
+// Run the spike detection, artifact removal, spike sorting, and exporting
 ForEachChannel Detect
 ForEachChannel Sort
 ForEachFile InvalidateArtifactsAfter
 ForEachFile ExportToPlx
-
-// Do all of the above, once for continuous/spike data, and once for just spike data
-// So yes, all the above processing will be run twice...
-Set SaveCont 1
 Process
-Set SaveCont 0
-Process
-

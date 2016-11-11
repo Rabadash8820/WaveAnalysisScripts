@@ -22,7 +22,7 @@ NexOnTop()
 
 % Remind future users/developers of how to make this script work properly
 MsgBox("For this to work properly, make sure that:")
-MsgBox(" 	NeuroExplorer is set to export Neuron (spike) and Interval data only! (must be reset every NeuroExplorer is opened)")
+MsgBox(" 	NeuroExplorer is set to export Neuron (spike) and Interval data only! (must be reset every time NeuroExplorer is opened)")
 MsgBox("	The Scrips directory (under Script > Script Options) is set appropriately")
 MsgBox("	The Templates directory (under View > Options > Templates) is set appropriately")
 
