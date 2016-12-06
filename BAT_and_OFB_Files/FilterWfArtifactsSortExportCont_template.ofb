@@ -5,9 +5,9 @@ Set FilterPoles 2	// idk
 
 // Waveform detection
 Set DetectSigmas -5
-Set DetectNPW 50	// samples
-Set DetectNPre 10	// samples
-Set DetectDead 0
+Set DetectNPW 26	// samples, (1040 microsec), total waveform duration
+Set DetectNPre 10	// samples, (400 microsec), time before threshold
+Set DetectDead 25	// samples, (1000 microsec), refactory period, roughly
 
 // Artifct removal
 Set ArtifactWidth 10	// samples
@@ -22,20 +22,14 @@ Set SortDim 3
 
 // PLX exporting
 Set UseRangeStart -1	// Cancels sort range and uses entire file
-Set SaveCont 1
-Set SaveProcessedCont 1		// Filtered/upsampled continuous data, not raw
+Set SaveProcessedCont 1		// Filtered/upsampled continuous data, not raw (doesn't matter if SaveCont 0)
 Set SaveInvalidated 0
 Set SaveUnsorted 0
+Set SaveCont 1
 
 // Run the spike detection, artifact removal, spike sorting, and exporting
-ForEachChannel Filter
 ForEachChannel Detect
 ForEachChannel Sort
 ForEachFile InvalidateArtifactsAfter
 ForEachFile ExportToPlx
-
-// Do all of the above, once for continuous data, and once for just spike data
-Set SaveCont 1
-Process
-Set SaveCont 0
 Process
