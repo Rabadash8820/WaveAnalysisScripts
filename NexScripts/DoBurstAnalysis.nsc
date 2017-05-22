@@ -17,7 +17,7 @@ while slashPos > 0
 	fileName = Mid(fileName, slashPos + 1, StrLength(fileName) - slashPos)
 	slashPos = Find(fileName, "\")
 end
-fileName= Left(fileName, Find(fileName, ".") - 1)
+fileName = Left(fileName, Find(fileName, ext) - 1)
 Trace("Analyzing file: " + fileName + ext)
 
 % Open the file
