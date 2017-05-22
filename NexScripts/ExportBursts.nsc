@@ -5,9 +5,9 @@
 % Each file is burst analyzed with the provided algorithm, and the resulting burst timestamps are exported to text files
 % 2016/05/26:  user now has option to open PLX or NEX files
 % 2016/08/03:  Surprise algorithm now used by default
+% 2017/05/22:  Cleaned up some global variable usage, and replaced MsgBox() calls with Trace()
 
 Global filePath
-Global fileName
 Global ext
 
 Global algorithm
@@ -21,67 +21,69 @@ Global minSpikesInBurst
 NexOnTop()
 
 % Remind future users/developers of how to make this script work properly
-MsgBox("For this to work properly, make sure that:")
-MsgBox(" 	NeuroExplorer is set to export Neuron (spike) and Interval data only! (must be reset every time NeuroExplorer is opened)")
-MsgBox("	The Scrips directory (under Script > Script Options) is set appropriately")
-MsgBox("	The Templates directory (under View > Options > Templates) is set appropriately")
+Trace("For this to work properly, make sure that:")
+Trace("    NeuroExplorer is set to export Neuron (spike) and Interval data only! (must be reset every time NeuroExplorer is opened)")
+Trace("    The Scrips directory (under Script > Script Options) is set appropriately")
+Trace("    The Templates directory (under View > Options > Templates) is set appropriately")
 
 % Let user choose data folder by selecting one of its files in a File Open dialog
-MsgBox("")
-MsgBox("Choose a data folder by selecting one of its files")
+Trace("")
+Trace("Choose a data folder by selecting one of its files")
 rootPath = SelectFile()
 if (rootPath == "")
-	MsgBox("No folder selected.")
-	return
+    Trace("No folder selected.")
+    return
 end
 
 % Set path to the data folder
 tempPath = rootPath
-while Find(tempPath, "\") <> 0
-	slashPos = Find(tempPath, "\")
-	tempPath = Mid(tempPath, slashPos + 1, StrLength(tempPath) - slashPos)
+slashPos = Find(tempPath, "\")
+while slashPos > 0
+    tempPath = Mid(tempPath, slashPos + 1, StrLength(tempPath) - slashPos)
+    slashPos = Find(tempPath, "\")
 end
 rootPath = Left(rootPath, Find(rootPath, tempPath) - 2)
-MsgBox("Folder: " + rootPath)
+Trace("Folder: " + rootPath)
 
 % Ask the user which type of files they are trying to open
 ext = "plx"
 result = Dialog(GetActiveDocument(), ext, "Which files? (enter 'plx' or 'nex')", "string")
 if (result <> 1)
-	MsgBox("")
-	MsgBox("No file type provided.")
-	return
+    Trace("")
+    Trace("No file type provided.")
+    return
 end
 if (ext <> "plx") & (ext <> "nex")
-	MsgBox("")
-	MsgBox("File type must be 'plx' or 'nex' (case sensitive).")
-	return
+    Trace("")
+    Trace("File type must be 'plx' or 'nex' (case sensitive).")
+    return
 end
 ext = "." + ext
+Trace("Extension: " + ext)
 
 % Make sure there is at least one file of this type in the folder
 if (GetFileCount(rootPath + "\*" + ext) == 0)
-	MsgBox("")
-	MsgBox("No " + ext + " files in this folder.")
-	return
+    Trace("")
+    Trace("No " + ext + " files in this folder.")
+    return
 end
 
 % Ask the user which burst analysis algorithm they wish to use
 algorithm = "Surprise"
 result = Dialog(GetActiveDocument(), algorithm, "Which algorithm? (enter 'Max Interval' or 'Surprise')", "string")
 if (result <> 1)
-	MsgBox("")
-	MsgBox("No Burst Analysis algorithm provided.")
-	return
+    Trace("")
+    Trace("No Burst Analysis algorithm provided.")
+    return
 end
 if (algorithm <> "Max Interval") & (algorithm <> "Surprise")
-	MsgBox("")
-	MsgBox("Algorithm must be 'Max Interval' or 'Surprise' (case sensitive).")
-	return
+    Trace("")
+    Trace("Algorithm must be 'Max Interval' or 'Surprise' (case sensitive).")
+    return
 end
 
 % Allow the user to set parameters based on the selected analysis algorithm
-MsgBox("Algorithm: " + algorithm)
+Trace("Algorithm: " + algorithm)
 minSurprise = 4
 maxISIToStart = 0.5
 minISIToEnd = 0.5
@@ -89,33 +91,33 @@ minIBI = 1
 minBurstDur = 0.1
 minSpikesInBurst = 4
 if (algorithm == "Surprise")
-	result = Dialog(GetActiveDocument(), minSurprise, "Min Surprise:", "number")
+    result = Dialog(GetActiveDocument(), minSurprise, "Min Surprise:", "number")
 else
-	result = Dialog(GetActiveDocument(), maxISIToStart,    "Max ISI To Start Burst",  "number", \
-									     minISIToEnd,      "Min ISI To End Burst",    "number", \
-									     minIBI, 		   "Min Interburst Interval", "number", \
-									     minBurstDur,      "Min Burst Duration",      "number", \
-									     minSpikesInBurst, "Min Spikes Per Burst",    "number")
-	if ((maxISIToStart <= 0) | (minISIToEnd <= 0) | (minIBI <= 0) | (minBurstDur <= 0) | (minSpikesInBurst <= 0))
-		MsgBox("")
-		MsgBox("All Max Interval parameters must be positive.")
-		return
-	end
+    result = Dialog(GetActiveDocument(), maxISIToStart,    "Max ISI To Start Burst",  "number", \
+                                         minISIToEnd,      "Min ISI To End Burst",    "number", \
+                                         minIBI,           "Min Interburst Interval", "number", \
+                                         minBurstDur,      "Min Burst Duration",      "number", \
+                                         minSpikesInBurst, "Min Spikes Per Burst",    "number")
+    if ((maxISIToStart <= 0) | (minISIToEnd <= 0) | (minIBI <= 0) | (minBurstDur <= 0) | (minSpikesInBurst <= 0))
+        Trace("")
+        Trace("All Max Interval parameters must be positive.")
+        return
+    end
 end
 if (result <> 1)
-	MsgBox("")
-	MsgBox("Burst Analysis using " + algorithm + " algorithm was canceled.")
-	return
+    Trace("")
+    Trace("Burst Analysis using " + algorithm + " algorithm was canceled.")
+    return
 end
 
 % Process all files in the folder
-MsgBox("")
+Trace("")
 for recording = 1 to GetFileCount(rootPath + "\*" + ext)
-	filePath = GetFileName(recording)
-	RunScript("DoBurstAnalysis")
+    filePath = GetFileName(recording)
+    RunScript("DoBurstAnalysis")
 end
 
 % Display success
-MsgBox("")
-MsgBox("All " + NumToStr(GetFileCount(rootPath + "\*" + ext)) + " " + ext + " files in this folder were succesfully burst-analyzed and exported.")
-MsgBox("I hope you remembered to export only Neuron (spike) and Interval data!")
+Trace("")
+Trace("All " + NumToStr(GetFileCount(rootPath + "\*" + ext)) + " " + ext + " files in this folder were succesfully burst-analyzed and exported.")
+Trace("I hope you remembered to export only Neuron (spike) and Interval data!")
