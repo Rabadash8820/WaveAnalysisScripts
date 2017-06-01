@@ -1,7 +1,8 @@
 // Continuous data filtering
-Set FilterFreq 100	// Hz
-Set FilterType Butterworth
-Set FilterPoles 2	// idk
+Set FilterFreq 300	// Hz
+Set FilterType Bessel
+Set FilterPoles 4	// idk
+Set LowPassFilter 1     // Low-cut
 
 // Waveform detection
 Set DetectSigmas -5
@@ -28,6 +29,7 @@ Set SaveUnsorted 0
 Set SaveCont 1
 
 // Run the spike detection, artifact removal, spike sorting, and exporting
+ForEachChannel Filter
 ForEachChannel Detect
 ForEachChannel Sort
 ForEachFile InvalidateArtifactsAfter
