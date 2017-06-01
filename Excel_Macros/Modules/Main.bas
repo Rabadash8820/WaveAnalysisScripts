@@ -10,15 +10,15 @@ Public Sub ProcessPopulations()
     Dim outputStrs As New Collection
     
     'Define the Tissue/Recording/Population objects, etc.
-    Dim Success As Boolean
+    Dim success As Boolean
     Call GetConfigVars
-    Success = DefineObjects()
-    If Not Success Then _
+    success = DefineObjects()
+    If Not success Then _
         GoTo ExitSub
     
     'Load each provided RecordingView's text files
     'If any errors occur, log their messages and exit
-    Set outputStrs = checkTextFiles
+    Set outputStrs = checkTextFilesExist()
     If outputStrs.Count > 0 Then _
         GoTo ExitSub
     
@@ -33,7 +33,12 @@ Public Sub ProcessPopulations()
             Set tv = pop.TissueViews.item(t)
             For r = 1 To tv.RecordingViews.Count
                 Set rv = tv.RecordingViews.item(r)
-                Call loadRecording(rv, r)
+                success = loadRecording(rv, r)
+                If Not success Then
+                    outputStrs.Add "Recording " & rv.Recording.ID & " from Tissue """ & rv.TissueView.Tissue.Name & """ did not contain any burst start/end timestamps."
+                    outputStrs.Add "Make sure that you exported Interval data from NeuroExplorer for EVERY Recording's text files before running again."
+                    GoTo ExitSub
+                End If
             Next r
             For Each bType In BURST_TYPES.Keys()
                 wbPath = tv.WorkbookPaths(bType)
@@ -76,7 +81,7 @@ ExitSub:
     Call tearDownOptimizations
 End Sub
 
-Private Sub loadRecording(ByRef rv As cRecordingView, ByVal rvIndex As Integer)
+Private Function loadRecording(ByRef rv As cRecordingView, ByVal rvIndex As Integer) As Boolean
     Dim pop As cPopulation, tv As cTissueView
     
     'For each burst type...
@@ -92,10 +97,15 @@ Private Sub loadRecording(ByRef rv As cRecordingView, ByVal rvIndex As Integer)
         Call addContentsSheet
         wb.SaveAs (wbPath)
         
-        'Add each text file to the Contents sheet and load them on a new sheet
-        Dim txtFile As File
+        'Add each text file to the Contents sheet and open them onto a new sheet
+        'If the text file could not be opened then return with an error
+        Dim txtFile As File, success As Boolean
         Set txtFile = fs.GetFile(rv.TextPath)
-        Call openFile(rv, txtFile)
+        success = openFile(rv, txtFile)
+        If Not success Then
+            loadRecording = False
+            Exit Function
+        End If
                        
         'Clean up and close the summary workbook
         With Worksheets(CONTENTS_NAME)
@@ -107,7 +117,8 @@ Private Sub loadRecording(ByRef rv As cRecordingView, ByVal rvIndex As Integer)
         wb.Close (True)
     Next bType
 
-End Sub
+    loadRecording = True
+End Function
 
 Private Sub addContentsSheet()
     'Initialize Contents sheet
@@ -144,13 +155,7 @@ Private Sub addContentsSheet()
     Application.DisplayAlerts = True
 End Sub
 
-Private Sub openFile(ByRef rec As cRecordingView, ByRef recFile As File)
-    Dim header As String
-    Dim col, numCols As Integer
-    Dim numValues As Long
-    Dim firstBadCell As Range
-    Dim nameCell As Range
-    
+Private Function openFile(ByRef rec As cRecordingView, ByRef recFile As File) As Boolean
     'Add this recording to the Contents sheet
     Dim contentsTbl As ListObject, rng As Range
     Set contentsTbl = Worksheets(CONTENTS_NAME).ListObjects(CONTENTS_NAME)
@@ -159,8 +164,12 @@ Private Sub openFile(ByRef rec As cRecordingView, ByRef recFile As File)
     rng.Cells(1, 2) = RECORDING_STR & Worksheets.Count
     rng.Cells(1, 3) = rec.Recording.startTime
     rng.Cells(1, 4) = rec.Recording.startTime + rec.Recording.Duration
+    
+    Dim success As Boolean
+    On Error GoTo Finally
 
     'Load data into a new sheet of the new workbook and format it
+    success = False
     Worksheets.Add After:=Sheets(Worksheets.Count)
     ActiveSheet.Name = RECORDING_STR & Worksheets.Count - 1
     With ActiveSheet.QueryTables.Add(Connection:="TEXT;" & recFile.path, Destination:=Cells(1, 1))
@@ -181,9 +190,21 @@ Private Sub openFile(ByRef rec As cRecordingView, ByRef recFile As File)
         .Refresh
     End With
     ActiveSheet.Rows(1).Font.Bold = True
+    
+    'Only continue if there are burst timestamp columns
+    Dim header As String, numCols As Integer, col As Integer
+    numCols = Cells(1, 1).End(xlToRight).Column
+    For col = 1 To numCols
+        header = Cells(1, col).Value
+        If InStr(1, header, "burst") Then
+            success = True
+            Exit For
+        End If
+    Next
+    If Not success Then _
+        GoTo Finally
             
     'Delete columns for the A1 electrode (if it exists) and the All File interval
-    numCols = Cells(1, 1).End(xlToRight).Column
     For col = 1 To numCols
         header = Cells(1, col).Value
         If InStr(1, header, "A1") Or InStr(1, header, "AllFile") Then
@@ -194,18 +215,28 @@ Private Sub openFile(ByRef rec As cRecordingView, ByRef recFile As File)
     Next
     
     'Delete cells with spaces generated by NeuroExplorer
+    Dim numValues As Long, firstBadCell As Range
     For col = 1 To numCols
         numValues = WorksheetFunction.Count(Columns(col)) + 1   '+1 is for the unit headers
         Set firstBadCell = Cells(1, col).offset((numValues + 1) - 1, 0)
         Range(firstBadCell, firstBadCell.End(xlDown)).Delete Shift:=xlUp
     Next col
     ActiveSheet.UsedRange   'Refresh used range by getting this property
-End Sub
-
-Private Function checkTextFiles() As Collection
     
-    'Load each provided RecordingView's text files (if they exist)
-    'then perform wave analyses on each TissueView!
+    GoTo Finally
+    
+Catch:
+    success = False
+    GoTo Finally
+    
+Finally:
+    openFile = success
+    
+End Function
+
+Private Function checkTextFilesExist() As Collection
+    
+    'Check whether each provided RecordingView has a text file that exists
     Dim fs As New FileSystemObject, unfound As New Collection, notGiven As New Collection
     Dim p As Integer, r As Integer, t As Integer, bt As Integer, bType As String, wbPath As String
     Dim pop As cPopulation, rv As cRecordingView, tv As cTissueView
@@ -224,7 +255,7 @@ Private Function checkTextFiles() As Collection
         Next t
     Next p
     
-    'If there was an error opening any of the text files then store error messages
+    'If any of them do not then return some error messages
     Dim errorOccurred As Boolean, item As Variant, errorStrs As New Collection
     errorOccurred = (unfound.Count > 0 Or notGiven.Count > 0)
     If errorOccurred Then
@@ -246,7 +277,7 @@ Private Function checkTextFiles() As Collection
     End If
 
     'Return these error messages
-    Set checkTextFiles = errorStrs
+    Set checkTextFilesExist = errorStrs
 End Function
 
 Private Function successStrings() As Collection
