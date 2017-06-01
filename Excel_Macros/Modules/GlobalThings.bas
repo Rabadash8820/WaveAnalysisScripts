@@ -77,8 +77,8 @@ Public Recordings As New Dictionary
 Public Const MAX_EXCEL_ROWS = 1048576
 
 Public Function DefineObjects() As Boolean
-    Dim Success As Boolean
-    Success = False
+    Dim success As Boolean
+    success = False
     
     'Open the Data Summary workbook
     Dim summaryFile As File, result As VbMsgBoxResult, summaryWb As Workbook
@@ -100,46 +100,21 @@ Public Function DefineObjects() As Boolean
     
     'Get Tissue/Recording and experimental Population info
     'Wrap these objects in Views associated with the appropriate Population
+    Call defineTissues(summaryWb)
     Call defineRecordings(summaryWb)
     Call definePopulations(summaryWb)
-    Call definePopulationViews(popWb)
+    Call associateViews(popWb)
     Call defineUnits(summaryWb)
     Application.DisplayAlerts = False
     summaryWb.Close
     popWb.Close
     Application.DisplayAlerts = True
     
-    Success = True
+    success = True
     
 ExitFunc:
-    DefineObjects = Success
+    DefineObjects = success
 End Function
-
-Private Sub defineRecordings(ByRef summaryWb As Workbook)
-    'Make sure parent objects are defined first
-    Call defineTissues(summaryWb)
-
-    'Get the Recordings table
-    Dim recSht As Worksheet, recTbl As ListObject
-    Set recSht = summaryWb.Worksheets(RECORDINGS_NAME)
-    Set recTbl = recSht.ListObjects(RECORDINGS_NAME)
-    
-    'Store the population info (or just return if none was provided)
-    Dim lsRow As ListRow
-    Dim rec As cRecording, tissName As String
-    Recordings.RemoveAll
-    For Each lsRow In recTbl.ListRows
-        Set rec = New cRecording
-        rec.ID = lsRow.Range(1, recTbl.ListColumns("ID").index).Value
-        rec.startTime = lsRow.Range(1, recTbl.ListColumns("StartStamp").index).Value
-        rec.Duration = lsRow.Range(1, recTbl.ListColumns("Duration").index).Value
-        tissName = lsRow.Range(1, recTbl.ListColumns("Tissue Name").index).Value
-        Set rec.Tissue = TISSUES(tissName)
-        TISSUES(tissName).Recordings.Add rec
-        Recordings.Add rec.ID, rec
-    Next lsRow
-
-End Sub
 
 Private Sub defineTissues(ByRef summaryWb As Workbook)
     'Get the Tissues table
@@ -156,6 +131,31 @@ Private Sub defineTissues(ByRef summaryWb As Workbook)
         tiss.Name = lsRow.Range(1, tissueTbl.ListColumns("Name").index).Value
         tiss.DatePrepared = lsRow.Range(1, tissueTbl.ListColumns("Date Prepared").index).Value
         TISSUES.Add tiss.Name, tiss
+    Next lsRow
+
+End Sub
+
+Private Sub defineRecordings(ByRef summaryWb As Workbook)
+
+    'Get the Recordings table
+    Dim recSht As Worksheet, recTbl As ListObject
+    Set recSht = summaryWb.Worksheets(RECORDINGS_NAME)
+    Set recTbl = recSht.ListObjects(RECORDINGS_NAME)
+    
+    'Store the population info (or just return if none was provided)
+    Dim lsRow As ListRow
+    Dim rec As cRecording, tissName As String
+    Recordings.RemoveAll
+    For Each lsRow In recTbl.ListRows
+        Set rec = New cRecording
+        
+        rec.ID = lsRow.Range(1, recTbl.ListColumns("ID").index).Value
+        rec.startTime = lsRow.Range(1, recTbl.ListColumns("StartStamp").index).Value
+        rec.Duration = lsRow.Range(1, recTbl.ListColumns("Duration").index).Value
+        tissName = lsRow.Range(1, recTbl.ListColumns("Tissue Name").index).Value
+        Set rec.Tissue = TISSUES(tissName)
+        TISSUES(tissName).Recordings.Add rec
+        Recordings.Add rec.ID, rec
     Next lsRow
 
 End Sub
@@ -206,7 +206,7 @@ Private Sub definePopulations(ByRef summaryWb As Workbook)
     
 End Sub
 
-Private Sub definePopulationViews(ByRef popRecWb As Workbook)
+Private Sub associateViews(ByRef popRecWb As Workbook)
     'Get the Populations and Recordings tables
     Dim recSht As Worksheet, recTbl As ListObject
     Set recSht = popRecWb.Worksheets(RECORDING_VIEWS_NAME)
@@ -231,12 +231,18 @@ Private Sub definePopulationViews(ByRef popRecWb As Workbook)
     Dim popName As String, recID As Integer, tName As String, rv As cRecordingView
     Dim txtPath As String, wbPath As String, lsRow As ListRow, bType As String, bt As Variant
     For Each lsRow In recTbl.ListRows
+        
+        'Create the RecordingView object
+        recID = lsRow.Range(1, recTbl.ListColumns("Recording ID").index).Value
+        txtPath = lsRow.Range(1, recTbl.ListColumns("Text File").index).Value
+        Set rv = New cRecordingView
+        Set rv.Recording = Recordings(recID)
+        rv.TextPath = txtPath
+        
         'Create the TissueView object (if it doesn't already exist)
         'This includes defining its summary workbook paths
         popName = lsRow.Range(1, recTbl.ListColumns("Population Name").index).Value
-        recID = lsRow.Range(1, recTbl.ListColumns("Recording ID").index).Value
         tName = Recordings(recID).Tissue.Name
-        txtPath = lsRow.Range(1, recTbl.ListColumns("Text File").index).Value
         If tvs(popName).exists(tName) Then
             Set tv = tvs(popName)(tName)
         Else
@@ -251,15 +257,37 @@ Private Sub definePopulationViews(ByRef popRecWb As Workbook)
             Next bt
         End If
         
-        'Create the RecordingView object
-        Set rv = New cRecordingView
-        Set rv.Recording = Recordings(recID)
+        'Associate View objects
         Set rv.TissueView = tv
         tv.RecordingViews.Add rv
         Set tv.Population = POPULATIONS(popName)
         POPULATIONS(popName).TissueViews.Add tv
-        rv.TextPath = txtPath
+        
     Next lsRow
+    
+    'Remove Populations with no associated Tissues
+    Dim temp As New Collection
+    For p = 0 To POPULATIONS.Count - 1
+        temp.Add POPULATIONS.Items()(p)
+    Next p
+    For p = 1 To temp.Count
+        Set pop = temp.item(p)
+        If pop.TissueViews.Count = 0 Then _
+            POPULATIONS.Remove (pop.Name)
+    Next p
+    
+    'Remove Tissues with no associated Recordings
+    Set temp = New Collection
+    Dim tiss As cTissue, t As Integer
+    For t = 0 To TISSUES.Count - 1
+        temp.Add TISSUES.Items()(t)
+    Next t
+    For t = 1 To temp.Count
+        Set tiss = temp.item(t)
+        If tiss.Recordings.Count = 0 Then _
+            TISSUES.Remove (tiss.Name)
+    Next t
+    
 End Sub
 
 Private Sub defineUnits(ByRef summaryWb As Workbook)
