@@ -7,7 +7,7 @@ Option Private Module
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Public Function channelIndex(ByVal unitName As String) As Integer
     Dim str As String
-    Dim r, c As Integer
+    Dim r As Integer, c As Integer
     
     'Get the 0-based row and column indices from the column header
     str = Mid(unitName, Len(CHANNEL_PREFIX) + 1, 2)
@@ -37,8 +37,8 @@ Public Function burstTimeInUnit(ByRef bursts As Variant) As Double
     burstTimeInUnit = totalTime
 End Function
 Public Function neighborChannel(ByVal channel As Integer, neighbor As Integer) As Integer
-    Dim r, c As Integer
-    Dim rowOffset, colOffset As Integer
+    Dim r As Integer, c As Integer
+    Dim rowOffset As Integer, colOffset As Integer
     
     'Channel and neighbor indices are 0-based
     r = Int(channel / MEA_ROWS)
@@ -48,8 +48,8 @@ Public Function neighborChannel(ByVal channel As Integer, neighbor As Integer) A
     neighborChannel = MEA_COLS * (r + rowOffset) + (c + colOffset)
 End Function
 Public Function channelString(ByVal channel As Integer) As Integer
-    Dim r, c As Integer
-    Dim rowOffset, colOffset As Integer
+    Dim r As Integer, c As Integer
+    Dim rowOffset As Integer, colOffset As Integer
     
     'Channel is 0-based
     r = Int(channel / MEA_ROWS)
@@ -57,10 +57,10 @@ Public Function channelString(ByVal channel As Integer) As Integer
     channelString = CStr(r + 1) & CStr(c + 1)  'eg, returns "42" for channel in row 4, col 2
 End Function
 Public Function neighborValid(ByVal channel As Integer, ByVal neighbor As Integer) As Boolean
-    Dim r, c, nRow, nCol As Integer
-    Dim rowOffset, colOffset As Integer
+    Dim r As Integer, c As Integer, nRow As Integer, nCol As Integer
+    Dim rowOffset As Integer, colOffset As Integer
     Dim nCh As Integer
-    Dim onGrid, corner, ground As Boolean
+    Dim onGrid As Boolean, corner As Boolean, ground As Boolean
 
     'Assumes that channel and neighbor are both 0-based, colIndex 1-based
     
@@ -88,8 +88,8 @@ Public Function neighborValid(ByVal channel As Integer, ByVal neighbor As Intege
 End Function
 Public Function interElectrodeDistance(ByVal channel1 As Integer, ByVal channel2 As Integer) As Double
     Dim unitDistance As Double
-    Dim row1, row2, col1, col2 As Integer
-    Dim rowDiff, colDiff As Integer
+    Dim row1 As Integer, row2 As Integer, col1 As Integer, col2 As Integer
+    Dim rowDiff As Integer, colDiff As Integer
     
     'Get the row and column of each channel
     row1 = Int(channel1 / MEA_ROWS)
@@ -105,7 +105,7 @@ Public Function interElectrodeDistance(ByVal channel1 As Integer, ByVal channel2
 End Function
 
 Private Function correlatedSpikeProportion(ByRef spikes1 As Variant, ByRef spikes2 As Variant, ByVal dt As Double) As Double
-    Dim s1, start2, end2 As Long
+    Dim s1 As Long, start2 As Long, end2 As Long
     Dim correlatedSpikes As Long
     
     'If there are no spikes on one of the trains then return 0
@@ -147,8 +147,8 @@ Private Function correlatedSpikeProportion(ByRef spikes1 As Variant, ByRef spike
     correlatedSpikeProportion = correlatedSpikes / UBound(spikes1)
 End Function
 Public Function correlatedTimeProportion(ByRef spikes As Variant, ByVal recordingDuration As Double, ByVal dt As Double) As Double
-    Dim s1, s2 As Long
-    Dim start, finish As Double
+    Dim s1 As Long, s2 As Long
+    Dim start As Double, finish As Double
     Dim correlatedTime As Double
     
     'If there are no spikes then return 0
@@ -200,8 +200,8 @@ Public Function burstColumn(ByVal spikeCol As Integer, ByVal numUnits) As Intege
 End Function
 
 Public Function spikesInBurst(ByRef spikes As Variant, ByRef bursts As Variant, ByVal bIndex As Long) As Long
-    Dim burstStart, burstEnd As Double
-    Dim s, startIndex, endIndex, numSpikes As Integer
+    Dim burstStart As Double, burstEnd As Double
+    Dim s As Integer, startIndex As Long, endIndex As Long, numSpikes As Integer
     
     'Burst index is 1-based
     startIndex = binarySearch(spikes, bursts(bIndex, 1))
@@ -217,7 +217,7 @@ Public Function firingRateInBurst(ByRef spikes As Variant, ByRef bursts As Varia
     firingRateInBurst = numSpikes / Duration
 End Function
 Public Function burstsAssociated(ByVal start As Double, ByVal binDuration As Double, ByVal nStart As Double, ByVal nBinDuration As Double) As Boolean
-    Dim bin, nBin As Integer
+    Dim bin As Integer, nBin As Integer
     Dim assocBins As Integer
     Dim timeDiff As Double
 
@@ -269,9 +269,9 @@ Public Function burstFiringRateInUnit(ByRef spikes As Variant, ByRef bursts As V
     burstFiringRateInUnit = sumSpikeFreq / UBound(bursts)
 End Function
 Public Function percentBurstTimeAboveFreqInUnit(ByRef spikes As Variant, ByRef bursts As Variant, ByVal freq As Double) As Double
-    Dim b, s As Integer
-    Dim start, finish As Double
-    Dim maxISI, isi As Double
+    Dim b As Integer, s As Long
+    Dim start As Long, finish As Long
+    Dim maxISI As Double, isi As Double
     Dim time As Double
     
     'Otherwise, for each burst, find the percent time spent firing above the given frequency
@@ -294,8 +294,8 @@ Public Function percentBurstTimeAboveFreqInUnit(ByRef spikes As Variant, ByRef b
     percentBurstTimeAboveFreqInUnit = avgTime / UBound(bursts)
 End Function
 Public Function spikeTimeTilingCoefficient1(ByRef spikes1 As Variant, ByRef spikes2 As Variant, ByVal recordingDuration As Double, ByVal dt As Double) As Double
-    Dim P1, P2 As Double
-    Dim T1, T2 As Double
+    Dim P1 As Double, P2 As Double
+    Dim T1 As Double, T2 As Double
     Dim sttc As Double
     
     '1 in the function name is just there b/c VBA doesnt support overloading...
@@ -309,7 +309,7 @@ Public Function spikeTimeTilingCoefficient1(ByRef spikes1 As Variant, ByRef spik
     spikeTimeTilingCoefficient1 = sttc
 End Function
 Public Function spikeTimeTilingCoefficient2(ByRef spikes1 As Variant, ByRef spikes2 As Variant, ByVal T1 As Double, ByVal T2 As Double, ByVal dt As Double) As Double
-    Dim P1, P2 As Double
+    Dim P1 As Double, P2 As Double
     Dim sttc As Double
     
     '2 in the function name is just there b/c VBA doesnt support overloading...
@@ -326,9 +326,9 @@ End Function
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 'HELPER FUNCTIONS
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-Public Function binarySearch(ByRef list As Variant, ByVal lookup As Double) As Integer
-    Dim pos As Integer
-    Dim lower, middle, upper As Long
+Public Function binarySearch(ByRef list As Variant, ByVal lookup As Double) As Long
+    Dim pos As Long
+    Dim lower As Long, middle As Long, upper As Long
     
     pos = -1
     upper = UBound(list)

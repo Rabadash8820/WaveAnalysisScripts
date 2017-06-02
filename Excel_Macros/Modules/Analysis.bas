@@ -70,7 +70,7 @@ End Sub
 
 Private Sub addAllAvgsSheet()
     Dim zeroes() As Variant
-    Dim u, p As Integer
+    Dim u As Integer, p As Integer
     
     Dim numUnits As Integer
     numUnits = UBound(unitNames, 1)
@@ -105,7 +105,7 @@ End Sub
 
 Private Sub addBurstAvgsSheet()
     Dim zeroes() As Variant
-    Dim u, p As Integer
+    Dim u As Integer, p As Integer
     
     Dim numUnits As Integer
     numUnits = UBound(unitNames, 1)
@@ -146,7 +146,7 @@ End Sub
 
 Private Sub addSttcSheet()
     Dim initial() As Variant
-    Dim u, p As Integer
+    Dim u As Integer, p As Integer
     
     Dim numUnits As Long
     Dim numRows As Long
@@ -171,7 +171,7 @@ Private Sub addSttcSheet()
     
     'Initialize all output cells to zero
     ReDim initial(1 To numRows, 1 To 3)
-    Dim u1, u2, ch1, ch2 As Integer
+    Dim u1 As Integer, u2 As Integer, ch1 As Integer, ch2 As Integer
     Dim row As Long
     row = 1
     For u1 = 1 To numUnits
@@ -274,12 +274,12 @@ End Sub
 
 Private Sub storeSttcValues(ByVal Duration As Double, ByVal numUnits As Long)
     Dim tValues() As Double
-    Dim cellIndex1, cellIndex2 As Integer
-    Dim u1, u2 As Integer
+    Dim cellIndex1 As Integer, cellIndex2 As Integer
+    Dim u1 As Integer, u2 As Integer
     Dim sttc As Double
     Dim outputRng As Range
     Dim oldResults As Variant
-    Dim spikes1, spikes2 As Variant
+    Dim spikes1 As Variant, spikes2 As Variant
     
     Dim numRows As Long
     numRows = numUnits * (numUnits - 1) / 2
@@ -395,14 +395,14 @@ End Sub
 Private Sub deleteUnusedBursts(ByVal wabsOnly As Boolean, ByRef unitNames As Variant)
     Dim burstRng As Range
     Dim numBursts As Integer
-    Dim bursts, trimmedBursts As Variant
+    Dim bursts As Variant, trimmedBursts As Variant
     Dim burstPos As Integer
     Dim isWAB As Boolean
-    Dim firstU, lastU, nFirstU, nLastU As Integer
+    Dim firstU As Integer, lastU As Integer, nFirstU As Integer, nLastU As Integer
     Dim neighbor As Variant
     Dim validNeighbors As Collection
-    Dim u, ch, nCh, b, chPos As Integer
-    Dim chStr, nChStr As String
+    Dim u As Integer, ch As Integer, nCh As Integer, b As Integer, chPos As Integer
+    Dim chStr As String, nChStr As String
     Dim numAssocUnits As Integer
     
     'Get all the burst start/end timestamps
@@ -485,7 +485,7 @@ End Sub
 
 Private Sub neighborUnitsAssociatedWithBurst(ByVal unit As Integer, ByVal neighbor As Variant, ByVal b As Integer, ByRef bursts As Variant, ByRef numAssocUnits As Integer)
     Dim trimmedBursts As Variant
-    Dim nFirstU, nLastU As Integer
+    Dim nFirstU As Integer, nLastU As Integer
     Dim nCh As Integer, nChStr As String
     
     Dim numUnits As Integer
@@ -497,7 +497,7 @@ Private Sub neighborUnitsAssociatedWithBurst(ByVal unit As Integer, ByVal neighb
     
     'Find the first and last unit on the neighbor channel (if they are represented on the sheet)
     Dim neighborAfter, inChannel As Boolean
-    Dim tempU, endForU, step As Integer
+    Dim tempU As Integer, endForU As Integer, step As Integer
     nFirstU = -1
     nLastU = -1
     nCh = neighborChannel(ch, CInt(neighbor))
