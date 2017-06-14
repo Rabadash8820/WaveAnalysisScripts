@@ -179,7 +179,7 @@ Private Sub buildStatsSheet()
     'Build the Stats sheet
     ActiveSheet.Name = STATS_NAME
         
-    'Create the contents table on the Contents sheet
+    'Create the stats table on the Stats sheet
     Set tbl = ActiveSheet.ListObjects.Add(xlSrcRange, Range("A1"), , xlYes)
     tbl.Name = STATS_NAME
     
@@ -629,7 +629,7 @@ Private Sub buildSttcFiguresSheet()
     cornerCell.offset(1, 0).Name = "InterElectrodeDist"
     cornerCell.offset(3, 0).Name = "IgnoreDist"
         
-    'Create the contents table on the Contents sheet
+    'Create the STTC table on the STTC sheet
     Dim numChartRows As Integer, numChartCols As Integer, numSpaceRows As Integer
     numChartRows = 20
     numChartCols = 10
@@ -698,8 +698,6 @@ Private Sub buildSttcFiguresSheet()
     End With
     
     'Add formulas to the remaining rows/columns
-    Dim contentsTbl As ListObject
-    Set contentsTbl = Worksheets(CONTENTS_NAME).ListObjects(CONTENTS_NAME)
     Dim popRngStr As String, popSttcTblStr As String, valFormula As String
     numCols = 2
     tbl.ListColumns(2).DataBodyRange.Formula = "=IF(InterElectrodeDist*[@Unit Distance]<=IgnoreDist,InterElectrodeDist*[@[Unit Distance]],NA())"
@@ -942,7 +940,7 @@ Private Sub buildPropArea(ByRef cornerCell As Range, ByRef tblRowCell As Range, 
         formulaRng.offset(0, 0).Formula = valStr
         formulaRng.offset(0, 2).Formula = rangeStr
         formulaRng.offset(0, 3).FormulaArray = "=AVERAGE(" & pctChangeStr & ")"
-        formulaRng.offset(0, 5).FormulaArray = "=STDEV.S(" & pctChangeStr & ")/SQRT(COUNT(" & pctChangeStr & "))"
+        formulaRng.offset(0, 5).FormulaArray = "=STDEV.S(" & pctChangeStr & ")/SQRT(COUNT(" & dataStr & "))"
     Next p
     
     'Add the new bar chart object
