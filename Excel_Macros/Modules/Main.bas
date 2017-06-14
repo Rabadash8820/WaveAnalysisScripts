@@ -12,15 +12,15 @@ Public Sub ProcessPopulations()
     'Define the Tissue/Recording/Population objects, etc.
     Dim success As Boolean
     Call GetConfigVars
-    success = DefineObjects()
-    If Not success Then _
-        GoTo ExitSub
+    Call DefineObjects(outputStrs)
+    If outputStrs.Count > 0 Then _
+        GoTo Finally
     
     'Load each provided RecordingView's text files
     'If any errors occur, log their messages and exit
-    Set outputStrs = checkTextFilesExist()
+    Call checkTextFilesExist(outputStrs)
     If outputStrs.Count > 0 Then _
-        GoTo ExitSub
+        GoTo Finally
     
     'Load each provided RecordingView's text files,
     'then perform wave analyses on each TissueView!
@@ -37,7 +37,7 @@ Public Sub ProcessPopulations()
                 If Not success Then
                     outputStrs.Add "Recording " & rv.Recording.ID & " from Tissue """ & rv.TissueView.Tissue.Name & """ did not contain any burst start/end timestamps."
                     outputStrs.Add "Make sure that you exported Interval data from NeuroExplorer for EVERY Recording's text files before running again."
-                    GoTo ExitSub
+                    GoTo Finally
                 End If
             Next r
             For Each bType In BURST_TYPES.Keys()
@@ -74,8 +74,10 @@ Public Sub ProcessPopulations()
     
     'Store the success strings to be logged
     Set outputStrs = successStrings
+    
+    GoTo Finally
 
-ExitSub:
+Finally:
     'Log results (errors or success) and tear things down
     Call showLog(outputStrs)
     Call tearDownOptimizations
@@ -104,6 +106,8 @@ Private Function loadRecording(ByRef rv As cRecordingView, ByVal rvIndex As Inte
         success = openFile(rv, txtFile)
         If Not success Then
             loadRecording = False
+            wb.Close SaveChanges:=False
+            fs.DeleteFile (wbPath)
             Exit Function
         End If
                        
@@ -201,8 +205,9 @@ Private Function openFile(ByRef rec As cRecordingView, ByRef recFile As File) As
             Exit For
         End If
     Next
-    If Not success Then _
-        GoTo Finally
+    success = True
+'    If Not success Then _
+'        GoTo Finally
             
     'Delete columns for the A1 electrode (if it exists) and the All File interval
     For col = 1 To numCols
@@ -234,7 +239,7 @@ Finally:
     
 End Function
 
-Private Function checkTextFilesExist() As Collection
+Private Sub checkTextFilesExist(ByRef errorStrs As Collection)
     
     'Check whether each provided RecordingView has a text file that exists
     Dim fs As New FileSystemObject, unfound As New Collection, notGiven As New Collection
@@ -256,7 +261,7 @@ Private Function checkTextFilesExist() As Collection
     Next p
     
     'If any of them do not then return some error messages
-    Dim errorOccurred As Boolean, item As Variant, errorStrs As New Collection
+    Dim errorOccurred As Boolean, item As Variant
     errorOccurred = (unfound.Count > 0 Or notGiven.Count > 0)
     If errorOccurred Then
         errorStrs.Add "Please correct the following errors before running again."
@@ -275,10 +280,8 @@ Private Function checkTextFilesExist() As Collection
             Next item
         End If
     End If
-
-    'Return these error messages
-    Set checkTextFilesExist = errorStrs
-End Function
+    
+End Sub
 
 Private Function successStrings() As Collection
     Dim outputStrs As New Collection, numRecs As Integer

@@ -40,7 +40,7 @@ Public Const STATS_NAME = "Stats"
 Public Const PROPERTIES_NAME = "Properties"
 Public Const STTC_NAME = "STTC"
 Public Const RECORDINGS_NAME = "Recordings"
-Public Const RECORDING_VIEWS_NAME = "Recordings"
+Public Const RECORDING_VIEWS_NAME = "Associated_Recordings"
 
 'STRINGS
 Public Const TIME_GENERATED_STR = "Time Generated"
@@ -76,45 +76,59 @@ Public Recordings As New Dictionary
 'OTHER VALUES
 Public Const MAX_EXCEL_ROWS = 1048576
 
-Public Function DefineObjects() As Boolean
-    Dim success As Boolean
-    success = False
-    
-    'Open the Data Summary workbook
-    Dim summaryFile As File, result As VbMsgBoxResult, summaryWb As Workbook
+'Global variables for this Module
+Dim errorStrs As New Collection
+
+Public Sub DefineObjects(ByRef errorStrCollection As Collection)
+
+    Set errorStrs = errorStrCollection
+
+    'Let the user choose the Data Summary workbook
+    Dim summaryFile As File, summaryWb As Workbook
     Set summaryFile = PickWorkbook("Select the Data Summary workbook")
     If summaryFile Is Nothing Then
-        result = MsgBox("No workbook selected.", vbOKOnly, "Routine complete")
-        GoTo ExitFunc
+        errorStrs.Add "No Summary workbook selected."
+        Exit Sub
     End If
-    Set summaryWb = Workbooks.Open(summaryFile.path)
     
-    'Open the Population-definition workbook
-    Dim popFile As File, popWb As Workbook
-    Set popFile = PickWorkbook("Select the workbook that defines your experimental populations")
-    If popFile Is Nothing Then
-        result = MsgBox("No workbook selected.", vbOKOnly, "Routine complete")
-        GoTo ExitFunc
+    'Let the user choose the Population-Recording association workbook
+    Dim popRecFile As File, popRecWb As Workbook
+    Set popRecFile = PickWorkbook("Select the Population-Recording association workbook")
+    If popRecFile Is Nothing Then
+        errorStrs.Add "No PopRecordings workbook selected."
+        Exit Sub
     End If
-    Set popWb = Workbooks.Open(popFile.path)
+    
+    'Open the workbooks that they chose
+    Set summaryWb = Workbooks.Open(summaryFile.path)
+    Set popRecWb = Workbooks.Open(popRecFile.path)
     
     'Get Tissue/Recording and experimental Population info
     'Wrap these objects in Views associated with the appropriate Population
     Call defineTissues(summaryWb)
+    If errorStrs.Count > 0 Then GoTo Finally
+    
     Call defineRecordings(summaryWb)
-    Call definePopulations(summaryWb)
-    Call associateViews(popWb)
+    If errorStrs.Count > 0 Then GoTo Finally
+    
+    Call definePopulations(popRecWb)
+    If errorStrs.Count > 0 Then GoTo Finally
+    
+    Call associateViews(popRecWb)
+    If errorStrs.Count > 0 Then GoTo Finally
+    
     Call defineUnits(summaryWb)
+    If errorStrs.Count > 0 Then GoTo Finally
+    
+    GoTo Finally
+    
+Finally:
     Application.DisplayAlerts = False
     summaryWb.Close
-    popWb.Close
+    popRecWb.Close
     Application.DisplayAlerts = True
     
-    success = True
-    
-ExitFunc:
-    DefineObjects = success
-End Function
+End Sub
 
 Private Sub defineTissues(ByRef summaryWb As Workbook)
     'Get the Tissues table
@@ -122,10 +136,14 @@ Private Sub defineTissues(ByRef summaryWb As Workbook)
     Set tissueSht = summaryWb.Worksheets(TISSUES_NAME)
     Set tissueTbl = tissueSht.ListObjects(TISSUES_NAME)
     
-    'Store the population info (or just return if none was provided)
+    'Store the Tissue info (or just return if none was provided)
     Dim lsRow As ListRow
-    Dim tiss As cTissue
+    If tissueTbl.DataBodyRange Is Nothing Then
+        errorStrs.Add "No Tissues have been defined.  Provide this info on the " & TISSUES_NAME & " sheet of the Summary workbook."
+        Exit Sub
+    End If
     TISSUES.RemoveAll
+    Dim tiss As cTissue
     For Each lsRow In tissueTbl.ListRows
         Set tiss = New cTissue
         tiss.Name = lsRow.Range(1, tissueTbl.ListColumns("Name").index).Value
@@ -142,17 +160,27 @@ Private Sub defineRecordings(ByRef summaryWb As Workbook)
     Set recSht = summaryWb.Worksheets(RECORDINGS_NAME)
     Set recTbl = recSht.ListObjects(RECORDINGS_NAME)
     
-    'Store the population info (or just return if none was provided)
+    'Make sure Recording info was provided
     Dim lsRow As ListRow
-    Dim rec As cRecording, tissName As String
+    If recTbl.DataBodyRange Is Nothing Then
+        errorStrs.Add "No Recordings have been defined.  Provide this info on the " & RECORDINGS_NAME & " sheet of the Summary workbook."
+        Exit Sub
+    End If
+    
+    'Store Recording info
+    'If a Recording doesn't have a corresponding Tissue then return an error message
     Recordings.RemoveAll
+    Dim rec As cRecording, tissName As String
     For Each lsRow In recTbl.ListRows
         Set rec = New cRecording
-        
         rec.ID = lsRow.Range(1, recTbl.ListColumns("ID").index).Value
         rec.startTime = lsRow.Range(1, recTbl.ListColumns("StartStamp").index).Value
         rec.Duration = lsRow.Range(1, recTbl.ListColumns("Duration").index).Value
         tissName = lsRow.Range(1, recTbl.ListColumns("Tissue Name").index).Value
+        If Not TISSUES.Exists(tissName) Then
+            errorStrs.Add "Could not find a Tissue named " & tissName & " for Recording " & rec.ID & "."
+            Exit Sub
+        End If
         Set rec.Tissue = TISSUES(tissName)
         TISSUES(tissName).Recordings.Add rec
         Recordings.Add rec.ID, rec
@@ -160,10 +188,10 @@ Private Sub defineRecordings(ByRef summaryWb As Workbook)
 
 End Sub
 
-Private Sub definePopulations(ByRef summaryWb As Workbook)
+Private Sub definePopulations(ByRef popRecWb As Workbook)
     'Get the Populations and Recordings tables
     Dim popsSht As Worksheet, popsTbl As ListObject
-    Set popsSht = summaryWb.Worksheets(POPS_NAME)
+    Set popsSht = popRecWb.Worksheets(POPS_NAME)
     Set popsTbl = popsSht.ListObjects(POPS_NAME)
     
     'Get burst types
@@ -171,10 +199,10 @@ Private Sub definePopulations(ByRef summaryWb As Workbook)
     BURST_TYPES.Add BurstUseType.WABs, "WAB"
     BURST_TYPES.Add BurstUseType.NonWABs, "NonWAB"
     
-    'Store the population info (or just return if none was provided)
-    Dim lsRow As ListRow, result As VbMsgBoxResult
+    'Store the Population info (or just return if none was provided)
+    Dim lsRow As ListRow
     If popsTbl.DataBodyRange Is Nothing Then
-        result = MsgBox("No experimental populations have been defined.  Provide this info on the " & POPS_NAME & " sheet", vbOKOnly)
+        errorStrs.Add "No experimental Populations have been defined.  Provide this info on the " & POPS_NAME & " sheet of the PopRecordings workbook."
         Exit Sub
     End If
     Dim pop As cPopulation
@@ -200,7 +228,7 @@ Private Sub definePopulations(ByRef summaryWb As Workbook)
         End If
     Next p
     If numCtrlPops <> 1 Then
-        result = MsgBox("You must identify one (and only one) experimental population as the control.", vbOKOnly)
+        errorStrs.Add "You must identify one (and only one) experimental Population as the control."
         Exit Sub
     End If
     
@@ -213,10 +241,10 @@ Private Sub associateViews(ByRef popRecWb As Workbook)
     Set recTbl = recSht.ListObjects(RECORDING_VIEWS_NAME)
 
     'If no Recording info was provided on the Combine sheet, then just return
-    Dim numRecs As Integer, result As VbMsgBoxResult
+    Dim numRecs As Integer
     numRecs = recTbl.ListRows.Count
     If recTbl.DataBodyRange Is Nothing Then
-        result = MsgBox("No recording-population associations have been specified.  Provide this info on the " & RECORDING_VIEWS_NAME & " sheet", vbOKOnly)
+        errorStrs.Add "No recording-population associations have been specified.  Provide this info on the " & RECORDING_VIEWS_NAME & " sheet of the PopRecordings workbook."
         Exit Sub
     End If
     
@@ -234,16 +262,16 @@ Private Sub associateViews(ByRef popRecWb As Workbook)
         
         'Create the RecordingView object
         recID = lsRow.Range(1, recTbl.ListColumns("Recording ID").index).Value
-        txtPath = lsRow.Range(1, recTbl.ListColumns("Text File").index).Value
+        txtPath = lsRow.Range(1, recTbl.ListColumns("Text File Path").index).Value
         Set rv = New cRecordingView
         Set rv.Recording = Recordings(recID)
         rv.TextPath = txtPath
         
         'Create the TissueView object (if it doesn't already exist)
         'This includes defining its summary workbook paths
-        popName = lsRow.Range(1, recTbl.ListColumns("Population Name").index).Value
+        popName = lsRow.Range(1, recTbl.ListColumns("Associated Population Name").index).Value
         tName = Recordings(recID).Tissue.Name
-        If tvs(popName).exists(tName) Then
+        If tvs(popName).Exists(tName) Then
             Set tv = tvs(popName)(tName)
         Else
             Set tv = New cTissueView
@@ -291,50 +319,58 @@ Private Sub associateViews(ByRef popRecWb As Workbook)
 End Sub
 
 Private Sub defineUnits(ByRef summaryWb As Workbook)
-    'Get all the provided invalid unit info
-    Dim invalidsTbl As ListObject, invalidRng As Range
+    'Only continue if invalid unit info was provided
+    Dim invalidsTbl As ListObject
     Set invalidsTbl = summaryWb.Worksheets(INVALIDS_NAME).ListObjects(INVALIDS_NAME)
-    Set invalidRng = invalidsTbl.DataBodyRange
+    If invalidsTbl.DataBodyRange Is Nothing Then Exit Sub
     
     'For each provided unit...
-    Dim lr As ListRow, unit As cUnit, tissName As String, findTissue As Boolean, tissView As cTissueView, unitName As String, del As Boolean, exclude As Boolean
-    If Not invalidRng Is Nothing Then
-        For Each lr In invalidsTbl.ListRows
+    Dim lr As ListRow, findTissue As Boolean
+    Dim tissName As String, oldTissName As String, unitName As String, del As Boolean, exclude As Boolean
+    Dim unit As cUnit, tissView As cTissueView
+    For Each lr In invalidsTbl.ListRows
+        
+        'Fetch its data from the table
+        tissName = lr.Range(1, invalidsTbl.ListColumns("Tissue Name").index).Value
+        unitName = lr.Range(1, invalidsTbl.ListColumns("Unit").index).Value
+        del = (lr.Range(1, invalidsTbl.ListColumns("Delete?").index).Value <> "")
+        exclude = (lr.Range(1, invalidsTbl.ListColumns("Exclude?").index).Value <> "")
+        
+        'Try to find its associated TissueView
+        findTissue = True
+        If tissView Is Nothing Then
+            findTissue = (tissName <> oldTissName)
+        Else
+            findTissue = (tissName <> tissView.Tissue.Name)
+        End If
+        If findTissue Then
+            Dim p As Integer, pop As cPopulation, tv As cTissueView
+            Set tissView = Nothing
+            For p = 0 To POPULATIONS.Count - 1
+                Set pop = POPULATIONS.Items()(p)
+                For Each tv In pop.TissueViews
+                    If tv.Tissue.Name = tissName Then
+                        Set tissView = tv
+                        Exit For
+                    End If
+                Next tv
+                If Not tissView Is Nothing Then Exit For
+            Next p
+        End If
+        
+        'If the associated Tissue was found, then wrap this Unit's data in a Unit object
+        'Otherwise, all remaining Units of this (not found) Tissue will be skipped
+        If tissView Is Nothing Then
+            oldTissName = tissName
+        Else
             Set unit = New cUnit
-            
-            'Fetch its data from the table
-            tissName = lr.Range(1, invalidsTbl.ListColumns("Tissue Name").index).Value
-            unitName = lr.Range(1, invalidsTbl.ListColumns("Unit").index).Value
-            del = (lr.Range(1, invalidsTbl.ListColumns("Delete?").index).Value <> "")
-            exclude = (lr.Range(1, invalidsTbl.ListColumns("Exclude?").index).Value <> "")
-            
-            'Get its associated TissueView
-            findTissue = True
-            If Not tissView Is Nothing Then _
-                findTissue = (tissName <> tissView.Tissue.Name)
-            If findTissue Then
-                Dim p As Integer, pop As cPopulation, tv As cTissueView
-                Set tissView = Nothing
-                For p = 0 To POPULATIONS.Count - 1
-                    Set pop = POPULATIONS.Items()(p)
-                    For Each tv In pop.TissueViews
-                        If tv.Tissue.Name = tissName Then
-                            Set tissView = tv
-                            Exit For
-                        End If
-                    Next tv
-                    If Not tissView Is Nothing Then Exit For
-                Next p
-            End If
-            
-            'Wrap its data in a Unit object
             Set unit.TissueView = tissView
             tissView.BadUnits.Add unit
             unit.Name = unitName
             unit.ShouldDelete = del
             unit.ShouldExclude = exclude
-        Next lr
-    End If
+        End If
+    Next lr
 End Sub
 
 Public Sub GetConfigVars()
