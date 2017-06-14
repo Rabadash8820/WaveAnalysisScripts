@@ -1117,20 +1117,3 @@ Private Sub cleanSheets(ByRef wb As Workbook, ByVal keyword As String)
         End If
     Next sht
 End Sub
-
-Private Function numDimensions(ByRef arr As Variant)
-    'Sets up the error handler.
-    On Error GoTo FinalDimension
-    
-    'VBA arrays can have up to 60,000 dimensions
-    'Do something with each dimension until an error is generated
-    Dim numDims As Long, temp As Integer
-    For numDims = 1 To 60000
-       temp = LBound(arr, numDims)
-    Next numDims
-    
-    ' The error routine.
-FinalDimension:
-    numDimensions = numDims - 1
-
-End Function
